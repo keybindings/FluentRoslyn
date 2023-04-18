@@ -9,4 +9,12 @@ internal static class ObjectExtensions
         action(@ref);
         return @ref;
     }
+
+    public static void Then(this bool @ref, Action action)
+    {
+        if (@ref)
+        {
+            action();
+        }
+    }
 }
