@@ -1,6 +1,6 @@
 ﻿namespace Generatr.Builders;
 
-public class PropertyBuilder : Builder
+public class PropertyBuilder : NamedBuilder
 {
     public PropertyBuilder(string name) : base(name)
     {

@@ -1,7 +1,57 @@
+using System.Xml.Serialization;
 using FluentAssertions;
 using Generatr.Builders;
 
 namespace Generatr.UnitTests;
+
+[TestClass]
+public class BuilderTests
+{
+    private class NamedBuilderStub : NamedBuilder
+    {
+        public NamedBuilderStub(string name) : base(name)
+        {
+        }
+
+        public int BuildInvokedCount { get; set; }
+        protected override string Build()
+        {
+            BuildInvokedCount++;
+            return string.Empty;
+        }
+    }
+
+    // ReSharper disable once ObjectCreationAsStatement
+    private readonly Action<string> _newBuilderAct = s => new NamedBuilderStub(s);
+
+    [TestMethod]
+    public void WhenNewNameBuilderCalledWithNullNameThenArgumentNullExceptionThrown()
+    {
+        _newBuilderAct.Invoking(x => x(null)).Should().Throw<ArgumentNullException>();
+    }
+
+    [DataTestMethod]
+    [DataRow("")]
+    [DataRow("    ")]
+    [DataRow("Test Name With Spaces")]
+    [DataRow("1InvalidName")]
+    public void WhenNewNameBuilderCalledWithInvalidNameThenArgumentOutOfRangeExceptionThrown(string name)
+    {
+        _newBuilderAct.Invoking(x => x(name))
+            .Should().Throw<ArgumentOutOfRangeException>()
+            .WithMessage($"Name: \"{name}\" contains invalid chars.*");
+    }
+
+    [DataTestMethod]
+    [DataRow("ValidName1")]
+    [DataRow("Another_ValidName")]
+    [DataRow("_1AnotherValidName")]
+    public void WhenNewNameBuilderCalledWithValidNameThenNamePropertySet(string name)
+    {
+        var builder = new NamedBuilderStub(name);
+        builder.Name.Should().Be(name);
+    }
+}
 
 [TestClass]
 public class NamespaceBuilderTests
@@ -27,18 +77,6 @@ public class NamespaceBuilderTests
         expected.ToString().Should().Be(TestNamespace);
     }
 
-    [TestMethod]
-    public void WhenNewNamespaceBuilderCalled_InvalidNamespace_ArgumentExceptionThrown()
-    {
-        _newAct.Invoking(x => x("Test Namespace With Spaces"))
-            .Should().Throw<ArgumentException>().WithMessage("Name cannot contain invalid chars: *");
-    }
-
-    [TestMethod]
-    public void WhenNullNameUsed_ArgumentNullExceptionThrown()
-    {
-        _newAct.Invoking(x => x(null)).Should().Throw<ArgumentNullException>();
-    }
 
     [TestMethod]
     public void WhenChildNamespaceBuilt_NamespaceStringBuiltCorrectly()
@@ -56,17 +94,5 @@ public class NamespaceBuilderTests
         nsBuilder.ToString().Should().Be(multiNamespace);
     }
 
-    [TestMethod]
-    public void WhenEmptyStringBetweenPointsArgumentExceptionThrown()
-    {
-        const string invalidEmptyNamespace = "";
-        _newAct.Invoking(x => x(invalidEmptyNamespace)).Should().Throw<ArgumentNullException>();
-    }
-    
-    [TestMethod]
-    public void WhenWhitespaceStringBetweenPointsArgumentExceptionThrown()
-    {
-        const string invalidEmptyNamespace = "   ";
-        _newAct.Invoking(x => x(invalidEmptyNamespace)).Should().Throw<ArgumentNullException>();
-    }
+
 }

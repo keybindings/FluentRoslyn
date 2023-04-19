@@ -6,12 +6,10 @@ using Generatr.Extensions;
 
 namespace Generatr.Builders;
 
-public class NamespaceBuilder : Builder
+public class NamespaceBuilder : NamedBuilder
 {
-    private static readonly HashSet<char> InvalidChars = new(){' '};
     private NamespaceBuilder(NamespaceBuilder parent, string name) : base(name)
     {
-        ContainsInvalidCharsCheck(name);
         Parent = parent;
     }
 
@@ -24,7 +22,6 @@ public class NamespaceBuilder : Builder
     private static NamespaceBuilder New(NamespaceBuilder parent, string name)
     {
         if (name == null) throw new ArgumentNullException(nameof(name));
-
         var levels = name.Split('.');
         var target = new NamespaceBuilder(parent, levels[0]);
         if (levels.Length == 1) return target;
@@ -56,9 +53,5 @@ public class NamespaceBuilder : Builder
 
         return sb.ToString();
     }
-    private static void ContainsInvalidCharsCheck(string val) =>
-        val.Any(IsInvalidChar).Then(() => throw new ArgumentException(
-            $"Name cannot contain invalid chars: {string.Join(", ", InvalidChars.Select(x => $"\"{x}\""))}"));
 
-    public static bool IsInvalidChar(char c) => InvalidChars.Contains(c);
 }

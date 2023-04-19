@@ -5,7 +5,7 @@ using Generatr.Enums;
 
 namespace Generatr.Builders;
 
-public class ClassBuilder : Builder
+public class ClassBuilder : NamedBuilder
 {
     internal ClassBuilder(NamespaceBuilder @namespace, string name, AccessModifiers accessModifier) : base(name)
     {
