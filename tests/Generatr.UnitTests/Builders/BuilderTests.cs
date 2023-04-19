@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Generatr.Builders;
 
-namespace Generatr.UnitTests;
+namespace Generatr.UnitTests.Builders;
 
 [TestClass]
 public class BuilderTests
