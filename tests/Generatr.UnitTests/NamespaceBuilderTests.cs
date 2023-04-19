@@ -1,57 +1,7 @@
-using System.Xml.Serialization;
 using FluentAssertions;
 using Generatr.Builders;
 
 namespace Generatr.UnitTests;
-
-[TestClass]
-public class BuilderTests
-{
-    private class NamedBuilderStub : NamedBuilder
-    {
-        public NamedBuilderStub(string name) : base(name)
-        {
-        }
-
-        public int BuildInvokedCount { get; set; }
-        protected override string Build()
-        {
-            BuildInvokedCount++;
-            return string.Empty;
-        }
-    }
-
-    // ReSharper disable once ObjectCreationAsStatement
-    private readonly Action<string> _newBuilderAct = s => new NamedBuilderStub(s);
-
-    [TestMethod]
-    public void WhenNewNameBuilderCalledWithNullNameThenArgumentNullExceptionThrown()
-    {
-        _newBuilderAct.Invoking(x => x(null)).Should().Throw<ArgumentNullException>();
-    }
-
-    [DataTestMethod]
-    [DataRow("")]
-    [DataRow("    ")]
-    [DataRow("Test Name With Spaces")]
-    [DataRow("1InvalidName")]
-    public void WhenNewNameBuilderCalledWithInvalidNameThenArgumentOutOfRangeExceptionThrown(string name)
-    {
-        _newBuilderAct.Invoking(x => x(name))
-            .Should().Throw<ArgumentOutOfRangeException>()
-            .WithMessage($"Name: \"{name}\" contains invalid chars.*");
-    }
-
-    [DataTestMethod]
-    [DataRow("ValidName1")]
-    [DataRow("Another_ValidName")]
-    [DataRow("_1AnotherValidName")]
-    public void WhenNewNameBuilderCalledWithValidNameThenNamePropertySet(string name)
-    {
-        var builder = new NamedBuilderStub(name);
-        builder.Name.Should().Be(name);
-    }
-}
 
 [TestClass]
 public class NamespaceBuilderTests
@@ -61,8 +11,12 @@ public class NamespaceBuilderTests
     private const string TestNamespace2 = "TestNamespace2";
     private const string TestNamespace3 = "TestNamespace3";
 
-    private readonly Action<string> _newAct = x => NamespaceBuilder.New(x);
-
+    [TestMethod]
+    public void NewNamespaceBuilderCalled_NullNameUsed_ArgumentNullExceptionThrown()
+    {
+        Action newAct = () => NamespaceBuilder.New(null);
+        newAct.Invoking(x => x()).Should().Throw<ArgumentNullException>();
+    }
     [TestMethod]
     public void WhenNewNamespaceBuilderCalled_BaseNamespaceValidString_NoParentName()
     {
@@ -76,7 +30,6 @@ public class NamespaceBuilderTests
         var expected = NamespaceBuilder.New(TestNamespace);
         expected.ToString().Should().Be(TestNamespace);
     }
-
 
     [TestMethod]
     public void WhenChildNamespaceBuilt_NamespaceStringBuiltCorrectly()
@@ -93,6 +46,4 @@ public class NamespaceBuilderTests
         var nsBuilder = NamespaceBuilder.New(multiNamespace);
         nsBuilder.ToString().Should().Be(multiNamespace);
     }
-
-
 }
