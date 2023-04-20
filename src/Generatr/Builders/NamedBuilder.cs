@@ -24,7 +24,7 @@ public abstract class NamedBuilder
 
     private void DefaultNameInvalidAssertion(string name)
     {
-        if (name.Any(IsInvalidChar) || name.Length == 0|| char.IsNumber(name[0]) || AdditionalNameAssertions(name))
+        if (name.Length == 0 || char.IsNumber(name[0]) || name.Any(IsInvalidChar) || AdditionalNameAssertions(name))
             throw new ArgumentOutOfRangeException(nameof(name), name, $"Name: \"{name}\" contains invalid chars.");
     }
 
