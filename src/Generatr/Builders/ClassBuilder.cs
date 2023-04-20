@@ -36,10 +36,10 @@ namespace Generatr.Builders
 
         #region Fields
         public FieldBuilder AddPublicField(ClassBuilder type, string name)
-            => AddField(type, name, AccessModifierFlags.Public);
+            => AddField(type, name, StandardAccessModifier.Public);
         public FieldBuilder AddPrivateField(ClassBuilder type, string name) =>
-            AddField(type, name, AccessModifierFlags.Private);
-        public FieldBuilder AddField(ClassBuilder type, string name, AccessModifierFlags accessModifierFlags) =>
+            AddField(type, name, StandardAccessModifier.Private);
+        public FieldBuilder AddField(ClassBuilder type, string name, StandardAccessModifier accessModifierFlags) =>
             new(this, type, name, accessModifierFlags);
 
         #endregion
