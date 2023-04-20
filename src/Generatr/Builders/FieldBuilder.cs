@@ -4,17 +4,17 @@ namespace Generatr.Builders;
 
 public class FieldBuilder
 {
-    internal FieldBuilder(ClassBuilder @class, ClassBuilder type, string name, AccessModifiers accessModifier)
+    internal FieldBuilder(ClassBuilder @class, ClassBuilder type, string name, StandardAccessModifier accessModifierFlags)
     {
         Class = @class;
         Type = type;
         Name = name;
-        AccessModifier = accessModifier;
+        AccessModifierFlags = accessModifierFlags;
     }
 
     public ClassBuilder Class { get; }
 
-    public AccessModifiers AccessModifier { get; set; }
+    public StandardAccessModifier AccessModifierFlags { get; set; }
 
     public ClassBuilder Type { get; set; }
     public string Name { get; }

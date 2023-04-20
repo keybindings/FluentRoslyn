@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml.Linq;
 
 namespace Generatr.Builders;
 
 public abstract class NamedBuilder
 {
     private static readonly HashSet<char> InvalidChars = new() { ' ' };
-    public NamedBuilder(string name)
+
+    protected NamedBuilder(string name)
     {
         DefaultNameInvalidAssertion(name ?? throw new ArgumentNullException(nameof(name)));
         Name = name;

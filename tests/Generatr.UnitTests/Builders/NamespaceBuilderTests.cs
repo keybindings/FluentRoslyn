@@ -9,7 +9,6 @@ public class NamespaceBuilderTests
     private const string TestNamespace = "TestNamespace";
     private const string TestNamespace1 = "TestNamespace1";
     private const string TestNamespace2 = "TestNamespace2";
-    private const string TestNamespace3 = "TestNamespace3";
 
     [TestMethod]
     public void NewNamespaceBuilderCalled_NullNameUsed_ArgumentNullExceptionThrown()
@@ -42,8 +41,16 @@ public class NamespaceBuilderTests
     [TestMethod]
     public void WhenMultiNamespaceBuild_NamespaceShouldBuildHierarchy()
     {
-        const string multiNamespace = $"{TestNamespace1}.{TestNamespace2}.{TestNamespace3}";
+        const string multiNamespace = $"{TestNamespace1}.{TestNamespace2}.TestNamespace3";
         var nsBuilder = NamespaceBuilder.New(multiNamespace);
         nsBuilder.ToString().Should().Be(multiNamespace);
+    }
+
+    [TestMethod]
+    public void NewBuilderCreated_ClassCreated_ClassNamespaceMatches()
+    {
+        var namespaceBuilder = NamespaceBuilder.New(TestNamespace);
+        var classBuilder = namespaceBuilder.Class("TestClassName");
+        classBuilder.Namespace.Should().Be(namespaceBuilder);
     }
 }

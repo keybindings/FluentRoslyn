@@ -4,7 +4,7 @@ using Generatr.Builders;
 namespace Generatr.UnitTests.Builders;
 
 [TestClass]
-public class BuilderTests
+public class NamedBuilderTests
 {
     private class NamedBuilderStub : NamedBuilder
     {
@@ -12,7 +12,7 @@ public class BuilderTests
         {
         }
 
-        public int BuildInvokedCount { get; set; }
+        public int BuildInvokedCount { get; private set; }
         protected override string Build()
         {
             BuildInvokedCount++;

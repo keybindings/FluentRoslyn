@@ -1,69 +1,99 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 using Generatr.Enums;
 
-namespace Generatr.Builders;
-
-public class ClassBuilder : NamedBuilder
+namespace Generatr.Builders
 {
-    internal ClassBuilder(NamespaceBuilder @namespace, string name, AccessModifiers accessModifier) : base(name)
+    public class ClassBuilder : NamedBuilder
     {
-        Namespace = @namespace;
-        AccessModifier = accessModifier;
+        internal ClassBuilder(NamespaceBuilder @namespace, string name) : base(name)
+        {
+            Namespace = @namespace;
+        }
+
+        public bool IsFileScopedNamespace { get; set; } = true;
+
+        //public bool IsGeneric { get; set; }
+
+        public NamespaceBuilder Namespace { get; }
+
+        public StandardAccessModifier AccessModifier { get; set; } = StandardAccessModifier.Public;
+
+        public ClassBuilder ParentType { get; set; }
+
+        #region Sets
+        public ClassBuilder BlockScopedNamespace()
+            => SetThenReturn(() => IsFileScopedNamespace = false);
+
+        public ClassBuilder SetParent(ClassBuilder type)
+            => SetThenReturn(() => ParentType = type);
+
+        public ClassBuilder SetAccessModifier(StandardAccessModifier accessModifier)
+            => SetThenReturn(() => AccessModifier = accessModifier);
+
+        #endregion
+
+
+        #region Fields
+        public FieldBuilder AddPublicField(ClassBuilder type, string name)
+            => AddField(type, name, AccessModifierFlags.Public);
+        public FieldBuilder AddPrivateField(ClassBuilder type, string name) =>
+            AddField(type, name, AccessModifierFlags.Private);
+        public FieldBuilder AddField(ClassBuilder type, string name, AccessModifierFlags accessModifierFlags) =>
+            new(this, type, name, accessModifierFlags);
+
+        #endregion
+
+        //#region Properties
+
+        ////public PropertyBuilder AddGetSetPropertyField(ClassBuilder type, string name)
+        ////    => AddField(this, type, name, AccessModifierFlags.Public);
+
+        //#endregion
+
+        protected override string Build()
+        {
+            var sb = new StringBuilder();
+            var tabCount = 0;
+
+            // TODO Complete usings
+            // Grab all usings from base type, fields, properties, and types used within methods
+
+            // Build those
+
+            // Build Namespace
+            sb.Append("namespace ");
+            sb.Append(Namespace);
+            if (UseFileScopedNamespace)
+            {
+                sb.Append(';');
+                sb.AppendLine();
+
+            }
+            else
+            {
+                sb.Append('{');
+                tabCount++;
+            }
+
+            sb.AppendLine(Environment.NewLine);
+
+            // Write all fields in order of: most protected to least protected, then alphabetical
+
+            // Write Constructors
+
+            // Write Properties order of: most protected to least protected, then alphabetical
+
+            // Write Methods order of: most protected to least protected, then alphabetical
+
+            return sb.ToString();
+        }
+
+        private ClassBuilder SetThenReturn(Action action)
+        {
+            action();
+            return this;
+        }
+
     }
-
-    public NamespaceBuilder Namespace { get; set; }
-    public AccessModifiers AccessModifier { get; }
-
-    public bool IsPartial { get; }
-    public bool UseFileScopedNamespace { get; set; } = true;
-
-    public ClassBuilder ParentType { get; set; }
-
-    public HashSet<string> Usings { get; set; }
-
-    public ClassBuilder SetBaseType(ClassBuilder type)
-        => ParentType = type;
-
-
-    #region Fields
-    public FieldBuilder AddPublicField(ClassBuilder type, string name)
-        => AddField(type, name, AccessModifiers.Public);
-    public FieldBuilder AddPrivateField(ClassBuilder type, string name) =>
-        AddField(type, name, AccessModifiers.Private);
-    public FieldBuilder AddField(ClassBuilder type, string name, AccessModifiers accessModifier) =>
-        new(this, type, name, accessModifier);
-
-    #endregion
-
-    #region Properties
-
-    //public PropertyBuilder AddGetSetPropertyField(ClassBuilder type, string name)
-    //    => AddField(this, type, name, AccessModifiers.Public);
-
-    #endregion
-
-    protected override string Build()
-    {
-        var sb = new StringBuilder();
-        // Grab all usings from base type, fields, properties, and types used within methods
-
-        // Build those
-
-        // Build Namespace
-        sb.Append(Namespace);
-        sb.AppendLine(Environment.NewLine);
-
-        // Write all fields in order of: most protected to least protected, then alphabetical
-
-        // Write Constructors
-
-        // Write Properties order of: most protected to least protected, then alphabetical
-
-        // Write Methods order of: most protected to least protected, then alphabetical
-
-        return sb.ToString();
-    }
-
 }

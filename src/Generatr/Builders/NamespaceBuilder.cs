@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using Generatr.Extensions;
 
 namespace Generatr.Builders;
 
@@ -34,9 +31,9 @@ public class NamespaceBuilder : NamedBuilder
         return target;
     }
 
-    //public ClassBuilder Class(string name, AccessModifiers accessModifier = AccessModifiers.Public)
-    //    => new(this, name, accessModifier);
-    
+    public ClassBuilder Class(string name)
+        => new(this, name);
+
     protected override string Build()
     {
         // Go back through hierarchy
