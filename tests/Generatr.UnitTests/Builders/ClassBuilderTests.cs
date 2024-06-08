@@ -1,46 +1,51 @@
-using FluentAssertions;
+using System;
+using System.Text;
 using Generatr.Builders;
-using Generatr.Enums;
+using Generatr.Builders.KeywordBuilders;
 
 namespace Generatr.UnitTests.Builders;
+
 
 [TestClass]
 public class ClassBuilderTests
 {
-    private static readonly NamespaceBuilder NamespaceBuilder = NamespaceBuilder.New("TestNamespace");
+    private static readonly NamespaceBuilder NamespaceBuilder = NamespaceBuilder.Get("TestNamespace");
     private static readonly ClassBuilder ClassBuilder = NamespaceBuilder.Class("TestClass");
 
-    private static readonly StandardAccessModifier[] StandardAccessModifiers = new[]
-    {
-        StandardAccessModifier.Public,
-        StandardAccessModifier.Internal,
-        StandardAccessModifier.Protected,
-        StandardAccessModifier.Private,
+    private static readonly AccessModifier[] StandardAccessModifiers = {
+        AccessModifier.Public,
+        AccessModifier.Internal,
+        AccessModifier.Protected,
+        AccessModifier.Private,
     };
 
     [TestMethod]
     public void NewClass_UsingTestNamespace_ClassNotNull()
     {
+        //Assert
         ClassBuilder.Should().NotBeNull();
     }
 
     [TestMethod]
     public void NewClass_UsingTestNamespace_NamespaceUsedMatches()
     {
+        //Assert
         ClassBuilder.Namespace.Should().Be(NamespaceBuilder);
     }
 
     [TestMethod]
     public void NewClass_UsingTestNamespace_DefaultAccessModifierPublic()
     {
-        ClassBuilder.AccessModifier.Should().Be(StandardAccessModifier.Public);
+        //Assert
+        ClassBuilder.AccessModifier.Should().Be(AccessModifier.Public);
     }
+
     [TestMethod]
     public void NewClass_SetWithAccessModifier_AccessModifierSetCorrectly()
     {
         foreach (var modifier in StandardAccessModifiers)
         {
-            var classBuilder = NamespaceBuilder.Class("TestClass").SetAccessModifier(modifier);
+            var classBuilder = NamespaceBuilder.Class("TestClass").WithAccessModifier(modifier);
             classBuilder.AccessModifier.Should().Be(modifier);
         }
     }
@@ -48,11 +53,76 @@ public class ClassBuilderTests
     [TestMethod]
     public void NewClass_ParentTypeSetCorrectly()
     {
-        var testNamespaceBuilder = NamespaceBuilder.New("TestNamespace123");
+        var testNamespaceBuilder = NamespaceBuilder.Get("TestNamespace123");
         var testClassBuilder = testNamespaceBuilder.Class("TestClass123");
-        var builder = testClassBuilder.SetParent(ClassBuilder);
+        var builder = testClassBuilder.WithParent(ClassBuilder);
         builder.ParentType.Should().Be(ClassBuilder);
     }
 
+    private const string FileScopedExpectedEmptyClassOutput =
+@"namespace TestNamespace;
+public class TestClass1
+{
+	
+}";
+
+    [TestMethod]
+    public void NewEmptyClass_WithFileScopedTestNamespace_ShouldMatchEmptyExpectedOutput()
+    {
+        var emptyClass = NamespaceBuilder.Class("TestClass1");
+        var value = emptyClass.ToString();
+        value.Should().Be(FileScopedExpectedEmptyClassOutput);
+    }
+
+    private const string ExpectedEmptyClassOutput =
+@"namespace TestNamespace
+{
+	public class TestClass2
+	{
+		
+	}
+}";
+
+    [TestMethod]
+    public void NewEmptyClass_WithTestNamespace_ShouldMatchExpectedOutput()
+    {
+        var emptyClass = NamespaceBuilder.Class("TestClass2");
+        emptyClass.IsFileScopedNamespace = false;
+        var value = emptyClass.ToString();
+        value.Should().Be(ExpectedEmptyClassOutput);
+    }
+
+    private const string ExpectedOneFieldClassOutput =
+        @"namespace TestNamespace
+{
+	public class TestClass2
+	{
+		public System.Collections.Generic.List<System.Collections.Generic.List<string>> TestField;
+	}
+}";
+    [TestMethod]
+    public void NewEmptyClass_WithOneField_ShouldMatchExpectedOutput()
+    {
+        var oneFieldClass = NamespaceBuilder.Class("TestClass2");
+        oneFieldClass.IsFileScopedNamespace = false;
+        oneFieldClass.DefineField<List<List<string>>>("TestField", AccessModifier.Public);
+        var value = oneFieldClass.ToString();
+        value.Should().Be(ExpectedOneFieldClassOutput);
+    }
+
+    private const string ExpectedStaticClassOutput =
+        @"namespace TestNamespace;
+public static partial class TestClass2
+{
+	
+}";
+
+    [TestMethod]
+    public void NewStaticClass_WithTestNamespace_ShouldMatchExpectedOutput()
+    {
+        var emptyClass = NamespaceBuilder.Class("TestClass2").Static().Partial();
+        var value = emptyClass.ToString();
+        value.Should().Be(ExpectedStaticClassOutput);
+    }
 
 }

@@ -12,7 +12,7 @@ internal static class ObjectExtensions
         return @ref;
     }
 
-    public static void Then(this bool @ref, Action action)
+    public static void IfThen(this bool @ref, Action action)
     {
         if (@ref)
         {
