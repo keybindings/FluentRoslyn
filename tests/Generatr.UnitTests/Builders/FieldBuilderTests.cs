@@ -1,6 +1,4 @@
-﻿using System.Linq.Expressions;
-using Generatr.Builders;
-using Generatr.Builders.KeywordBuilders;
+﻿using Generatr.Builders;
 
 namespace Generatr.UnitTests.Builders;
 
@@ -11,85 +9,73 @@ public class FieldBuilderTests
     public void BasicStringFieldShouldBePrivate()
     {
         // Setup
-        var tb = new TabbedBuilder();
         var fb = NewClassBuilder().DefineField<string>("_test");
 
-        // Act
-        fb.Build(tb);
-
         // Assert
-        tb.ToString().Should().Be("private string _test;");
+        fb.ToString().Should().Be("private string _test;");
     }
 
     [TestMethod]
     public void WhenPrivateSetFieldBasicFieldShouldBePrivate()
     {
         // Setup
-        var tb = new TabbedBuilder();
         var fb = NewClassBuilder().DefineField<int>("_test", AccessModifier.Private);
 
-        // Act
-        fb.Build(tb);
-
         // Assert
-        tb.ToString().Should().Be("private int _test;");
+        fb.ToString().Should().Be("private int _test;");
     }
 
     [TestMethod]
     public void WhenInternalSetFieldBasicFieldShouldBeInternal()
     {
         // Setup
-        var tb = new TabbedBuilder();
         var fb = NewClassBuilder().DefineField<double>("_test", AccessModifier.Internal);
 
-        // Act
-        fb.Build(tb);
-
         // Assert
-        tb.ToString().Should().Be("internal double _test;");
+        fb.ToString().Should().Be("internal double _test;");
     }
 
     [TestMethod]
     public void WhenPublicSetFieldBasicFieldShouldBePublic()
     {
         // Setup
-        var tb = new TabbedBuilder();
         var fb = NewClassBuilder().DefineField<float>("_test", AccessModifier.Public);
 
-        // Act
-        fb.Build(tb);
-
         // Assert
-        tb.ToString().Should().Be("public float _test;");
+        fb.ToString().Should().Be("public float _test;");
     }
 
     [TestMethod]
     public void WhenProtectedSetFieldBasicFieldShouldBeProtected()
     {
         // Setup
-        var tb = new TabbedBuilder();
         var fb = NewClassBuilder().DefineField<bool>("_test", AccessModifier.Protected);
 
-        // Act
-        fb.Build(tb);
-
         // Assert
-        tb.ToString().Should().Be("protected bool _test;");
+        fb.ToString().Should().Be("protected bool _test;");
     }
 
     [TestMethod]
     public void WhenReadonlySetFieldBasicFieldShouldBeReadonly()
     {
         // Setup
-        var tb = new TabbedBuilder();
         var fb = NewClassBuilder().DefineField<string>("_test");
         fb.IsReadonly = true;
 
-        // Act
-        fb.Build(tb);
+        // Assert
+        fb.ToString().Should().Be("private readonly string _test;");
+    }
+
+    [TestMethod]
+    public void WhenStaticReadonlySetFieldShouldBeStaticReadonly()
+    {
+        // Setup
+        var fb = NewClassBuilder().DefineField<string>("_test");
+        fb.IsStatic = true;
+        fb.IsReadonly = true;
 
         // Assert
-        tb.ToString().Should().Be("private readonly string _test;");
+        fb.ToString().Should().Be("private static readonly string _test;");
     }
 
 

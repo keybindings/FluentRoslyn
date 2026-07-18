@@ -10,8 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Generatr\Generatr.csproj" OutputItemType="Analyzer"/>
-    <ProjectReference Include="..\Generatr.Example.Generator\Generatr.Example.Generator.csproj" OutputItemType="Analyzer"/>
+    <ProjectReference Include="..\..\src\Generatr\Generatr.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+    <ProjectReference Include="..\Generatr.Example.Generator\Generatr.Example.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
   </ItemGroup>
 
 </Project>

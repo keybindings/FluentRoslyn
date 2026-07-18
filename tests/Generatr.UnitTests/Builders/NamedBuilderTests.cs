@@ -1,6 +1,7 @@
 using AutoFixture;
 using Generatr.Abstractions;
-using Generatr.Builders;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Generatr.UnitTests.Builders;
 
@@ -14,9 +15,11 @@ public class NamedBuilderTests
         }
 
         public int BuildInvokedCount { get; private set; }
-        public override void Build(TabbedBuilder tb)
+
+        internal override SyntaxNode BuildSyntax()
         {
             BuildInvokedCount++;
+            return SyntaxFactory.IdentifierName(Name);
         }
 
         private static void NameValidation(string name)
@@ -30,6 +33,8 @@ public class NamedBuilderTests
         public OpenBuilder(string name, Action<string> validNameCheck) : base(name, validNameCheck)
         {
         }
+
+        internal override SyntaxNode BuildSyntax() => SyntaxFactory.IdentifierName(Name);
     }
 
     // ReSharper disable once ObjectCreationAsStatement
@@ -51,45 +56,20 @@ public class NamedBuilderTests
         act.Should().Throw<Exception>();
     }
 
-    //TODO: These should be removed, name validation will be done at the builder level
-    //[DataTestMethod]
-    //[DataRow("")]
-    //[DataRow("    ")]
-    //[DataRow("Test Name With Spaces")]
-    //[DataRow("1InvalidName")]
-    //[DataRow("'InvalidName")]
-    //public void NewNameBuilderCalled_InvalidName_ArgumentOutOfRangeExceptionThrown(string name)
-    //{
-    //    _newBuilderAct.Invoking(x => x(name))
-    //        .Should().Throw<ArgumentOutOfRangeException>()
-    //        .WithMessage($"Name: \"{name}\" contains invalid chars.*");
-    //}
-
-    //[DataTestMethod]
-    //[DataRow("@nametestbtw")]
-    //[DataRow("ValidName1")]
-    //[DataRow("Another_ValidN1ame")]
-    //[DataRow("_1AnotherValidName")]
-    //public void NewNameBuilderCalled_ValidName_NamePropertySet(string name)
-    //{
-    //    var builder = new BuilderStub(name);
-    //    builder.Name.Should().Be(name);
-    //}
-
     [TestMethod]
-    public void NewBuilderCreated_ToStringCalled_BuildMethodCalledOnce()
+    public void NewBuilderCreated_ToStringCalled_BuildSyntaxCalledOnce()
     {
         var builder = new BuilderStub("TestName");
-        _ = builder.ToString();
+        var value = builder.ToString();
         builder.BuildInvokedCount.Should().Be(1);
+        value.Should().Be("TestName");
     }
 
     [TestMethod]
-    public void NewBuilderCreated_BuildCalled_BuildMethodCalledOnce()
+    public void NewBuilderCreated_BuildSyntaxCalled_BuildSyntaxCalledOnce()
     {
         var builder = new BuilderStub("TestName");
-        var tb = new TabbedBuilder();
-        builder.Build(tb);
+        _ = builder.BuildSyntax();
         builder.BuildInvokedCount.Should().Be(1);
     }
 

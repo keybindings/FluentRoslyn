@@ -1,7 +1,6 @@
 ﻿namespace Generatr.Abstractions;
 
-public interface INamedBuilder : IBuilder
+public interface INamedBuilder
 {
     string Name { get; }
-
 }

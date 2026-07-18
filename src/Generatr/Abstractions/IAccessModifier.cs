@@ -1,4 +1,4 @@
-﻿using Generatr.Builders.KeywordBuilders;
+﻿using Generatr.Builders;
 
 namespace Generatr.Abstractions;
 

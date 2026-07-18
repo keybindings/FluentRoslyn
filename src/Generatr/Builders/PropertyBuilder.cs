@@ -1,60 +1,46 @@
 ﻿using System;
+using System.Collections.Generic;
 using Generatr.Abstractions;
-using Generatr.Builders.KeywordBuilders;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
 public class PropertyBuilder<T> : PropertyBuilder
 {
-    private readonly FieldBuilder<T> _backingField = null; // Only Set if not autoproperty
-    private readonly OptionalKeyword _staticBuilder = OptionalKeyword.Static;
     private readonly TypeNameBuilder _typeName = TypeNameBuilder.New<T>();
-    private readonly GetMethodBuilder _getMethodBuilder;
+
     public PropertyBuilder(ClassBuilder @class, string name, AccessModifier accessModifier) : base(@class, name, accessModifier)
     {
     }
 
-    public override bool IsStatic { get => _staticBuilder.IsSet; set => _staticBuilder.IsSet = value; }
-
-    public override void Build(TabbedBuilder tb)
+    internal override PropertyDeclarationSyntax BuildProperty()
     {
-        AccessModifier.Build(tb);
-        _staticBuilder.Build(tb);
-        _typeName.Build(tb);
-        base.Build(tb);
+        if (!IsAutoProperty)
+            throw new NotImplementedException("Only auto-properties are currently supported.");
 
-        if (!IsAutoProperty) throw new NotImplementedException();
+        var accessors = new List<AccessorDeclarationSyntax>();
+        if (HasGet)
+            accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+        if (HasSet)
+            accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
 
-        tb.OpenBracket();
-        tb.Space();
-        _getMethodBuilder.Build(tb);
+        return PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
+            .WithAccessorList(AccessorList(List(accessors)));
     }
-
-    public class GetMethodBuilder : INamedBuilder
-    {
-        private readonly PropertyBuilder<T> _prop;
-
-        public GetMethodBuilder(PropertyBuilder<T> prop)
-        {
-            _prop = prop;
-        }
-
-        public string Name { get; }
-        public void Build(TabbedBuilder tb)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
 }
 
-
-
-public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessModifier accessModifier) : NamedBuilder(name, NameValidation)
+public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessModifier accessModifier)
+    : NamedBuilder(name, NameValidation), IAccessModifier, IMemberSyntaxBuilder
 {
     public ClassBuilder Class { get; } = @class;
 
-    public abstract bool IsStatic { get; set; }
+    public bool IsStatic { get; set; }
 
     public bool HasGet { get; } = true;
 
@@ -64,6 +50,11 @@ public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessMo
 
     public AccessModifier AccessModifier { get; set; } = accessModifier;
 
+    internal abstract PropertyDeclarationSyntax BuildProperty();
+
+    MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildProperty();
+
+    internal override SyntaxNode BuildSyntax() => BuildProperty();
 
     private static void NameValidation(string name)
     {

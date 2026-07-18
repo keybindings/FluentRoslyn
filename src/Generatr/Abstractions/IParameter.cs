@@ -4,6 +4,5 @@ namespace Generatr.Abstractions;
 
 public interface IParameter : INamedBuilder
 {
-    public TypeNameBuilder TypeName { get; }
-
+    TypeNameBuilder TypeName { get; }
 }

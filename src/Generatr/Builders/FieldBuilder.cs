@@ -1,6 +1,7 @@
-﻿using System;
-using Generatr.Abstractions;
-using Generatr.Builders.KeywordBuilders;
+﻿using Generatr.Abstractions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
@@ -9,24 +10,6 @@ public class FieldBuilder<T> : FieldBuilder
     internal FieldBuilder(ClassBuilder @class, string name, AccessModifier accessModifier) : base(@class, TypeNameBuilder.New<T>(), name, accessModifier)
     {
     }
-
-
-    protected override void BuildStaticInitialization(TabbedBuilder tb)
-    {
-    }
-
-    public class StaticInitializationBuilder : IBuilder
-    {
-        public StaticInitializationBuilder(FieldBuilder<T> fb)
-        {
-
-        }
-
-        public void Build(TabbedBuilder tb)
-        {
-            throw new NotImplementedException();
-        }
-    }
 }
 
 public abstract class FieldBuilder(
@@ -34,33 +17,25 @@ public abstract class FieldBuilder(
     TypeNameBuilder typeName,
     string name,
     AccessModifier accessModifier)
-    : NamedBuilder(name, NameValidation), IAccessModifier
+    : NamedBuilder(name, NameValidation), IAccessModifier, IMemberSyntaxBuilder
 {
-    private readonly OptionalKeyword _staticBuilder = OptionalKeyword.Static;
-    private readonly OptionalKeyword _readonlyBuilder = OptionalKeyword.Readonly;
+    public bool IsReadonly { get; set; }
 
-    public bool IsReadonly { get => _readonlyBuilder.IsSet; set => _readonlyBuilder.IsSet = value; }
-
-    public bool IsStatic { get => _staticBuilder.IsSet; set => _staticBuilder.IsSet = value; }
+    public bool IsStatic { get; set; }
 
     public ClassBuilder Class { get; } = @class;
 
     public AccessModifier AccessModifier { get; set; } = accessModifier;
 
-    public override void Build(TabbedBuilder tb)
-    {
-        AccessModifier.Build(tb);
-        tb.Space();
-        _staticBuilder.Build(tb);
-        _readonlyBuilder.Build(tb);
-        typeName.Build(tb);
-        tb.Space();
-        base.Build(tb);
-        BuildStaticInitialization(tb);
-        tb.SemiColon();
-    }
+    internal FieldDeclarationSyntax BuildField()
+        => FieldDeclaration(VariableDeclaration(
+                typeName.BuildTypeSyntax(),
+                SingletonSeparatedList(VariableDeclarator(Identifier(Name)))))
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, IsReadonly));
 
-    protected abstract void BuildStaticInitialization(TabbedBuilder tb);
+    MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildField();
+
+    internal override SyntaxNode BuildSyntax() => BuildField();
 
     private static void NameValidation(string name)
     {

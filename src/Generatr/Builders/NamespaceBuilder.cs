@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Generatr.Abstractions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
@@ -47,39 +47,19 @@ public class NamespaceBuilder : NamedBuilder
     public ClassBuilder Class(string name)
         => new(this, name);
 
-    public override void Build(TabbedBuilder tb)
+    internal NameSyntax BuildNameSyntax()
     {
-        PrivateBuild(tb);
+        if (this == None)
+            throw new InvalidOperationException("The None namespace has no name syntax.");
+
+        return Parent == None
+            ? IdentifierName(Name)
+            : QualifiedName(Parent.BuildNameSyntax(), IdentifierName(Name));
     }
 
-    public override string ToString()
-    {
-        var sb = new StringBuilder();
-        var tb = new TabbedBuilder(sb);
-        PrivateBuild(tb);
-        return tb.ToString();
-    }
+    internal override SyntaxNode BuildSyntax() => BuildNameSyntax();
 
-    private void PrivateBuild(TabbedBuilder sb)
-    {
-        var first = true;
-        foreach (var n in GetNames().Reverse())
-        {
-            if (!first) sb.Period();
-            sb.Append(n);
-            first = false;
-        }
-    }
-
-    private IEnumerable<string> GetNames()
-    {
-        var target = this;
-        while (target != None)
-        {
-            yield return target.Name;
-            target = target.Parent;
-        }
-    }
+    public override string ToString() => this == None ? string.Empty : base.ToString();
 
     internal static void NameValidation(string name)
     {

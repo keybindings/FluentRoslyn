@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Text;
-using Generatr.Builders;
+using Microsoft.CodeAnalysis;
 
 namespace Generatr.Abstractions;
 
@@ -14,16 +13,8 @@ public abstract class NamedBuilder : INamedBuilder
 
     public string Name { get; }
 
-    public virtual void Build(TabbedBuilder tb)
-    {
-        tb.Append(Name);
-    }
+    internal abstract SyntaxNode BuildSyntax();
 
     public override string ToString()
-    {
-        var sb = new StringBuilder();
-        var tabbedBuilder = new TabbedBuilder(sb);
-        Build(tabbedBuilder);
-        return tabbedBuilder.ToString();
-    }
+        => BuildSyntax().NormalizeWhitespace(eol: Environment.NewLine).ToFullString();
 }

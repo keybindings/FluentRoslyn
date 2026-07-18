@@ -1,7 +1,4 @@
-using System;
-using System.Text;
 using Generatr.Builders;
-using Generatr.Builders.KeywordBuilders;
 
 namespace Generatr.UnitTests.Builders;
 
@@ -59,12 +56,11 @@ public class ClassBuilderTests
         builder.ParentType.Should().Be(ClassBuilder);
     }
 
-    private const string FileScopedExpectedEmptyClassOutput =
-@"namespace TestNamespace;
-public class TestClass1
-{
-	
-}";
+    private static readonly string FileScopedExpectedEmptyClassOutput = string.Join(Environment.NewLine,
+        "namespace TestNamespace;",
+        "public class TestClass1",
+        "{",
+        "}");
 
     [TestMethod]
     public void NewEmptyClass_WithFileScopedTestNamespace_ShouldMatchEmptyExpectedOutput()
@@ -74,14 +70,13 @@ public class TestClass1
         value.Should().Be(FileScopedExpectedEmptyClassOutput);
     }
 
-    private const string ExpectedEmptyClassOutput =
-@"namespace TestNamespace
-{
-	public class TestClass2
-	{
-		
-	}
-}";
+    private static readonly string ExpectedEmptyClassOutput = string.Join(Environment.NewLine,
+        "namespace TestNamespace",
+        "{",
+        "    public class TestClass2",
+        "    {",
+        "    }",
+        "}");
 
     [TestMethod]
     public void NewEmptyClass_WithTestNamespace_ShouldMatchExpectedOutput()
@@ -92,14 +87,15 @@ public class TestClass1
         value.Should().Be(ExpectedEmptyClassOutput);
     }
 
-    private const string ExpectedOneFieldClassOutput =
-        @"namespace TestNamespace
-{
-	public class TestClass2
-	{
-		public System.Collections.Generic.List<System.Collections.Generic.List<string>> TestField;
-	}
-}";
+    private static readonly string ExpectedOneFieldClassOutput = string.Join(Environment.NewLine,
+        "namespace TestNamespace",
+        "{",
+        "    public class TestClass2",
+        "    {",
+        "        public System.Collections.Generic.List<System.Collections.Generic.List<string>> TestField;",
+        "    }",
+        "}");
+
     [TestMethod]
     public void NewEmptyClass_WithOneField_ShouldMatchExpectedOutput()
     {
@@ -110,12 +106,11 @@ public class TestClass1
         value.Should().Be(ExpectedOneFieldClassOutput);
     }
 
-    private const string ExpectedStaticClassOutput =
-        @"namespace TestNamespace;
-public static partial class TestClass2
-{
-	
-}";
+    private static readonly string ExpectedStaticClassOutput = string.Join(Environment.NewLine,
+        "namespace TestNamespace;",
+        "public static partial class TestClass2",
+        "{",
+        "}");
 
     [TestMethod]
     public void NewStaticClass_WithTestNamespace_ShouldMatchExpectedOutput()

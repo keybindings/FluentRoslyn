@@ -1,19 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Generatr.Abstractions;
-using Generatr.Builders.KeywordBuilders;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
 public class ClassBuilder : NamedBuilder
 {
-    private readonly HashSet<string> _memberNames = new();
     private readonly List<FieldBuilder> _fields = [];
-    private readonly List<PropertyBuilder> _properties = new();
-    private readonly List<MethodBuilder> _methods = new();
-    private readonly OptionalKeyword _staticBuilder = OptionalKeyword.Static;
-    private readonly OptionalKeyword _partialBuilder = OptionalKeyword.Partial;
+    private readonly List<PropertyBuilder> _properties = [];
+    private readonly List<MethodBuilder> _methods = [];
+
     internal ClassBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
     {
         Namespace = @namespace;
@@ -21,17 +23,16 @@ public class ClassBuilder : NamedBuilder
 
     public bool IsFileScopedNamespace { get; set; } = true;
 
-    public bool IsStatic { get => _staticBuilder.IsSet; set => _staticBuilder.IsSet = value; }
+    public bool IsStatic { get; set; }
 
-    public bool IsPartial { get => _partialBuilder.IsSet; set => _partialBuilder.IsSet = value; }
-
-    // public bool IsGeneric { get; private set; }
+    public bool IsPartial { get; set; }
 
     public NamespaceBuilder Namespace { get; }
 
     public AccessModifier AccessModifier { get; set; } = AccessModifier.Public;
 
-    public ClassBuilder ParentType { get; set; }
+    // TODO: emit a base-type list once inheritance/interface composition is designed. Stored only for now.
+    public ClassBuilder? ParentType { get; set; }
 
     #region FluentMethods
 
@@ -44,97 +45,85 @@ public class ClassBuilder : NamedBuilder
     public ClassBuilder BlockScopedNamespace() => With(() => IsFileScopedNamespace = false);
 
     public ClassBuilder WithParent(ClassBuilder type) => With(() => ParentType = type);
+
     #endregion
-    
-    #region Fields
-        
+
+    #region Members
+
     public FieldBuilder<T> DefineField<T>(string name)
         => DefineField<T>(name, AccessModifier.Private);
 
-    public FieldBuilder<T> DefineField<T>(string name, AccessModifier accessModifierFlags)
+    public FieldBuilder<T> DefineField<T>(string name, AccessModifier accessModifier)
     {
-        var fb = new FieldBuilder<T>(this, name, accessModifierFlags);
+        var fb = new FieldBuilder<T>(this, name, accessModifier);
         _fields.Add(fb);
         return fb;
     }
 
-    #endregion
+    public PropertyBuilder<T> DefineProperty<T>(string name)
+        => DefineProperty<T>(name, AccessModifier.Public);
 
-    #region Properties
-
-    //public PropertyBuilder DefineProperty<T>(string name)
-    //    => DefineProperty<T>(this, name, AccessModifier.Public);
-
-
-    #endregion
-
-    public override void Build(TabbedBuilder tb)
+    public PropertyBuilder<T> DefineProperty<T>(string name, AccessModifier accessModifier)
     {
-        // TODO Complete usings
-        // TODO Update, don't care about usings, will use the full definitions always to not confuse using statements and require specifying definitions
-        // TODO If we care about usings later on we can look to collect common usings however that's way off for now
-        // Grab all usings from base type, fields, properties, and types used within methods
-
-        // Build those
-
-        // Build Namespace
-        Keyword.Namespace.Build(tb);
-        tb.Space();
-        Namespace.Build(tb);
-        if (IsFileScopedNamespace)
-        {
-            tb.SemiColon();
-            tb.NewLine();
-        }
-        else
-        {
-            tb.NewLine();
-            tb.Open();
-        }
-
-        // Write Class Definition
-        AccessModifier.Build(tb);
-        tb.Space();
-        _staticBuilder.Build(tb);
-        _partialBuilder.Build(tb);
-        Keyword.Class.Build(tb);
-        tb.Space();
-        base.Build(tb);
-
-        tb.NewLine().Open();
-
-        //if(_fields.Count > 0) tb.NewLine();
-
-        // Write all fields in order of: least protected to most protected, then alphabetical
-
-        foreach (var field in GetMembers(_fields))
-        {
-            field.Build(tb);
-        }
-
-        // Write Constructors
-
-        // Write Properties order of: lease protected to most protected, then alphabetical
-
-        // Write Methods order of: least protected to most protected, then alphabetical
-
-
-        // Close Class
-        tb.Close();
-
-        // Close Namespace
-        if (!IsFileScopedNamespace)
-            tb.Close();
-
+        var pb = new PropertyBuilder<T>(this, name, accessModifier);
+        _properties.Add(pb);
+        return pb;
     }
+
+    public MethodBuilder DefineMethod(string name)
+        => DefineMethod(name, AccessModifier.Public);
+
+    public MethodBuilder DefineMethod(string name, AccessModifier accessModifier, params IParameter[] parameters)
+    {
+        var mb = MethodBuilder.Action(this, name, accessModifier, parameters);
+        _methods.Add(mb);
+        return mb;
+    }
+
+    #endregion
+
+    internal ClassDeclarationSyntax BuildClassDeclaration()
+    {
+        // Member group order: fields, properties, methods; within each group,
+        // least protected first, then alphabetical.
+        var members = new List<MemberDeclarationSyntax>();
+        members.AddRange(GetMembers(_fields).Select(f => ((IMemberSyntaxBuilder)f).BuildMember()));
+        members.AddRange(GetMembers(_properties).Select(p => ((IMemberSyntaxBuilder)p).BuildMember()));
+        members.AddRange(GetMembers(_methods).Select(m => ((IMemberSyntaxBuilder)m).BuildMember()));
+
+        return ClassDeclaration(Name)
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial))
+            .WithMembers(List(members));
+    }
+
+    public CompilationUnitSyntax BuildCompilationUnit()
+    {
+        var namespaceName = Namespace.BuildNameSyntax();
+
+        MemberDeclarationSyntax namespaceDeclaration = IsFileScopedNamespace
+            ? FileScopedNamespaceDeclaration(namespaceName)
+                .WithMembers(SingletonList<MemberDeclarationSyntax>(BuildClassDeclaration()))
+            : NamespaceDeclaration(namespaceName)
+                .WithMembers(SingletonList<MemberDeclarationSyntax>(BuildClassDeclaration()));
+
+        return CompilationUnit().WithMembers(SingletonList(namespaceDeclaration));
+    }
+
+    public SourceText ToSourceText()
+        => SourceText.From(ToString(), Encoding.UTF8);
+
+    internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
 
     private static void NameValidation(string name)
     {
 
     }
 
-    private IEnumerable<TMember> GetMembers<TMember>(IEnumerable<TMember> members) where TMember : NamedBuilder, IAccessModifier
-        => members.OrderByDescending(x => x.AccessModifier).ThenBy(x => x.Name);
+    // AccessabilityLevel runs Public = 0 through Private = 5, so ascending gives
+    // least protected first.
+    private static IEnumerable<TMember> GetMembers<TMember>(IEnumerable<TMember> members)
+        where TMember : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
+        => members.OrderBy(x => x.AccessModifier.AccessabilityLevel).ThenBy(x => x.Name, StringComparer.Ordinal);
 
     private ClassBuilder With(Action action)
     {
