@@ -16,6 +16,17 @@ public class PropertyBuilder<T> : PropertyBuilder
     {
     }
 
+    #region FluentMethods
+
+    public PropertyBuilder<T> Static() => With(() => IsStatic = true);
+
+    public PropertyBuilder<T> WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+
+    /// <summary>Emits a get-only auto-property (<c>{ get; }</c>) by dropping the setter.</summary>
+    public PropertyBuilder<T> GetOnly() => With(() => HasSet = false);
+
+    #endregion
+
     internal override PropertyDeclarationSyntax BuildProperty()
     {
         if (!IsAutoProperty)
@@ -36,6 +47,12 @@ public class PropertyBuilder<T> : PropertyBuilder
 
     private static AccessorDeclarationSyntax Accessor(SyntaxKind kind)
         => AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+    private PropertyBuilder<T> With(Action action)
+    {
+        action();
+        return this;
+    }
 }
 
 public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessModifier accessModifier)
