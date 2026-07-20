@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Generatr.Abstractions;
 using Microsoft.CodeAnalysis;
@@ -34,7 +34,7 @@ public class PropertyBuilder<T> : PropertyBuilder
 
     /// <summary>
     /// Restricts the setter's access, e.g. <c>{ get; private set; }</c>. The modifier
-    /// must be more restrictive than the property's own.
+    /// must be strictly more restrictive than the property's own.
     /// </summary>
     public PropertyBuilder<T> WithSetterAccessModifier(AccessModifier accessModifier)
         => With(() => SetterAccessModifier = accessModifier);
@@ -51,29 +51,106 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// <c>"TimeSpan.Zero"</c>. The escape hatch for values a literal cannot express.
     /// </summary>
     public PropertyBuilder<T> WithInitializerExpression(string expression)
-        => With(() => Initializer = ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression))));
+        => With(() => Initializer = ParseExpr(expression));
+
+    /// <summary>
+    /// Emits an expression-bodied property: <c>public int Count =&gt; _count;</c>.
+    /// Replaces the accessor list entirely.
+    /// </summary>
+    public PropertyBuilder<T> AsExpressionBody(string expression)
+        => With(() =>
+        {
+            IsAutoProperty = false;
+            ExpressionBody = ParseExpr(expression);
+        });
+
+    /// <summary>
+    /// Gives the getter an expression body: <c>get =&gt; expression;</c>. Turns the
+    /// property into a non-auto property with expression-bodied accessors.
+    /// </summary>
+    public PropertyBuilder<T> WithGetterExpression(string expression)
+        => With(() =>
+        {
+            IsAutoProperty = false;
+            GetterExpression = ParseExpr(expression);
+        });
+
+    /// <summary>
+    /// Gives the setter an expression body: <c>set =&gt; expression;</c>. The value
+    /// being assigned is available as <c>value</c>.
+    /// </summary>
+    public PropertyBuilder<T> WithSetterExpression(string expression)
+        => With(() =>
+        {
+            IsAutoProperty = false;
+            HasSet = true;
+            SetterExpression = ParseExpr(expression);
+        });
 
     #endregion
 
     internal override PropertyDeclarationSyntax BuildProperty()
     {
-        if (!IsAutoProperty)
-            throw new NotImplementedException("Only auto-properties are currently supported.");
+        var property = PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic));
 
-        // An auto-property must have a getter: "{ set; }" alone does not compile.
+        // 1. Whole-property expression body: public int Count => _count;
+        if (ExpressionBody is not null)
+        {
+            GuardNoInitializer("an expression-bodied property");
+            if (GetterExpression is not null || SetterExpression is not null)
+                throw new InvalidOperationException(
+                    $"Property '{Name}' cannot combine a whole-property expression body with accessor expressions.");
+
+            return property
+                .WithExpressionBody(ArrowExpressionClause(ExpressionBody))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+
+        // 2. Expression-bodied accessors: { get => a; set => b; }
+        if (GetterExpression is not null || SetterExpression is not null)
+        {
+            GuardNoInitializer("a property with expression-bodied accessors");
+            if (GetterExpression is null)
+                throw new InvalidOperationException(
+                    $"Property '{Name}' with an expression-bodied setter must also have a getter.");
+
+            var bodied = new List<AccessorDeclarationSyntax> { ExpressionAccessor(SyntaxKind.GetAccessorDeclaration, GetterExpression) };
+            if (SetterExpression is not null)
+            {
+                ValidateSetterAccessModifier();
+                bodied.Add(ExpressionAccessor(SetterKind(), SetterExpression, SetterAccessModifier));
+            }
+            else if (SetterAccessModifier is not null)
+            {
+                throw new InvalidOperationException($"Property '{Name}' has a setter access modifier but no setter.");
+            }
+
+            return property.WithAccessorList(AccessorList(List(bodied)));
+        }
+
+        // 3. A non-auto property with no body means statement-bodied accessors, which
+        // need statement modelling that does not exist yet.
+        if (!IsAutoProperty)
+            throw new NotImplementedException(
+                "Statement-bodied properties are not supported yet; use AsExpressionBody or WithGetterExpression/WithSetterExpression.");
+
+        // 4. Auto-property: { get; set; }
         if (!HasGet)
             throw new InvalidOperationException($"Auto-property '{Name}' must have a getter.");
 
         var accessors = new List<AccessorDeclarationSyntax> { Accessor(SyntaxKind.GetAccessorDeclaration) };
         if (HasSet)
         {
-            var setterKind = SetterIsInit ? SyntaxKind.InitAccessorDeclaration : SyntaxKind.SetAccessorDeclaration;
-            accessors.Add(Accessor(setterKind, SetterAccessModifier));
+            ValidateSetterAccessModifier();
+            accessors.Add(Accessor(SetterKind(), SetterAccessModifier));
+        }
+        else if (SetterAccessModifier is not null)
+        {
+            throw new InvalidOperationException($"Property '{Name}' has a setter access modifier but no setter.");
         }
 
-        var declaration = PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
-            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
-            .WithAccessorList(AccessorList(List(accessors)));
+        var declaration = property.WithAccessorList(AccessorList(List(accessors)));
 
         // An initialized property needs a closing semicolon after the accessor list.
         return Initializer is null
@@ -83,14 +160,30 @@ public class PropertyBuilder<T> : PropertyBuilder
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
-    private static AccessorDeclarationSyntax Accessor(SyntaxKind kind, AccessModifier? access = null)
-    {
-        var accessor = AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+    private SyntaxKind SetterKind()
+        => SetterIsInit ? SyntaxKind.InitAccessorDeclaration : SyntaxKind.SetAccessorDeclaration;
 
-        return access is null
-            ? accessor
-            : accessor.WithModifiers(SyntaxFormatting.Modifiers(access));
+    private void GuardNoInitializer(string context)
+    {
+        if (Initializer is not null)
+            throw new InvalidOperationException($"Property '{Name}': {context} cannot have an initializer.");
     }
+
+    private static AccessorDeclarationSyntax Accessor(SyntaxKind kind, AccessModifier? access = null)
+        => ApplyAccess(AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)), access);
+
+    private static AccessorDeclarationSyntax ExpressionAccessor(SyntaxKind kind, ExpressionSyntax expression, AccessModifier? access = null)
+        => ApplyAccess(
+            AccessorDeclaration(kind)
+                .WithExpressionBody(ArrowExpressionClause(expression))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+            access);
+
+    private static AccessorDeclarationSyntax ApplyAccess(AccessorDeclarationSyntax accessor, AccessModifier? access)
+        => access is null ? accessor : accessor.WithModifiers(SyntaxFormatting.Modifiers(access));
+
+    private static ExpressionSyntax ParseExpr(string expression)
+        => ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression)));
 
     private PropertyBuilder<T> With(Action action)
     {
@@ -102,6 +195,20 @@ public class PropertyBuilder<T> : PropertyBuilder
 public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessModifier accessModifier)
     : NamedBuilder(name, NameValidation), IAccessModifier, IMemberSyntaxBuilder
 {
+    // C#'s rule for accessor modifiers: the modifier must be strictly more restrictive
+    // than the property's own accessibility. The valid (property -> accessor) pairs do
+    // not follow AccessabilityLevel's ordering (protected internal is broader than
+    // protected, not narrower), so the allowed sets are enumerated explicitly.
+    private static readonly Dictionary<AccessModifier, HashSet<AccessModifier>> AllowedAccessorModifiers = new()
+    {
+        [AccessModifier.Public] = [AccessModifier.ProtectedInternal, AccessModifier.Internal, AccessModifier.Protected, AccessModifier.PrivateProtected, AccessModifier.Private],
+        [AccessModifier.ProtectedInternal] = [AccessModifier.Internal, AccessModifier.Protected, AccessModifier.PrivateProtected, AccessModifier.Private],
+        [AccessModifier.Internal] = [AccessModifier.PrivateProtected, AccessModifier.Private],
+        [AccessModifier.Protected] = [AccessModifier.PrivateProtected, AccessModifier.Private],
+        [AccessModifier.PrivateProtected] = [AccessModifier.Private],
+        [AccessModifier.Private] = [],
+    };
+
     public ClassBuilder Class { get; } = @class;
 
     public bool IsStatic { get; set; }
@@ -124,11 +231,29 @@ public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessMo
     // The property's default-value expression, or null when it has no initializer.
     internal ExpressionSyntax? Initializer { get; set; }
 
+    // Whole-property expression body (=> expr), or null.
+    internal ExpressionSyntax? ExpressionBody { get; set; }
+
+    // Expression bodies for the individual accessors (get => expr / set => expr), or null.
+    internal ExpressionSyntax? GetterExpression { get; set; }
+
+    internal ExpressionSyntax? SetterExpression { get; set; }
+
     internal abstract PropertyDeclarationSyntax BuildProperty();
 
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildProperty();
 
     internal override SyntaxNode BuildSyntax() => BuildProperty();
+
+    private protected void ValidateSetterAccessModifier()
+    {
+        if (SetterAccessModifier is null)
+            return;
+
+        if (!AllowedAccessorModifiers.TryGetValue(AccessModifier, out var allowed) || !allowed.Contains(SetterAccessModifier))
+            throw new InvalidOperationException(
+                $"Property '{Name}': setter access modifier '{SetterAccessModifier}' must be strictly more restrictive than the property's '{AccessModifier}'.");
+    }
 
     private static void NameValidation(string name)
     {

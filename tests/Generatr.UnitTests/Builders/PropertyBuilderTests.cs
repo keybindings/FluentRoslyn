@@ -143,6 +143,128 @@ public class PropertyBuilderTests
         pb.ToString().Should().Be("public int Count { get; init; } = 7;");
     }
 
+    #region Setter access modifier validation
+
+    [TestMethod]
+    public void WithSetterAccessModifier_LessRestrictiveThanProperty_Throws()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count", AccessModifier.Internal)
+            .WithSetterAccessModifier(AccessModifier.Public);
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*more restrictive*");
+    }
+
+    [TestMethod]
+    public void WithSetterAccessModifier_EqualToProperty_Throws()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count", AccessModifier.Public)
+            .WithSetterAccessModifier(AccessModifier.Public);
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [TestMethod]
+    public void WithSetterAccessModifier_IncomparableWithProperty_Throws()
+    {
+        // protected and internal are incomparable: neither is more restrictive.
+        var pb = NewClassBuilder().DefineProperty<int>("Count", AccessModifier.Protected)
+            .WithSetterAccessModifier(AccessModifier.Internal);
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [TestMethod]
+    public void WithSetterAccessModifier_ProtectedInternalProperty_ProtectedSetter_Allowed()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count", AccessModifier.ProtectedInternal)
+            .WithSetterAccessModifier(AccessModifier.Protected);
+
+        pb.ToString().Should().Be("protected internal int Count { get; protected set; }");
+    }
+
+    [TestMethod]
+    public void WithSetterAccessModifier_OnGetOnlyProperty_Throws()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .GetOnly()
+            .WithSetterAccessModifier(AccessModifier.Private);
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*no setter*");
+    }
+
+    #endregion
+
+    #region Expression bodies
+
+    [TestMethod]
+    public void AsExpressionBody_EmitsArrowProperty()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count").AsExpressionBody("_count");
+
+        pb.ToString().Should().Be("public int Count => _count;");
+    }
+
+    [TestMethod]
+    public void WithGetterExpression_EmitsExpressionBodiedGetter()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count").WithGetterExpression("_count");
+
+        pb.ToString().Should().Be("public int Count { get => _count; }");
+    }
+
+    [TestMethod]
+    public void GetterAndSetterExpressions_EmitBothExpressionBodiedAccessors()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .WithGetterExpression("_count")
+            .WithSetterExpression("_count = value");
+
+        pb.ToString().Should().Be("public int Count { get => _count; set => _count = value; }");
+    }
+
+    [TestMethod]
+    public void SetterExpression_WithoutGetter_Throws()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count").WithSetterExpression("_count = value");
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*must also have a getter*");
+    }
+
+    [TestMethod]
+    public void ExpressionBody_WithInitializer_Throws()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .WithInitializer(1)
+            .AsExpressionBody("_count");
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*initializer*");
+    }
+
+    [TestMethod]
+    public void ExpressionBodiedSetter_RespectsInitAndAccessModifier()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .WithGetterExpression("_count")
+            .WithSetterExpression("_count = value")
+            .WithSetterAccessModifier(AccessModifier.Private);
+
+        pb.ToString().Should().Be("public int Count { get => _count; private set => _count = value; }");
+    }
+
+    #endregion
+
     private static ClassBuilder NewClassBuilder()
         => NamespaceBuilder.Get("Test").Class("Test1");
 }
