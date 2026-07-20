@@ -106,8 +106,8 @@ public class ClassBuilder : NamedBuilder
 
     internal ClassDeclarationSyntax BuildClassDeclaration()
     {
-        // Member group order: fields, properties, methods; within each group,
-        // least protected first, then alphabetical.
+        // Member group order: fields, constructors, properties, methods; within each
+        // group, least protected first, then alphabetical.
         var members = new List<MemberDeclarationSyntax>();
         AddMemberGroup(members, _fields);
         AddMemberGroup(members, _constructors);
