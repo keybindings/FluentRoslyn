@@ -15,6 +15,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     private readonly TypeSyntax _returnType;
     private readonly bool _returnsVoid;
     private readonly List<IParameter> _params;
+    private readonly List<StatementSyntax> _statements = [];
     private ExpressionSyntax? _expressionBody;
 
     private MethodBuilder(
@@ -59,6 +60,22 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     public MethodBuilder AsExpressionBody(string expression)
         => With(() => _expressionBody = ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression))));
 
+    /// <summary>
+    /// Appends a complete statement to the method body, e.g. <c>"return a + b;"</c>.
+    /// A value-returning method's body must return on all paths.
+    /// </summary>
+    public MethodBuilder AddStatement(string statement)
+        => With(() => _statements.Add(SyntaxBodies.Statement(statement)));
+
+    /// <summary>Replaces the method body with the given statements.</summary>
+    public MethodBuilder WithBody(params string[] statements)
+        => With(() =>
+        {
+            _statements.Clear();
+            foreach (var statement in statements ?? throw new ArgumentNullException(nameof(statements)))
+                _statements.Add(SyntaxBodies.Statement(statement));
+        });
+
     #endregion
 
     internal MethodDeclarationSyntax BuildMethod()
@@ -69,15 +86,26 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
                 SyntaxFactory.Parameter(Identifier(p.Name)).WithType(p.TypeName.BuildTypeSyntax())))));
 
         if (_expressionBody is not null)
+        {
+            if (_statements.Count > 0)
+                throw new InvalidOperationException(
+                    $"Method '{Name}' cannot have both an expression body and statements.");
+
             return method
                 .WithExpressionBody(ArrowExpressionClause(_expressionBody))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+
+        // A statement block covers both void and value-returning methods; the caller is
+        // responsible for returning on all paths when non-void.
+        if (_statements.Count > 0)
+            return method.WithBody(Block(_statements));
 
         // A non-void method with no body would emit `int Foo() { }`, which does not
-        // compile. Statement bodies are not modelled yet, so require an expression body.
+        // compile: it needs either an expression body or statements.
         if (!_returnsVoid)
-            throw new NotImplementedException(
-                $"Method '{Name}' returns non-void and needs a body. Use AsExpressionBody for now; statement bodies are coming.");
+            throw new InvalidOperationException(
+                $"Method '{Name}' returns non-void and needs a body. Use AsExpressionBody or AddStatement/WithBody.");
 
         return method.WithBody(Block());
     }

@@ -86,7 +86,59 @@ public class MethodBuilderTests
 
         var act = () => mb.ToString();
 
-        act.Should().Throw<System.NotImplementedException>().WithMessage("*needs a body*");
+        act.Should().Throw<System.InvalidOperationException>().WithMessage("*needs a body*");
+    }
+
+    [TestMethod]
+    public void AddStatement_VoidMethod_EmitsStatementsInBlock()
+    {
+        var mb = NewClass().DefineMethod("DoThing")
+            .AddStatement("var x = 1;")
+            .AddStatement("System.Console.WriteLine(x);");
+
+        mb.ToString().Should().Be(string.Join("\n",
+            "public void DoThing()",
+            "{",
+            "    var x = 1;",
+            "    System.Console.WriteLine(x);",
+            "}"));
+    }
+
+    [TestMethod]
+    public void WithBody_ReturningMethod_EmitsReturnStatement()
+    {
+        var mb = NewClass().DefineMethod<int>("Add")
+            .WithParameter<int>("a")
+            .WithParameter<int>("b")
+            .WithBody("return a + b;");
+
+        mb.ToString().Should().Be(string.Join("\n",
+            "public int Add(int a, int b)",
+            "{",
+            "    return a + b;",
+            "}"));
+    }
+
+    [TestMethod]
+    public void WithBody_ReplacesPreviouslyAddedStatements()
+    {
+        var mb = NewClass().DefineMethod("DoThing")
+            .AddStatement("var x = 1;")
+            .WithBody("var y = 2;");
+
+        mb.ToString().Should().NotContain("x").And.Contain("var y = 2;");
+    }
+
+    [TestMethod]
+    public void ExpressionBodyAndStatements_Together_Throw()
+    {
+        var mb = NewClass().DefineMethod<int>("Add")
+            .AsExpressionBody("1")
+            .AddStatement("return 2;");
+
+        var act = () => mb.ToString();
+
+        act.Should().Throw<System.InvalidOperationException>().WithMessage("*both*");
     }
 
     [TestMethod]
