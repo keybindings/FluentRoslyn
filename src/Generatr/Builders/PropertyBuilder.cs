@@ -25,6 +25,20 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// <summary>Emits a get-only auto-property (<c>{ get; }</c>) by dropping the setter.</summary>
     public PropertyBuilder<T> GetOnly() => With(() => HasSet = false);
 
+    /// <summary>Emits the setter as an init accessor: <c>{ get; init; }</c>.</summary>
+    public PropertyBuilder<T> InitOnly() => With(() =>
+    {
+        HasSet = true;
+        SetterIsInit = true;
+    });
+
+    /// <summary>
+    /// Restricts the setter's access, e.g. <c>{ get; private set; }</c>. The modifier
+    /// must be more restrictive than the property's own.
+    /// </summary>
+    public PropertyBuilder<T> WithSetterAccessModifier(AccessModifier accessModifier)
+        => With(() => SetterAccessModifier = accessModifier);
+
     /// <summary>
     /// Sets a default value: <c>{ get; set; } = value;</c>. Supports the primitive
     /// types with a literal form; use <see cref="WithInitializerExpression"/> for
@@ -52,7 +66,10 @@ public class PropertyBuilder<T> : PropertyBuilder
 
         var accessors = new List<AccessorDeclarationSyntax> { Accessor(SyntaxKind.GetAccessorDeclaration) };
         if (HasSet)
-            accessors.Add(Accessor(SyntaxKind.SetAccessorDeclaration));
+        {
+            var setterKind = SetterIsInit ? SyntaxKind.InitAccessorDeclaration : SyntaxKind.SetAccessorDeclaration;
+            accessors.Add(Accessor(setterKind, SetterAccessModifier));
+        }
 
         var declaration = PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
@@ -66,8 +83,14 @@ public class PropertyBuilder<T> : PropertyBuilder
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
-    private static AccessorDeclarationSyntax Accessor(SyntaxKind kind)
-        => AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+    private static AccessorDeclarationSyntax Accessor(SyntaxKind kind, AccessModifier? access = null)
+    {
+        var accessor = AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+        return access is null
+            ? accessor
+            : accessor.WithModifiers(SyntaxFormatting.Modifiers(access));
+    }
 
     private PropertyBuilder<T> With(Action action)
     {
@@ -86,6 +109,13 @@ public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessMo
     public bool HasGet { get; set; } = true;
 
     public bool HasSet { get; set; } = true;
+
+    // When true, the setter is emitted as `init` rather than `set`.
+    public bool SetterIsInit { get; set; }
+
+    // A more restrictive access modifier on the setter (e.g. `private set`), or null
+    // to inherit the property's own modifier.
+    public AccessModifier? SetterAccessModifier { get; set; }
 
     public bool IsAutoProperty { get; set; } = true;
 

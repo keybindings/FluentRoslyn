@@ -109,6 +109,40 @@ public class PropertyBuilderTests
         act.Should().Throw<NotSupportedException>();
     }
 
+    [TestMethod]
+    public void InitOnly_EmitsInitAccessor()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count").InitOnly();
+
+        pb.ToString().Should().Be("public int Count { get; init; }");
+    }
+
+    [TestMethod]
+    public void WithSetterAccessModifier_EmitsRestrictedSetter()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count").WithSetterAccessModifier(AccessModifier.Private);
+
+        pb.ToString().Should().Be("public int Count { get; private set; }");
+    }
+
+    [TestMethod]
+    public void SetterAccessModifier_AppliesToInitAccessor()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .InitOnly()
+            .WithSetterAccessModifier(AccessModifier.Protected);
+
+        pb.ToString().Should().Be("public int Count { get; protected init; }");
+    }
+
+    [TestMethod]
+    public void InitOnly_WithInitializer_Composes()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count").InitOnly().WithInitializer(7);
+
+        pb.ToString().Should().Be("public int Count { get; init; } = 7;");
+    }
+
     private static ClassBuilder NewClassBuilder()
         => NamespaceBuilder.Get("Test").Class("Test1");
 }
