@@ -73,10 +73,18 @@ public class ClassBuilder : NamedBuilder
         => DefineMethod(name, AccessModifier.Public);
 
     public MethodBuilder DefineMethod(string name, AccessModifier accessModifier, params IParameter[] parameters)
+        => Add(MethodBuilder.Action(this, name, accessModifier, parameters));
+
+    public MethodBuilder DefineMethod<TReturn>(string name)
+        => DefineMethod<TReturn>(name, AccessModifier.Public);
+
+    public MethodBuilder DefineMethod<TReturn>(string name, AccessModifier accessModifier, params IParameter[] parameters)
+        => Add(MethodBuilder.Returning(this, name, accessModifier, TypeNameBuilder.New<TReturn>(), parameters));
+
+    private MethodBuilder Add(MethodBuilder method)
     {
-        var mb = MethodBuilder.Action(this, name, accessModifier, parameters);
-        _methods.Add(mb);
-        return mb;
+        _methods.Add(method);
+        return method;
     }
 
     #endregion
