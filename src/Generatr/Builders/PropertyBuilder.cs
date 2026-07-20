@@ -25,6 +25,20 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// <summary>Emits a get-only auto-property (<c>{ get; }</c>) by dropping the setter.</summary>
     public PropertyBuilder<T> GetOnly() => With(() => HasSet = false);
 
+    /// <summary>
+    /// Sets a default value: <c>{ get; set; } = value;</c>. Supports the primitive
+    /// types with a literal form; use <see cref="WithInitializerExpression"/> for
+    /// enums, object construction, or any other expression.
+    /// </summary>
+    public PropertyBuilder<T> WithInitializer(T value) => With(() => Initializer = SyntaxLiterals.Expression(value));
+
+    /// <summary>
+    /// Sets a default value from a raw C# expression, e.g. <c>"new()"</c> or
+    /// <c>"TimeSpan.Zero"</c>. The escape hatch for values a literal cannot express.
+    /// </summary>
+    public PropertyBuilder<T> WithInitializerExpression(string expression)
+        => With(() => Initializer = ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression))));
+
     #endregion
 
     internal override PropertyDeclarationSyntax BuildProperty()
@@ -40,9 +54,16 @@ public class PropertyBuilder<T> : PropertyBuilder
         if (HasSet)
             accessors.Add(Accessor(SyntaxKind.SetAccessorDeclaration));
 
-        return PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
+        var declaration = PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
             .WithAccessorList(AccessorList(List(accessors)));
+
+        // An initialized property needs a closing semicolon after the accessor list.
+        return Initializer is null
+            ? declaration
+            : declaration
+                .WithInitializer(EqualsValueClause(Initializer))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
     private static AccessorDeclarationSyntax Accessor(SyntaxKind kind)
@@ -69,6 +90,9 @@ public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessMo
     public bool IsAutoProperty { get; set; } = true;
 
     public AccessModifier AccessModifier { get; set; } = accessModifier;
+
+    // The property's default-value expression, or null when it has no initializer.
+    internal ExpressionSyntax? Initializer { get; set; }
 
     internal abstract PropertyDeclarationSyntax BuildProperty();
 
