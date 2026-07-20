@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Generatr.Abstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -19,6 +20,9 @@ public class FieldBuilder<T> : FieldBuilder
     public FieldBuilder<T> Readonly() => With(() => IsReadonly = true);
 
     public FieldBuilder<T> WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonProperty(\"name\")")</c>.</summary>
+    public FieldBuilder<T> WithAttribute(string attribute) => With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
     /// <summary>
     /// Marks the field <c>const</c>. A const field requires an initializer and cannot
@@ -68,6 +72,8 @@ public abstract class FieldBuilder(
     // The field's initializer expression, or null when it has none.
     internal ExpressionSyntax? Initializer { get; set; }
 
+    internal List<AttributeSyntax> Attributes { get; } = [];
+
     internal FieldDeclarationSyntax BuildField()
     {
         if (IsConst)
@@ -85,6 +91,7 @@ public abstract class FieldBuilder(
         return FieldDeclaration(VariableDeclaration(
                 typeName.BuildTypeSyntax(),
                 SingletonSeparatedList(declarator)))
+            .WithAttributeLists(SyntaxAttributes.Lists(Attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, IsReadonly, isConst: IsConst));
     }
 

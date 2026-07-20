@@ -22,6 +22,9 @@ public class PropertyBuilder<T> : PropertyBuilder
 
     public PropertyBuilder<T> WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
 
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonIgnore")</c>.</summary>
+    public PropertyBuilder<T> WithAttribute(string attribute) => With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
+
     /// <summary>Emits a get-only auto-property (<c>{ get; }</c>) by dropping the setter.</summary>
     public PropertyBuilder<T> GetOnly() => With(() => HasSet = false);
 
@@ -115,6 +118,7 @@ public class PropertyBuilder<T> : PropertyBuilder
     internal override PropertyDeclarationSyntax BuildProperty()
     {
         var property = PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
+            .WithAttributeLists(SyntaxAttributes.Lists(Attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic));
 
         var hasGetterBody = GetterExpression is not null || GetterStatements is not null;
@@ -283,6 +287,8 @@ public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessMo
     public bool IsAutoProperty { get; set; } = true;
 
     public AccessModifier AccessModifier { get; set; } = accessModifier;
+
+    internal List<AttributeSyntax> Attributes { get; } = [];
 
     // The property's default-value expression, or null when it has no initializer.
     internal ExpressionSyntax? Initializer { get; set; }

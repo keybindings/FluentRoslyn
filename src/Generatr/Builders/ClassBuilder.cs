@@ -15,6 +15,7 @@ public class ClassBuilder : NamedBuilder
     private readonly List<FieldBuilder> _fields = [];
     private readonly List<PropertyBuilder> _properties = [];
     private readonly List<MethodBuilder> _methods = [];
+    private readonly List<AttributeSyntax> _attributes = [];
 
     internal ClassBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
     {
@@ -44,6 +45,9 @@ public class ClassBuilder : NamedBuilder
     public ClassBuilder BlockScopedNamespace() => With(() => IsFileScopedNamespace = false);
 
     public ClassBuilder WithParent(ClassBuilder type) => With(() => ParentType = type);
+
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("Serializable")</c>.</summary>
+    public ClassBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
     #endregion
 
@@ -99,6 +103,7 @@ public class ClassBuilder : NamedBuilder
         AddMemberGroup(members, _methods);
 
         var declaration = ClassDeclaration(Name)
+            .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial))
             .WithMembers(List(members));
 

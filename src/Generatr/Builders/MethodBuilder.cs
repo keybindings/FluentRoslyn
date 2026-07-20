@@ -16,6 +16,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     private readonly bool _returnsVoid;
     private readonly List<IParameter> _params;
     private readonly List<StatementSyntax> _statements = [];
+    private readonly List<AttributeSyntax> _attributes = [];
     private ExpressionSyntax? _expressionBody;
 
     private MethodBuilder(
@@ -53,6 +54,9 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     public MethodBuilder WithParameter<T>(string name) => With(() => _params.Add(Parameter<T>.New(name)));
 
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
+    public MethodBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+
     /// <summary>
     /// Gives the method an expression body: <c>Name(...) =&gt; expression;</c>. Valid for
     /// both void and value-returning methods.
@@ -81,6 +85,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     internal MethodDeclarationSyntax BuildMethod()
     {
         var method = MethodDeclaration(_returnType, Identifier(Name))
+            .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
             .WithParameterList(ParameterList(SeparatedList(_params.Select(p =>
                 SyntaxFactory.Parameter(Identifier(p.Name)).WithType(p.TypeName.BuildTypeSyntax())))));
