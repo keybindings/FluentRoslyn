@@ -13,6 +13,7 @@ namespace Generatr.Builders;
 public class ClassBuilder : NamedBuilder
 {
     private readonly List<FieldBuilder> _fields = [];
+    private readonly List<ConstructorBuilder> _constructors = [];
     private readonly List<PropertyBuilder> _properties = [];
     private readonly List<MethodBuilder> _methods = [];
     private readonly List<AttributeSyntax> _attributes = [];
@@ -63,6 +64,16 @@ public class ClassBuilder : NamedBuilder
         return fb;
     }
 
+    public ConstructorBuilder DefineConstructor()
+        => DefineConstructor(AccessModifier.Public);
+
+    public ConstructorBuilder DefineConstructor(AccessModifier accessModifier, params IParameter[] parameters)
+    {
+        var cb = new ConstructorBuilder(this, accessModifier, parameters);
+        _constructors.Add(cb);
+        return cb;
+    }
+
     public PropertyBuilder<T> DefineProperty<T>(string name)
         => DefineProperty<T>(name, AccessModifier.Public);
 
@@ -99,6 +110,7 @@ public class ClassBuilder : NamedBuilder
         // least protected first, then alphabetical.
         var members = new List<MemberDeclarationSyntax>();
         AddMemberGroup(members, _fields);
+        AddMemberGroup(members, _constructors);
         AddMemberGroup(members, _properties);
         AddMemberGroup(members, _methods);
 

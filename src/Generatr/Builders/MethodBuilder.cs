@@ -87,8 +87,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         var method = MethodDeclaration(_returnType, Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
-            .WithParameterList(ParameterList(SeparatedList(_params.Select(p =>
-                SyntaxFactory.Parameter(Identifier(p.Name)).WithType(p.TypeName.BuildTypeSyntax())))));
+            .WithParameterList(SyntaxParameters.List(_params));
 
         if (_expressionBody is not null)
         {
