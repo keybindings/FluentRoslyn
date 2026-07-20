@@ -21,18 +21,21 @@ public class PropertyBuilder<T> : PropertyBuilder
         if (!IsAutoProperty)
             throw new NotImplementedException("Only auto-properties are currently supported.");
 
-        var accessors = new List<AccessorDeclarationSyntax>();
-        if (HasGet)
-            accessors.Add(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+        // An auto-property must have a getter: "{ set; }" alone does not compile.
+        if (!HasGet)
+            throw new InvalidOperationException($"Auto-property '{Name}' must have a getter.");
+
+        var accessors = new List<AccessorDeclarationSyntax> { Accessor(SyntaxKind.GetAccessorDeclaration) };
         if (HasSet)
-            accessors.Add(AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
+            accessors.Add(Accessor(SyntaxKind.SetAccessorDeclaration));
 
         return PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
             .WithAccessorList(AccessorList(List(accessors)));
     }
+
+    private static AccessorDeclarationSyntax Accessor(SyntaxKind kind)
+        => AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 }
 
 public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessModifier accessModifier)
@@ -42,9 +45,9 @@ public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessMo
 
     public bool IsStatic { get; set; }
 
-    public bool HasGet { get; } = true;
+    public bool HasGet { get; set; } = true;
 
-    public bool HasSet { get; } = true;
+    public bool HasSet { get; set; } = true;
 
     public bool IsAutoProperty { get; set; } = true;
 

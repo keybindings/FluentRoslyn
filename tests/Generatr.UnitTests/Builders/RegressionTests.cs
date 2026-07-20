@@ -40,7 +40,7 @@ public class RegressionTests
 
         var value = cb.ToString();
 
-        var expected = string.Join(Environment.NewLine,
+        var expected = string.Join("\n",
             "namespace TestNamespace;",
             "public class TestClass",
             "{",
@@ -50,6 +50,87 @@ public class RegressionTests
             "    private int _zPrivate;",
             "}");
         value.Should().Be(expected);
+    }
+
+    #endregion
+
+    #region TypeNameBuilder type resolution
+
+    // Type.Name gives only the innermost name while Type.Namespace gives the enclosing
+    // namespace, so nested types used to emit as "Namespace.Inner" - a name that does
+    // not exist.
+    [TestMethod]
+    public void TypeName_NestedType_QualifiedByDeclaringType()
+    {
+        TypeNameBuilder.New<Outer.Inner>().ToString()
+            .Should().Be("Generatr.UnitTests.Builders.RegressionTests.Outer.Inner");
+    }
+
+    [TestMethod]
+    public void TypeName_NestedTypeInsideGenericOuter_ClosesOuterOverItsArguments()
+    {
+        TypeNameBuilder.New<GenericOuter<int>.Inner>().ToString()
+            .Should().Be("Generatr.UnitTests.Builders.RegressionTests.GenericOuter<int>.Inner");
+    }
+
+    // type.Namespace is null for a global-namespace type, which threw out of
+    // NamespaceBuilder.Get's null guard.
+    [TestMethod]
+    public void TypeName_GlobalNamespaceType_EmitsUnqualifiedName()
+    {
+        TypeNameBuilder.New<GlobalNamespaceProbe>().ToString()
+            .Should().Be("GlobalNamespaceProbe");
+    }
+
+    // Arrays were baked into an IdentifierName token ("System.String[]") instead of
+    // producing an ArrayType node, losing the predefined-type shorthand.
+    [TestMethod]
+    public void TypeName_Array_EmitsArrayTypeWithShorthandElement()
+    {
+        TypeNameBuilder.New<string[]>().ToString().Should().Be("string[]");
+        TypeNameBuilder.New<int[]>().ToString().Should().Be("int[]");
+    }
+
+    [TestMethod]
+    public void TypeName_JaggedAndMultiDimensionalArrays_PreserveShape()
+    {
+        TypeNameBuilder.New<int[][]>().ToString().Should().Be("int[][]");
+
+        // NormalizeWhitespace pads omitted array sizes; "int[, ]" is still valid C#.
+        TypeNameBuilder.New<int[,]>().ToString().Should().Be("int[, ]");
+    }
+
+    [TestMethod]
+    public void TypeName_ArrayOfGeneric_QualifiesElement()
+    {
+        TypeNameBuilder.New<List<string>[]>().ToString()
+            .Should().Be("System.Collections.Generic.List<string>[]");
+    }
+
+    // Open definitions have no GenericTypeArguments, so the arity was dropped entirely
+    // and List<> emitted as "List".
+    [TestMethod]
+    public void TypeName_OpenGenericDefinition_PreservesArity()
+    {
+        TypeNameBuilder.New<List<int>>().ToString()
+            .Should().Be("System.Collections.Generic.List<int>");
+
+        TypeNameBuilder.New(typeof(List<>)).ToString()
+            .Should().Be("System.Collections.Generic.List<>");
+
+        // NormalizeWhitespace pads omitted type arguments; still valid inside typeof.
+        TypeNameBuilder.New(typeof(Dictionary<,>)).ToString()
+            .Should().Be("System.Collections.Generic.Dictionary<, >");
+    }
+
+    public class Outer
+    {
+        public class Inner;
+    }
+
+    public class GenericOuter<T>
+    {
+        public class Inner;
     }
 
     #endregion

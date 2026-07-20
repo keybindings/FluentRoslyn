@@ -22,6 +22,11 @@ public class NamespaceBuilder : NamedBuilder
 
     public NamespaceBuilder Parent { get; }
 
+    /// <summary>
+    /// True for the global namespace, which has no name to emit.
+    /// </summary>
+    public bool IsGlobal => this == None;
+
     public static NamespaceBuilder Get(string name) => New(None, name);
 
     public NamespaceBuilder Child(string name) => New(this, name);
@@ -49,17 +54,17 @@ public class NamespaceBuilder : NamedBuilder
 
     internal NameSyntax BuildNameSyntax()
     {
-        if (this == None)
-            throw new InvalidOperationException("The None namespace has no name syntax.");
+        if (IsGlobal)
+            throw new InvalidOperationException("The global namespace has no name syntax.");
 
-        return Parent == None
+        return Parent.IsGlobal
             ? IdentifierName(Name)
             : QualifiedName(Parent.BuildNameSyntax(), IdentifierName(Name));
     }
 
     internal override SyntaxNode BuildSyntax() => BuildNameSyntax();
 
-    public override string ToString() => this == None ? string.Empty : base.ToString();
+    public override string ToString() => IsGlobal ? string.Empty : base.ToString();
 
     internal static void NameValidation(string name)
     {

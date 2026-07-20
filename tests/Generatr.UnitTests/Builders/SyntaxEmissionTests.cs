@@ -21,7 +21,7 @@ public class SyntaxEmissionTests
         var cb = NewClass();
         cb.DefineProperty<int>("Count");
 
-        var expected = string.Join(Environment.NewLine,
+        var expected = string.Join("\n",
             "namespace TestNamespace;",
             "public class TestClass",
             "{",
@@ -36,7 +36,7 @@ public class SyntaxEmissionTests
         var cb = NewClass();
         cb.DefineMethod("DoThing", AccessModifier.Public, Parameter<int>.New("count"));
 
-        var expected = string.Join(Environment.NewLine,
+        var expected = string.Join("\n",
             "namespace TestNamespace;",
             "public class TestClass",
             "{",
@@ -91,5 +91,62 @@ public class SyntaxEmissionTests
 
         sourceText.Encoding.Should().Be(Encoding.UTF8);
         sourceText.ToString().Should().Be(cb.ToString());
+    }
+
+    [TestMethod]
+    public void Emission_UsesLineFeed_RegardlessOfHostOperatingSystem()
+    {
+        var cb = NewClass();
+        cb.DefineField<int>("_count");
+
+        cb.ToString().Should().Contain("\n").And.NotContain("\r");
+    }
+
+    [TestMethod]
+    public void GlobalNamespaceClass_EmitsClassWithoutNamespaceDeclaration()
+    {
+        var cb = NamespaceBuilder.None.Class("TestClass");
+
+        var expected = string.Join("\n",
+            "public class TestClass",
+            "{",
+            "}");
+        cb.ToString().Should().Be(expected);
+    }
+
+    [TestMethod]
+    public void WithParent_EmitsBaseList()
+    {
+        var baseClass = NamespaceBuilder.Get("Other").Class("BaseClass");
+        var cb = NewClass().WithParent(baseClass);
+
+        cb.ToString().Should().Contain("public class TestClass : Other.BaseClass");
+    }
+
+    [TestMethod]
+    public void WithParent_GlobalNamespaceParent_EmitsUnqualifiedBaseType()
+    {
+        var baseClass = NamespaceBuilder.None.Class("BaseClass");
+        var cb = NewClass().WithParent(baseClass);
+
+        cb.ToString().Should().Contain("public class TestClass : BaseClass");
+    }
+
+    [TestMethod]
+    public void Property_GetOnly_OmitsSetAccessor()
+    {
+        var pb = new PropertyBuilder<int>(NewClass(), "Count", AccessModifier.Public) { HasSet = false };
+
+        pb.ToString().Should().Be("public int Count { get; }");
+    }
+
+    [TestMethod]
+    public void Property_WithoutGetter_Throws()
+    {
+        var pb = new PropertyBuilder<int>(NewClass(), "Count", AccessModifier.Public) { HasGet = false };
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>();
     }
 }

@@ -56,7 +56,7 @@ public class ClassBuilderTests
         builder.ParentType.Should().Be(ClassBuilder);
     }
 
-    private static readonly string FileScopedExpectedEmptyClassOutput = string.Join(Environment.NewLine,
+    private static readonly string FileScopedExpectedEmptyClassOutput = string.Join("\n",
         "namespace TestNamespace;",
         "public class TestClass1",
         "{",
@@ -70,7 +70,7 @@ public class ClassBuilderTests
         value.Should().Be(FileScopedExpectedEmptyClassOutput);
     }
 
-    private static readonly string ExpectedEmptyClassOutput = string.Join(Environment.NewLine,
+    private static readonly string ExpectedEmptyClassOutput = string.Join("\n",
         "namespace TestNamespace",
         "{",
         "    public class TestClass2",
@@ -87,7 +87,7 @@ public class ClassBuilderTests
         value.Should().Be(ExpectedEmptyClassOutput);
     }
 
-    private static readonly string ExpectedOneFieldClassOutput = string.Join(Environment.NewLine,
+    private static readonly string ExpectedOneFieldClassOutput = string.Join("\n",
         "namespace TestNamespace",
         "{",
         "    public class TestClass2",
@@ -106,7 +106,7 @@ public class ClassBuilderTests
         value.Should().Be(ExpectedOneFieldClassOutput);
     }
 
-    private static readonly string ExpectedStaticClassOutput = string.Join(Environment.NewLine,
+    private static readonly string ExpectedStaticClassOutput = string.Join("\n",
         "namespace TestNamespace;",
         "public static partial class TestClass2",
         "{",

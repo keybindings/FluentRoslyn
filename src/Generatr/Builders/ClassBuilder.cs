@@ -31,7 +31,6 @@ public class ClassBuilder : NamedBuilder
 
     public AccessModifier AccessModifier { get; set; } = AccessModifier.Public;
 
-    // TODO: emit a base-type list once inheritance/interface composition is designed. Stored only for now.
     public ClassBuilder? ParentType { get; set; }
 
     #region FluentMethods
@@ -87,27 +86,44 @@ public class ClassBuilder : NamedBuilder
         // Member group order: fields, properties, methods; within each group,
         // least protected first, then alphabetical.
         var members = new List<MemberDeclarationSyntax>();
-        members.AddRange(GetMembers(_fields).Select(f => ((IMemberSyntaxBuilder)f).BuildMember()));
-        members.AddRange(GetMembers(_properties).Select(p => ((IMemberSyntaxBuilder)p).BuildMember()));
-        members.AddRange(GetMembers(_methods).Select(m => ((IMemberSyntaxBuilder)m).BuildMember()));
+        AddMemberGroup(members, _fields);
+        AddMemberGroup(members, _properties);
+        AddMemberGroup(members, _methods);
 
-        return ClassDeclaration(Name)
+        var declaration = ClassDeclaration(Name)
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial))
             .WithMembers(List(members));
+
+        return ParentType is { } parent
+            ? declaration.WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
+                SimpleBaseType(parent.BuildTypeSyntax()))))
+            : declaration;
     }
 
     public CompilationUnitSyntax BuildCompilationUnit()
     {
+        // A class in the global namespace goes straight into the compilation unit;
+        // there is no namespace declaration to wrap it in.
+        if (Namespace.IsGlobal)
+            return CompilationUnit().WithMembers(SingletonList<MemberDeclarationSyntax>(BuildClassDeclaration()));
+
         var namespaceName = Namespace.BuildNameSyntax();
+        var classDeclaration = SingletonList<MemberDeclarationSyntax>(BuildClassDeclaration());
 
         MemberDeclarationSyntax namespaceDeclaration = IsFileScopedNamespace
-            ? FileScopedNamespaceDeclaration(namespaceName)
-                .WithMembers(SingletonList<MemberDeclarationSyntax>(BuildClassDeclaration()))
-            : NamespaceDeclaration(namespaceName)
-                .WithMembers(SingletonList<MemberDeclarationSyntax>(BuildClassDeclaration()));
+            ? FileScopedNamespaceDeclaration(namespaceName).WithMembers(classDeclaration)
+            : NamespaceDeclaration(namespaceName).WithMembers(classDeclaration);
 
         return CompilationUnit().WithMembers(SingletonList(namespaceDeclaration));
     }
+
+    /// <summary>
+    /// The fully qualified name of this class, for use as a type reference.
+    /// </summary>
+    internal TypeSyntax BuildTypeSyntax()
+        => Namespace.IsGlobal
+            ? IdentifierName(Name)
+            : QualifiedName(Namespace.BuildNameSyntax(), IdentifierName(Name));
 
     public SourceText ToSourceText()
         => SourceText.From(ToString(), Encoding.UTF8);
@@ -121,9 +137,12 @@ public class ClassBuilder : NamedBuilder
 
     // AccessabilityLevel runs Public = 0 through Private = 5, so ascending gives
     // least protected first.
-    private static IEnumerable<TMember> GetMembers<TMember>(IEnumerable<TMember> members)
+    private static void AddMemberGroup<TMember>(List<MemberDeclarationSyntax> members, IEnumerable<TMember> group)
         where TMember : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
-        => members.OrderBy(x => x.AccessModifier.AccessabilityLevel).ThenBy(x => x.Name, StringComparer.Ordinal);
+        => members.AddRange(group
+            .OrderBy(x => x.AccessModifier.AccessabilityLevel)
+            .ThenBy(x => x.Name, StringComparer.Ordinal)
+            .Select(x => x.BuildMember()));
 
     private ClassBuilder With(Action action)
     {
