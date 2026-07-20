@@ -87,6 +87,29 @@ public class PropertyBuilder<T> : PropertyBuilder
             SetterExpression = ParseExpr(expression);
         });
 
+    /// <summary>
+    /// Gives the getter a statement body: <c>get { statements }</c>. The body must
+    /// return on all paths.
+    /// </summary>
+    public PropertyBuilder<T> WithGetterBody(params string[] statements)
+        => With(() =>
+        {
+            IsAutoProperty = false;
+            GetterStatements = ParseStatements(statements);
+        });
+
+    /// <summary>
+    /// Gives the setter a statement body: <c>set { statements }</c>. The value being
+    /// assigned is available as <c>value</c>.
+    /// </summary>
+    public PropertyBuilder<T> WithSetterBody(params string[] statements)
+        => With(() =>
+        {
+            IsAutoProperty = false;
+            HasSet = true;
+            SetterStatements = ParseStatements(statements);
+        });
+
     #endregion
 
     internal override PropertyDeclarationSyntax BuildProperty()
@@ -94,32 +117,39 @@ public class PropertyBuilder<T> : PropertyBuilder
         var property = PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic));
 
+        var hasGetterBody = GetterExpression is not null || GetterStatements is not null;
+        var hasSetterBody = SetterExpression is not null || SetterStatements is not null;
+
         // 1. Whole-property expression body: public int Count => _count;
         if (ExpressionBody is not null)
         {
             GuardNoInitializer("an expression-bodied property");
-            if (GetterExpression is not null || SetterExpression is not null)
+            if (hasGetterBody || hasSetterBody)
                 throw new InvalidOperationException(
-                    $"Property '{Name}' cannot combine a whole-property expression body with accessor expressions.");
+                    $"Property '{Name}' cannot combine a whole-property expression body with accessor bodies.");
 
             return property
                 .WithExpressionBody(ArrowExpressionClause(ExpressionBody))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
-        // 2. Expression-bodied accessors: { get => a; set => b; }
-        if (GetterExpression is not null || SetterExpression is not null)
+        // 2. Accessor bodies, expression or statement: { get => a; set { ...; } }
+        if (hasGetterBody || hasSetterBody)
         {
-            GuardNoInitializer("a property with expression-bodied accessors");
-            if (GetterExpression is null)
+            GuardNoInitializer("a property with accessor bodies");
+            if (!hasGetterBody)
                 throw new InvalidOperationException(
-                    $"Property '{Name}' with an expression-bodied setter must also have a getter.");
+                    $"Property '{Name}' with a bodied setter must also have a getter.");
 
-            var bodied = new List<AccessorDeclarationSyntax> { ExpressionAccessor(SyntaxKind.GetAccessorDeclaration, GetterExpression) };
-            if (SetterExpression is not null)
+            var bodied = new List<AccessorDeclarationSyntax>
+            {
+                BuildAccessor(SyntaxKind.GetAccessorDeclaration, GetterExpression, GetterStatements),
+            };
+
+            if (hasSetterBody)
             {
                 ValidateSetterAccessModifier();
-                bodied.Add(ExpressionAccessor(SetterKind(), SetterExpression, SetterAccessModifier));
+                bodied.Add(BuildAccessor(SetterKind(), SetterExpression, SetterStatements, SetterAccessModifier));
             }
             else if (SetterAccessModifier is not null)
             {
@@ -129,13 +159,12 @@ public class PropertyBuilder<T> : PropertyBuilder
             return property.WithAccessorList(AccessorList(List(bodied)));
         }
 
-        // 3. A non-auto property with no body means statement-bodied accessors, which
-        // need the statement/body model MethodBuilder will introduce. Revisit this
-        // path once MethodBuilder supports statement bodies (see the deferred note).
+        // 3. Non-auto requested but no body supplied — a caller error now that both
+        // expression and statement bodies are expressible.
         if (!IsAutoProperty)
-            throw new NotImplementedException(
-                "Statement-bodied property accessors are not supported yet (blocked on MethodBuilder statement bodies). " +
-                "Use AsExpressionBody or WithGetterExpression/WithSetterExpression for now.");
+            throw new InvalidOperationException(
+                $"Property '{Name}' is marked non-auto but has no body. Use AsExpressionBody, " +
+                "WithGetterExpression/WithSetterExpression, or WithGetterBody/WithSetterBody.");
 
         // 4. Auto-property: { get; set; }
         if (!HasGet)
@@ -174,18 +203,43 @@ public class PropertyBuilder<T> : PropertyBuilder
     private static AccessorDeclarationSyntax Accessor(SyntaxKind kind, AccessModifier? access = null)
         => ApplyAccess(AccessorDeclaration(kind).WithSemicolonToken(Token(SyntaxKind.SemicolonToken)), access);
 
-    private static AccessorDeclarationSyntax ExpressionAccessor(SyntaxKind kind, ExpressionSyntax expression, AccessModifier? access = null)
-        => ApplyAccess(
-            AccessorDeclaration(kind)
+    // Builds an accessor from whichever body form was supplied: an arrow expression, a
+    // statement block, or (when both are null) it is a caller bug — the branch guards
+    // ensure at least one is set before this is reached.
+    private static AccessorDeclarationSyntax BuildAccessor(
+        SyntaxKind kind,
+        ExpressionSyntax? expression,
+        List<StatementSyntax>? statements,
+        AccessModifier? access = null)
+    {
+        if (expression is not null && statements is not null)
+            throw new InvalidOperationException("An accessor cannot have both an expression body and a statement body.");
+
+        var accessor = expression is not null
+            ? AccessorDeclaration(kind)
                 .WithExpressionBody(ArrowExpressionClause(expression))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
-            access);
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+            : AccessorDeclaration(kind).WithBody(Block(statements!));
+
+        return ApplyAccess(accessor, access);
+    }
 
     private static AccessorDeclarationSyntax ApplyAccess(AccessorDeclarationSyntax accessor, AccessModifier? access)
         => access is null ? accessor : accessor.WithModifiers(SyntaxFormatting.Modifiers(access));
 
     private static ExpressionSyntax ParseExpr(string expression)
         => ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression)));
+
+    private static List<StatementSyntax> ParseStatements(string[] statements)
+    {
+        if (statements is null) throw new ArgumentNullException(nameof(statements));
+
+        var parsed = new List<StatementSyntax>(statements.Length);
+        foreach (var statement in statements)
+            parsed.Add(SyntaxBodies.Statement(statement));
+
+        return parsed;
+    }
 
     private PropertyBuilder<T> With(Action action)
     {
@@ -240,6 +294,11 @@ public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessMo
     internal ExpressionSyntax? GetterExpression { get; set; }
 
     internal ExpressionSyntax? SetterExpression { get; set; }
+
+    // Statement bodies for the individual accessors (get { ... } / set { ... }), or null.
+    internal List<StatementSyntax>? GetterStatements { get; set; }
+
+    internal List<StatementSyntax>? SetterStatements { get; set; }
 
     internal abstract PropertyDeclarationSyntax BuildProperty();
 

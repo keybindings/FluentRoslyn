@@ -225,13 +225,14 @@ public class RegressionTests
     }
 
     [TestMethod]
-    public void Property_NonAutoProperty_Throws()
+    public void Property_NonAutoProperty_WithoutBody_Throws()
     {
         var pb = new PropertyBuilder<int>(NewClass(), "Count", AccessModifier.Public) { IsAutoProperty = false };
 
         var act = () => pb.ToString();
 
-        act.Should().Throw<NotImplementedException>();
+        // Non-auto with no body is a caller error now that statement/expression bodies exist.
+        act.Should().Throw<InvalidOperationException>();
     }
 
     #endregion

@@ -263,6 +263,84 @@ public class PropertyBuilderTests
         pb.ToString().Should().Be("public int Count { get => _count; private set => _count = value; }");
     }
 
+    [TestMethod]
+    public void WithGetterBody_EmitsStatementBodiedGetter()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .WithGetterBody("return _count;");
+
+        pb.ToString().Should().Be(string.Join("\n",
+            "public int Count",
+            "{",
+            "    get",
+            "    {",
+            "        return _count;",
+            "    }",
+            "}"));
+    }
+
+    [TestMethod]
+    public void GetterAndSetterBodies_EmitBothStatementBodiedAccessors()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .WithGetterBody("return _count;")
+            .WithSetterBody("_count = value;");
+
+        // NormalizeWhitespace separates two statement-bodied accessors with a blank line.
+        pb.ToString().Should().Be(string.Join("\n",
+            "public int Count",
+            "{",
+            "    get",
+            "    {",
+            "        return _count;",
+            "    }",
+            "",
+            "    set",
+            "    {",
+            "        _count = value;",
+            "    }",
+            "}"));
+    }
+
+    [TestMethod]
+    public void MixedExpressionGetterAndStatementSetter_Composes()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .WithGetterExpression("_count")
+            .WithSetterBody("_count = value;");
+
+        pb.ToString().Should().Be(string.Join("\n",
+            "public int Count",
+            "{",
+            "    get => _count;",
+            "    set",
+            "    {",
+            "        _count = value;",
+            "    }",
+            "}"));
+    }
+
+    [TestMethod]
+    public void StatementSetterBody_RespectsAccessModifier()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count")
+            .WithGetterExpression("_count")
+            .WithSetterBody("_count = value;")
+            .WithSetterAccessModifier(AccessModifier.Private);
+
+        pb.ToString().Should().Contain("private set");
+    }
+
+    [TestMethod]
+    public void SetterBody_WithoutGetter_Throws()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count").WithSetterBody("_count = value;");
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*must also have a getter*");
+    }
+
     #endregion
 
     private static ClassBuilder NewClassBuilder()
