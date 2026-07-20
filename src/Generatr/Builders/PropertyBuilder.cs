@@ -130,10 +130,12 @@ public class PropertyBuilder<T> : PropertyBuilder
         }
 
         // 3. A non-auto property with no body means statement-bodied accessors, which
-        // need statement modelling that does not exist yet.
+        // need the statement/body model MethodBuilder will introduce. Revisit this
+        // path once MethodBuilder supports statement bodies (see the deferred note).
         if (!IsAutoProperty)
             throw new NotImplementedException(
-                "Statement-bodied properties are not supported yet; use AsExpressionBody or WithGetterExpression/WithSetterExpression.");
+                "Statement-bodied property accessors are not supported yet (blocked on MethodBuilder statement bodies). " +
+                "Use AsExpressionBody or WithGetterExpression/WithSetterExpression for now.");
 
         // 4. Auto-property: { get; set; }
         if (!HasGet)
