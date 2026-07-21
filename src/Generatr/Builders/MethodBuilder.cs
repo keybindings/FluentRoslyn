@@ -25,7 +25,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         AccessModifier accessModifier,
         TypeSyntax returnType,
         bool returnsVoid,
-        IEnumerable<IParameter> @params) : base(name, _ => { })
+        IEnumerable<IParameter> @params) : base(name, Identifiers.Validate)
     {
         AccessModifier = accessModifier;
         _returnType = returnType;

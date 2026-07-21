@@ -323,7 +323,5 @@ public abstract class PropertyBuilder(TypeBuilder declaringType, string name, Ac
     }
 
     private static void NameValidation(string name)
-    {
-
-    }
+        => Identifiers.Validate(name);
 }

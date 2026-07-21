@@ -99,7 +99,5 @@ public class NamespaceBuilder : NamedBuilder
     public override string ToString() => IsGlobal ? string.Empty : base.ToString();
 
     internal static void NameValidation(string name)
-    {
-
-    }
+        => Identifiers.Validate(name);
 }

@@ -85,12 +85,13 @@ public class EnumBuilder : NamedBuilder
     }
 
     private static string RequireName(string name)
-        => name ?? throw new ArgumentNullException(nameof(name));
+    {
+        Identifiers.Validate(name);
+        return name;
+    }
 
     private static void NameValidation(string name)
-    {
-
-    }
+        => Identifiers.Validate(name);
 
     private EnumBuilder With(Action action)
     {

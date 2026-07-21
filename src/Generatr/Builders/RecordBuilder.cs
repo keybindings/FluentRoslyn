@@ -107,9 +107,7 @@ public class RecordBuilder : NamedBuilder
     internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
 
     private static void NameValidation(string name)
-    {
-
-    }
+        => Identifiers.Validate(name);
 
     private RecordBuilder With(Action action)
     {

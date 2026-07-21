@@ -168,9 +168,7 @@ public abstract class TypeBuilder : NamedBuilder
     internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
 
     private static void NameValidation(string name)
-    {
-
-    }
+        => Identifiers.Validate(name);
 
     // AccessabilityLevel runs Public = 0 through Private = 5, so ascending gives
     // least protected first.

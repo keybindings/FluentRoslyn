@@ -100,7 +100,5 @@ public abstract class FieldBuilder(
     internal override SyntaxNode BuildSyntax() => BuildField();
 
     private static void NameValidation(string name)
-    {
-
-    }
+        => Identifiers.Validate(name);
 }

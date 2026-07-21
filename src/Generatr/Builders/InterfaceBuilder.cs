@@ -122,9 +122,7 @@ public class InterfaceBuilder : NamedBuilder
     internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
 
     private static void NameValidation(string name)
-    {
-
-    }
+        => Identifiers.Validate(name);
 
     private InterfaceBuilder With(Action action)
     {
@@ -139,7 +137,7 @@ public class InterfaceMethodBuilder : NamedBuilder
     private readonly TypeSyntax _returnType;
     private readonly List<IParameter> _params;
 
-    internal InterfaceMethodBuilder(string name, TypeSyntax returnType, IEnumerable<IParameter> @params) : base(name, _ => { })
+    internal InterfaceMethodBuilder(string name, TypeSyntax returnType, IEnumerable<IParameter> @params) : base(name, Identifiers.Validate)
     {
         _returnType = returnType;
         _params = @params.ToList();
@@ -164,7 +162,7 @@ public class InterfacePropertyBuilder : NamedBuilder
 {
     private readonly TypeNameBuilder _type;
 
-    internal InterfacePropertyBuilder(string name, TypeNameBuilder type) : base(name, _ => { })
+    internal InterfacePropertyBuilder(string name, TypeNameBuilder type) : base(name, Identifiers.Validate)
     {
         _type = type;
     }

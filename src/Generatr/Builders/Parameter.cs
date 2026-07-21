@@ -20,7 +20,5 @@ public class Parameter<T> : NamedBuilder, IParameter
             .WithType(TypeName.BuildTypeSyntax());
 
     private static void NameValidation(string name)
-    {
-
-    }
+        => Identifiers.Validate(name);
 }
