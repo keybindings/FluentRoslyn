@@ -1,0 +1,84 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+using Generatr.Abstractions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
+namespace Generatr.Builders;
+
+/// <summary>
+/// Builds a positional record: <c>public record Person(string Name, int Age);</c>.
+/// </summary>
+public class RecordBuilder : NamedBuilder
+{
+    private readonly List<IParameter> _params = [];
+    private readonly List<AttributeSyntax> _attributes = [];
+    private bool _isStruct;
+
+    internal RecordBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
+    {
+        Namespace = @namespace;
+    }
+
+    public NamespaceBuilder Namespace { get; }
+
+    public bool IsFileScopedNamespace { get; set; } = true;
+
+    public AccessModifier AccessModifier { get; set; } = AccessModifier.Public;
+
+    #region FluentMethods
+
+    public RecordBuilder WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+
+    public RecordBuilder BlockScopedNamespace() => With(() => IsFileScopedNamespace = false);
+
+    /// <summary>Emits <c>record struct</c> rather than <c>record</c> (a record class).</summary>
+    public RecordBuilder AsStruct() => With(() => _isStruct = true);
+
+    /// <summary>Adds a positional parameter, e.g. <c>WithParameter&lt;string&gt;("Name")</c>.</summary>
+    public RecordBuilder WithParameter<T>(string name) => With(() => _params.Add(Parameter<T>.New(name)));
+
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("Serializable")</c>.</summary>
+    public RecordBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+
+    #endregion
+
+    internal RecordDeclarationSyntax BuildRecordDeclaration()
+    {
+        var kind = _isStruct ? SyntaxKind.RecordStructDeclaration : SyntaxKind.RecordDeclaration;
+
+        var declaration = RecordDeclaration(kind, Token(SyntaxKind.RecordKeyword), Identifier(Name))
+            .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
+            .WithParameterList(SyntaxParameters.List(_params))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+        // A record struct carries an explicit `struct` keyword; a record class carries none.
+        return _isStruct
+            ? declaration.WithClassOrStructKeyword(Token(SyntaxKind.StructKeyword))
+            : declaration;
+    }
+
+    public CompilationUnitSyntax BuildCompilationUnit()
+        => Namespace.CompilationUnitFor(BuildRecordDeclaration(), IsFileScopedNamespace);
+
+    public SourceText ToSourceText()
+        => SourceText.From(ToString(), Encoding.UTF8);
+
+    internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
+
+    private static void NameValidation(string name)
+    {
+
+    }
+
+    private RecordBuilder With(Action action)
+    {
+        action();
+        return this;
+    }
+}

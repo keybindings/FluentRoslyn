@@ -55,6 +55,9 @@ public class NamespaceBuilder : NamedBuilder
     public EnumBuilder Enum(string name)
         => new(this, name);
 
+    public RecordBuilder Record(string name)
+        => new(this, name);
+
     /// <summary>
     /// Wraps a top-level type declaration in this namespace and a compilation unit. A
     /// global namespace yields the bare type; otherwise a file-scoped or block-scoped
