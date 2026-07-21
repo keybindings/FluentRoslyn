@@ -9,7 +9,7 @@ namespace Generatr.Builders;
 
 public class FieldBuilder<T> : FieldBuilder
 {
-    internal FieldBuilder(ClassBuilder @class, string name, AccessModifier accessModifier) : base(@class, TypeNameBuilder.New<T>(), name, accessModifier)
+    internal FieldBuilder(TypeBuilder declaringType, string name, AccessModifier accessModifier) : base(declaringType, TypeNameBuilder.New<T>(), name, accessModifier)
     {
     }
 
@@ -53,7 +53,7 @@ public class FieldBuilder<T> : FieldBuilder
 }
 
 public abstract class FieldBuilder(
-    ClassBuilder @class,
+    TypeBuilder declaringType,
     TypeNameBuilder typeName,
     string name,
     AccessModifier accessModifier)
@@ -65,7 +65,7 @@ public abstract class FieldBuilder(
 
     public bool IsConst { get; set; }
 
-    public ClassBuilder Class { get; } = @class;
+    public TypeBuilder DeclaringType { get; } = declaringType;
 
     public AccessModifier AccessModifier { get; set; } = accessModifier;
 

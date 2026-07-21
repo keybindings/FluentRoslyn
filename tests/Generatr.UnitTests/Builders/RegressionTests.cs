@@ -186,7 +186,7 @@ public class RegressionTests
     [TestMethod]
     public void Method_NoParameters_BuildsWithSpacingAndEmptyBody()
     {
-        var mb = MethodBuilder.Action(NewClass(), "DoThing", AccessModifier.Public, []);
+        var mb = MethodBuilder.Action("DoThing", AccessModifier.Public, []);
 
         mb.ToString().Should().StartWith("public void DoThing()");
     }
@@ -194,7 +194,7 @@ public class RegressionTests
     [TestMethod]
     public void Method_TwoParameters_SeparatesWithCommaBetweenNotAfter()
     {
-        var mb = MethodBuilder.Action(NewClass(), "DoThing", AccessModifier.Public,
+        var mb = MethodBuilder.Action("DoThing", AccessModifier.Public,
             [Parameter<int>.New("count"), Parameter<string>.New("name")]);
 
         mb.ToString().Should().StartWith("public void DoThing(int count, string name)");
@@ -203,7 +203,7 @@ public class RegressionTests
     [TestMethod]
     public void Method_SingleParameter_HasNoTrailingComma()
     {
-        var mb = MethodBuilder.Action(NewClass(), "DoThing", AccessModifier.Public,
+        var mb = MethodBuilder.Action("DoThing", AccessModifier.Public,
             [Parameter<int>.New("count")]);
 
         mb.ToString().Should().StartWith("public void DoThing(int count)");
@@ -212,7 +212,7 @@ public class RegressionTests
     [TestMethod]
     public void Method_NoStatements_EmitsEmptyBlockWithoutThrowing()
     {
-        var mb = MethodBuilder.Action(NewClass(), "DoThing", AccessModifier.Public, []);
+        var mb = MethodBuilder.Action("DoThing", AccessModifier.Public, []);
 
         var act = () => mb.ToString();
 

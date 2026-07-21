@@ -1,0 +1,37 @@
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
+namespace Generatr.Builders;
+
+public class StructBuilder : TypeBuilder<StructBuilder>
+{
+    internal StructBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
+    {
+    }
+
+    public bool IsReadonly { get; set; }
+
+    public bool IsPartial { get; set; }
+
+    #region FluentMethods
+
+    public StructBuilder ReadOnly()
+    {
+        IsReadonly = true;
+        return this;
+    }
+
+    public StructBuilder Partial()
+    {
+        IsPartial = true;
+        return this;
+    }
+
+    #endregion
+
+    protected override TypeDeclarationSyntax BuildTypeDeclaration()
+        => StructDeclaration(Name)
+            .WithAttributeLists(BuildAttributeLists())
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, isReadonly: IsReadonly, isPartial: IsPartial))
+            .WithMembers(BuildMembers());
+}

@@ -52,6 +52,9 @@ public class NamespaceBuilder : NamedBuilder
     public ClassBuilder Class(string name)
         => new(this, name);
 
+    public StructBuilder Struct(string name)
+        => new(this, name);
+
     public EnumBuilder Enum(string name)
         => new(this, name);
 

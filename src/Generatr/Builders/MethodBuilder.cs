@@ -11,7 +11,6 @@ namespace Generatr.Builders;
 
 public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 {
-    private readonly ClassBuilder _classContext;
     private readonly TypeSyntax _returnType;
     private readonly bool _returnsVoid;
     private readonly List<IParameter> _params;
@@ -20,14 +19,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     private ExpressionSyntax? _expressionBody;
 
     private MethodBuilder(
-        ClassBuilder @class,
         string name,
         AccessModifier accessModifier,
         TypeSyntax returnType,
         bool returnsVoid,
         IEnumerable<IParameter> @params) : base(name, _ => { })
     {
-        _classContext = @class;
         AccessModifier = accessModifier;
         _returnType = returnType;
         _returnsVoid = returnsVoid;
@@ -39,12 +36,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     public AccessModifier AccessModifier { get; set; }
 
     /// <summary>A void method: <c>void Name(...) { }</c>.</summary>
-    internal static MethodBuilder Action(ClassBuilder classContext, string name, AccessModifier accessModifier, IEnumerable<IParameter> @params)
-        => new(classContext, name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)), returnsVoid: true, @params);
+    internal static MethodBuilder Action(string name, AccessModifier accessModifier, IEnumerable<IParameter> @params)
+        => new(name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)), returnsVoid: true, @params);
 
     /// <summary>A method returning <paramref name="returnType"/>; requires a body.</summary>
-    internal static MethodBuilder Returning(ClassBuilder classContext, string name, AccessModifier accessModifier, TypeNameBuilder returnType, IEnumerable<IParameter> @params)
-        => new(classContext, name, accessModifier, returnType.BuildTypeSyntax(), returnsVoid: false, @params);
+    internal static MethodBuilder Returning(string name, AccessModifier accessModifier, TypeNameBuilder returnType, IEnumerable<IParameter> @params)
+        => new(name, accessModifier, returnType.BuildTypeSyntax(), returnsVoid: false, @params);
 
     #region FluentMethods
 

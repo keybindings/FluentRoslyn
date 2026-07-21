@@ -17,14 +17,14 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     private ExpressionSyntax? _expressionBody;
     private ConstructorInitializerSyntax? _initializer;
 
-    internal ConstructorBuilder(ClassBuilder @class, AccessModifier accessModifier, IEnumerable<IParameter> @params) : base(@class.Name, _ => { })
+    internal ConstructorBuilder(TypeBuilder declaringType, AccessModifier accessModifier, IEnumerable<IParameter> @params) : base(declaringType.Name, _ => { })
     {
-        Class = @class;
+        DeclaringType = declaringType;
         AccessModifier = accessModifier;
         _params = @params.ToList();
     }
 
-    public ClassBuilder Class { get; }
+    public TypeBuilder DeclaringType { get; }
 
     public bool IsStatic { get; set; }
 
@@ -74,16 +74,16 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
 
     internal ConstructorDeclarationSyntax BuildConstructor()
     {
-        var ctor = ConstructorDeclaration(Identifier(Class.Name))
+        var ctor = ConstructorDeclaration(Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithParameterList(SyntaxParameters.List(_params));
 
         if (IsStatic)
         {
             if (_params.Count > 0)
-                throw new InvalidOperationException($"Static constructor for '{Class.Name}' cannot have parameters.");
+                throw new InvalidOperationException($"Static constructor for '{Name}' cannot have parameters.");
             if (_initializer is not null)
-                throw new InvalidOperationException($"Static constructor for '{Class.Name}' cannot chain to base or this.");
+                throw new InvalidOperationException($"Static constructor for '{Name}' cannot chain to base or this.");
 
             ctor = ctor.WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword)));
         }
@@ -98,7 +98,7 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
         {
             if (_statements.Count > 0)
                 throw new InvalidOperationException(
-                    $"Constructor for '{Class.Name}' cannot have both an expression body and statements.");
+                    $"Constructor for '{Name}' cannot have both an expression body and statements.");
 
             return ctor
                 .WithExpressionBody(ArrowExpressionClause(_expressionBody))

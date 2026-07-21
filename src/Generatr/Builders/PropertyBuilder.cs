@@ -12,7 +12,7 @@ public class PropertyBuilder<T> : PropertyBuilder
 {
     private readonly TypeNameBuilder _typeName = TypeNameBuilder.New<T>();
 
-    public PropertyBuilder(ClassBuilder @class, string name, AccessModifier accessModifier) : base(@class, name, accessModifier)
+    public PropertyBuilder(TypeBuilder declaringType, string name, AccessModifier accessModifier) : base(declaringType, name, accessModifier)
     {
     }
 
@@ -252,7 +252,7 @@ public class PropertyBuilder<T> : PropertyBuilder
     }
 }
 
-public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessModifier accessModifier)
+public abstract class PropertyBuilder(TypeBuilder declaringType, string name, AccessModifier accessModifier)
     : NamedBuilder(name, NameValidation), IAccessModifier, IMemberSyntaxBuilder
 {
     // C#'s rule for accessor modifiers: the modifier must be strictly more restrictive
@@ -269,7 +269,7 @@ public abstract class PropertyBuilder(ClassBuilder @class, string name, AccessMo
         [AccessModifier.Private] = [],
     };
 
-    public ClassBuilder Class { get; } = @class;
+    public TypeBuilder DeclaringType { get; } = declaringType;
 
     public bool IsStatic { get; set; }
 
