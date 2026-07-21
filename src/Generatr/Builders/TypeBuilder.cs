@@ -117,11 +117,14 @@ public abstract class TypeBuilder : NamedBuilder
     /// </summary>
     private protected BaseListSyntax? BuildBaseList(TypeSyntax? baseType)
     {
-        var baseTypes = new List<BaseTypeSyntax>();
-        if (baseType is not null) baseTypes.Add(SimpleBaseType(baseType));
-        baseTypes.AddRange(_interfaces.Select(i => (BaseTypeSyntax)SimpleBaseType(i)));
+        var types = baseType is null ? _interfaces : Prepend(baseType, _interfaces);
+        return SyntaxBaseList.From(types);
+    }
 
-        return baseTypes.Count == 0 ? null : BaseList(SeparatedList(baseTypes));
+    private static IEnumerable<TypeSyntax> Prepend(TypeSyntax first, IEnumerable<TypeSyntax> rest)
+    {
+        yield return first;
+        foreach (var type in rest) yield return type;
     }
 
     public CompilationUnitSyntax BuildCompilationUnit()

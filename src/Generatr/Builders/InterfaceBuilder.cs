@@ -16,6 +16,7 @@ public class InterfaceBuilder : NamedBuilder
     private readonly List<InterfacePropertyBuilder> _properties = [];
     private readonly List<InterfaceMethodBuilder> _methods = [];
     private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<TypeSyntax> _baseInterfaces = [];
 
     internal InterfaceBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
     {
@@ -36,6 +37,14 @@ public class InterfaceBuilder : NamedBuilder
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
     public InterfaceBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+
+    /// <summary>Extends a base interface from a raw name, e.g. <c>Extends("IDisposable")</c>.</summary>
+    public InterfaceBuilder Extends(string interfaceName)
+        => With(() => _baseInterfaces.Add(ParseTypeName(interfaceName ?? throw new ArgumentNullException(nameof(interfaceName)))));
+
+    /// <summary>Extends a base interface from a type, e.g. <c>Extends&lt;IDisposable&gt;()</c>.</summary>
+    public InterfaceBuilder Extends<TInterface>()
+        => With(() => _baseInterfaces.Add(TypeNameBuilder.New<TInterface>().BuildTypeSyntax()));
 
     #endregion
 
@@ -70,10 +79,14 @@ public class InterfaceBuilder : NamedBuilder
         var members = _properties.Select(p => (MemberDeclarationSyntax)p.BuildProperty())
             .Concat(_methods.Select(m => (MemberDeclarationSyntax)m.BuildMethod()));
 
-        return InterfaceDeclaration(Name)
+        var declaration = InterfaceDeclaration(Name)
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
             .WithMembers(List(members));
+
+        return SyntaxBaseList.From(_baseInterfaces) is { } baseList
+            ? declaration.WithBaseList(baseList)
+            : declaration;
     }
 
     public CompilationUnitSyntax BuildCompilationUnit()

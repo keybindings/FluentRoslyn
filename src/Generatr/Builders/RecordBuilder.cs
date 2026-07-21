@@ -17,6 +17,7 @@ public class RecordBuilder : NamedBuilder
 {
     private readonly List<IParameter> _params = [];
     private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<TypeSyntax> _interfaces = [];
     private bool _isStruct;
 
     internal RecordBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
@@ -45,6 +46,14 @@ public class RecordBuilder : NamedBuilder
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Serializable")</c>.</summary>
     public RecordBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
+    /// <summary>Adds an implemented interface from a raw name, e.g. <c>WithInterface("IEquatable&lt;Person&gt;")</c>.</summary>
+    public RecordBuilder WithInterface(string interfaceName)
+        => With(() => _interfaces.Add(ParseTypeName(interfaceName ?? throw new ArgumentNullException(nameof(interfaceName)))));
+
+    /// <summary>Adds an implemented interface from a type, e.g. <c>WithInterface&lt;IDisposable&gt;()</c>.</summary>
+    public RecordBuilder WithInterface<TInterface>()
+        => With(() => _interfaces.Add(TypeNameBuilder.New<TInterface>().BuildTypeSyntax()));
+
     #endregion
 
     internal RecordDeclarationSyntax BuildRecordDeclaration()
@@ -56,6 +65,9 @@ public class RecordBuilder : NamedBuilder
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
             .WithParameterList(SyntaxParameters.List(_params))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+        if (SyntaxBaseList.From(_interfaces) is { } baseList)
+            declaration = declaration.WithBaseList(baseList);
 
         // A record struct carries an explicit `struct` keyword; a record class carries none.
         return _isStruct

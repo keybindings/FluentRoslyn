@@ -75,4 +75,25 @@ public class InterfaceImplementationTests
 
         s.Should().BeOfType<StructBuilder>();
     }
+
+    [TestMethod]
+    public void Record_WithInterface_EmitsBaseListBeforeSemicolon()
+    {
+        var r = NamespaceBuilder.Get("N").Record("Person")
+            .WithParameter<string>("Name")
+            .WithInterface("IEquatable<Person>")
+            .WithInterface<IDisposable>();
+
+        r.ToString().Should().Contain("public record Person(string Name) : IEquatable<Person>, System.IDisposable;");
+    }
+
+    [TestMethod]
+    public void Interface_Extends_EmitsBaseInterfaces()
+    {
+        var i = NamespaceBuilder.Get("N").Interface("IFoo")
+            .Extends("IBar")
+            .Extends<IDisposable>();
+
+        i.ToString().Should().Contain("public interface IFoo : IBar, System.IDisposable");
+    }
 }
