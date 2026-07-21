@@ -163,6 +163,101 @@ public class MethodBuilderTests
             "}"));
     }
 
+    #region Generics
+
+    [TestMethod]
+    public void WithTypeParameter_EmitsTypeParameterList()
+    {
+        var mb = NewClass().DefineMethod("DoThing").WithTypeParameter("T").WithParameter<int>("x");
+
+        mb.ToString().Should().StartWith("public void DoThing<T>(int x)");
+    }
+
+    [TestMethod]
+    public void MultipleTypeParameters_EmitInOrder()
+    {
+        var mb = NewClass().DefineMethod("Map")
+            .WithTypeParameter("TIn")
+            .WithTypeParameter("TOut")
+            .Returns("TOut")
+            .AsExpressionBody("default");
+
+        mb.ToString().Should().Be("public TOut Map<TIn, TOut>() => default;");
+    }
+
+    [TestMethod]
+    public void Returns_GenericTypeParameter_UsedAsReturnType()
+    {
+        var mb = NewClass().DefineMethod("Get")
+            .WithTypeParameter("T")
+            .Returns("T")
+            .AddStatement("return default;");
+
+        mb.ToString().Should().StartWith("public T Get<T>()");
+    }
+
+    [TestMethod]
+    public void WithConstraint_EmitsWhereClause()
+    {
+        var mb = NewClass().DefineMethod("Make")
+            .WithTypeParameter("T")
+            .Returns("T")
+            .WithConstraint("T", "class")
+            .WithConstraint("T", "new()")
+            .AddStatement("return new T();");
+
+        mb.ToString().Should().Contain("public T Make<T>()")
+            .And.Contain("where T : class, new()");
+    }
+
+    [TestMethod]
+    public void WithConstraint_TypeConstraint_ParsesGenericInterface()
+    {
+        var mb = NewClass().DefineMethod("Sort")
+            .WithTypeParameter("T")
+            .WithConstraint("T", "System.IComparable<T>");
+
+        mb.ToString().Should().Contain("where T : System.IComparable<T>");
+    }
+
+    [TestMethod]
+    public void WithConstraint_MultipleTypeParameters_EmitOneClauseEach()
+    {
+        var mb = NewClass().DefineMethod("Pair")
+            .WithTypeParameter("TKey")
+            .WithTypeParameter("TValue")
+            .WithConstraint("TKey", "notnull")
+            .WithConstraint("TValue", "class");
+
+        var value = mb.ToString();
+        value.Should().Contain("where TKey : notnull");
+        value.Should().Contain("where TValue : class");
+    }
+
+    [TestMethod]
+    public void Constraint_WithoutTypeParameter_Throws()
+    {
+        var mb = NewClass().DefineMethod("DoThing").WithConstraint("T", "class");
+
+        var act = () => mb.ToString();
+
+        act.Should().Throw<System.InvalidOperationException>().WithMessage("*no type parameters*");
+    }
+
+    [TestMethod]
+    public void Constraint_ForUndeclaredTypeParameter_Throws()
+    {
+        var mb = NewClass().DefineMethod("DoThing")
+            .WithTypeParameter("T")
+            .WithConstraint("U", "class");
+
+        var act = () => mb.ToString();
+
+        act.Should().Throw<System.InvalidOperationException>().WithMessage("*undeclared type parameter*");
+    }
+
+    #endregion
+
     private static ClassBuilder NewClass(string name = "TestClass")
         => NamespaceBuilder.Get("TestNamespace").Class(name);
 }

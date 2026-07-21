@@ -11,11 +11,13 @@ namespace Generatr.Builders;
 
 public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 {
-    private readonly TypeSyntax _returnType;
-    private readonly bool _returnsVoid;
+    private TypeSyntax _returnType;
+    private bool _returnsVoid;
     private readonly List<IParameter> _params;
     private readonly List<StatementSyntax> _statements = [];
     private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<string> _typeParameters = [];
+    private readonly Dictionary<string, List<string>> _constraints = [];
     private ExpressionSyntax? _expressionBody;
 
     private MethodBuilder(
@@ -50,6 +52,33 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     public MethodBuilder WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
 
     public MethodBuilder WithParameter<T>(string name) => With(() => _params.Add(Parameter<T>.New(name)));
+
+    /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>
+    public MethodBuilder WithTypeParameter(string name) => With(() => _typeParameters.Add(name ?? throw new ArgumentNullException(nameof(name))));
+
+    /// <summary>
+    /// Sets the return type from a raw type name, e.g. <c>Returns("T")</c> or
+    /// <c>Returns("List&lt;T&gt;")</c> — for returning a generic type parameter that is
+    /// not a CLR type. Requires a body.
+    /// </summary>
+    public MethodBuilder Returns(string typeName) => With(() =>
+    {
+        _returnType = ParseTypeName(typeName ?? throw new ArgumentNullException(nameof(typeName)));
+        _returnsVoid = false;
+    });
+
+    /// <summary>
+    /// Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>,
+    /// <c>WithConstraint("T", "IComparable&lt;T&gt;")</c>, or <c>WithConstraint("T", "new()")</c>.
+    /// Call once per constraint; C# order is class/struct first, new() last.
+    /// </summary>
+    public MethodBuilder WithConstraint(string typeParameter, string constraint) => With(() =>
+    {
+        if (constraint is null) throw new ArgumentNullException(nameof(constraint));
+        if (!_constraints.TryGetValue(typeParameter, out var list))
+            _constraints[typeParameter] = list = [];
+        list.Add(constraint);
+    });
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
     public MethodBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
@@ -86,6 +115,8 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
             .WithParameterList(SyntaxParameters.List(_params));
 
+        method = ApplyGenerics(method);
+
         if (_expressionBody is not null)
         {
             if (_statements.Count > 0)
@@ -114,6 +145,43 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildMethod();
 
     internal override SyntaxNode BuildSyntax() => BuildMethod();
+
+    private MethodDeclarationSyntax ApplyGenerics(MethodDeclarationSyntax method)
+    {
+        if (_typeParameters.Count == 0)
+        {
+            if (_constraints.Count > 0)
+                throw new InvalidOperationException($"Method '{Name}' has constraints but no type parameters.");
+            return method;
+        }
+
+        // A constraint naming an undeclared type parameter is a caller error.
+        var undeclared = _constraints.Keys.FirstOrDefault(k => !_typeParameters.Contains(k));
+        if (undeclared is not null)
+            throw new InvalidOperationException($"Method '{Name}' constrains undeclared type parameter '{undeclared}'.");
+
+        method = method.WithTypeParameterList(TypeParameterList(SeparatedList(
+            _typeParameters.Select(t => TypeParameter(Identifier(t))))));
+
+        // Emit a constraint clause per type parameter that has constraints, in
+        // type-parameter declaration order.
+        var clauses = _typeParameters
+            .Where(_constraints.ContainsKey)
+            .Select(t => TypeParameterConstraintClause(IdentifierName(t))
+                .WithConstraints(SeparatedList(_constraints[t].Select(BuildConstraint))))
+            .ToList();
+
+        return clauses.Count == 0 ? method : method.WithConstraintClauses(List(clauses));
+    }
+
+    private static TypeParameterConstraintSyntax BuildConstraint(string constraint)
+        => constraint.Trim() switch
+        {
+            "class" => ClassOrStructConstraint(SyntaxKind.ClassConstraint),
+            "struct" => ClassOrStructConstraint(SyntaxKind.StructConstraint),
+            "new()" => ConstructorConstraint(),
+            var other => TypeConstraint(ParseTypeName(other)),
+        };
 
     private MethodBuilder With(Action action)
     {
