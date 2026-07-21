@@ -126,21 +126,7 @@ public class ClassBuilder : NamedBuilder
     }
 
     public CompilationUnitSyntax BuildCompilationUnit()
-    {
-        // A class in the global namespace goes straight into the compilation unit;
-        // there is no namespace declaration to wrap it in.
-        if (Namespace.IsGlobal)
-            return CompilationUnit().WithMembers(SingletonList<MemberDeclarationSyntax>(BuildClassDeclaration()));
-
-        var namespaceName = Namespace.BuildNameSyntax();
-        var classDeclaration = SingletonList<MemberDeclarationSyntax>(BuildClassDeclaration());
-
-        MemberDeclarationSyntax namespaceDeclaration = IsFileScopedNamespace
-            ? FileScopedNamespaceDeclaration(namespaceName).WithMembers(classDeclaration)
-            : NamespaceDeclaration(namespaceName).WithMembers(classDeclaration);
-
-        return CompilationUnit().WithMembers(SingletonList(namespaceDeclaration));
-    }
+        => Namespace.CompilationUnitFor(BuildClassDeclaration(), IsFileScopedNamespace);
 
     /// <summary>
     /// The fully qualified name of this class, for use as a type reference.

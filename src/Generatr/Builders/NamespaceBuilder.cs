@@ -52,6 +52,29 @@ public class NamespaceBuilder : NamedBuilder
     public ClassBuilder Class(string name)
         => new(this, name);
 
+    public EnumBuilder Enum(string name)
+        => new(this, name);
+
+    /// <summary>
+    /// Wraps a top-level type declaration in this namespace and a compilation unit. A
+    /// global namespace yields the bare type; otherwise a file-scoped or block-scoped
+    /// namespace declaration.
+    /// </summary>
+    internal CompilationUnitSyntax CompilationUnitFor(MemberDeclarationSyntax member, bool fileScoped)
+    {
+        if (IsGlobal)
+            return CompilationUnit().WithMembers(SingletonList(member));
+
+        var name = BuildNameSyntax();
+        var body = SingletonList(member);
+
+        MemberDeclarationSyntax namespaceDeclaration = fileScoped
+            ? FileScopedNamespaceDeclaration(name).WithMembers(body)
+            : NamespaceDeclaration(name).WithMembers(body);
+
+        return CompilationUnit().WithMembers(SingletonList(namespaceDeclaration));
+    }
+
     internal NameSyntax BuildNameSyntax()
     {
         if (IsGlobal)

@@ -123,6 +123,23 @@ public class RegressionTests
             .Should().Be("System.Collections.Generic.Dictionary<, >");
     }
 
+    // Only string/bool/int/double/float had shorthand; the rest of the built-in
+    // keywords rendered as their System.* names (e.g. long -> System.Int64).
+    [TestMethod]
+    public void TypeName_BuiltInKeywords_UseShorthand()
+    {
+        TypeNameBuilder.New<long>().ToString().Should().Be("long");
+        TypeNameBuilder.New<byte>().ToString().Should().Be("byte");
+        TypeNameBuilder.New<short>().ToString().Should().Be("short");
+        TypeNameBuilder.New<uint>().ToString().Should().Be("uint");
+        TypeNameBuilder.New<ulong>().ToString().Should().Be("ulong");
+        TypeNameBuilder.New<sbyte>().ToString().Should().Be("sbyte");
+        TypeNameBuilder.New<ushort>().ToString().Should().Be("ushort");
+        TypeNameBuilder.New<char>().ToString().Should().Be("char");
+        TypeNameBuilder.New<decimal>().ToString().Should().Be("decimal");
+        TypeNameBuilder.New<object>().ToString().Should().Be("object");
+    }
+
     public class Outer
     {
         public class Inner;

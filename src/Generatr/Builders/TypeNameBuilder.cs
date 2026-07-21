@@ -188,9 +188,19 @@ public class TypeNameBuilder : NamedBuilder
         {
             "String" => ("string", SyntaxKind.StringKeyword),
             "Boolean" => ("bool", SyntaxKind.BoolKeyword),
+            "Object" => ("object", SyntaxKind.ObjectKeyword),
+            "Char" => ("char", SyntaxKind.CharKeyword),
+            "SByte" => ("sbyte", SyntaxKind.SByteKeyword),
+            "Byte" => ("byte", SyntaxKind.ByteKeyword),
+            "Int16" => ("short", SyntaxKind.ShortKeyword),
+            "UInt16" => ("ushort", SyntaxKind.UShortKeyword),
             "Int32" => ("int", SyntaxKind.IntKeyword),
-            "Double" => ("double", SyntaxKind.DoubleKeyword),
+            "UInt32" => ("uint", SyntaxKind.UIntKeyword),
+            "Int64" => ("long", SyntaxKind.LongKeyword),
+            "UInt64" => ("ulong", SyntaxKind.ULongKeyword),
             "Single" => ("float", SyntaxKind.FloatKeyword),
+            "Double" => ("double", SyntaxKind.DoubleKeyword),
+            "Decimal" => ("decimal", SyntaxKind.DecimalKeyword),
             _ => (string.Empty, default(SyntaxKind))
         };
 
