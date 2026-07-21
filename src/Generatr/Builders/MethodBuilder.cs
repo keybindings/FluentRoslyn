@@ -148,40 +148,14 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     private MethodDeclarationSyntax ApplyGenerics(MethodDeclarationSyntax method)
     {
-        if (_typeParameters.Count == 0)
-        {
-            if (_constraints.Count > 0)
-                throw new InvalidOperationException($"Method '{Name}' has constraints but no type parameters.");
-            return method;
-        }
+        SyntaxGenerics.Validate($"Method '{Name}'", _typeParameters, _constraints);
 
-        // A constraint naming an undeclared type parameter is a caller error.
-        var undeclared = _constraints.Keys.FirstOrDefault(k => !_typeParameters.Contains(k));
-        if (undeclared is not null)
-            throw new InvalidOperationException($"Method '{Name}' constrains undeclared type parameter '{undeclared}'.");
+        if (SyntaxGenerics.TypeParameterList(_typeParameters) is { } list)
+            method = method.WithTypeParameterList(list);
 
-        method = method.WithTypeParameterList(TypeParameterList(SeparatedList(
-            _typeParameters.Select(t => TypeParameter(Identifier(t))))));
-
-        // Emit a constraint clause per type parameter that has constraints, in
-        // type-parameter declaration order.
-        var clauses = _typeParameters
-            .Where(_constraints.ContainsKey)
-            .Select(t => TypeParameterConstraintClause(IdentifierName(t))
-                .WithConstraints(SeparatedList(_constraints[t].Select(BuildConstraint))))
-            .ToList();
-
-        return clauses.Count == 0 ? method : method.WithConstraintClauses(List(clauses));
+        var clauses = SyntaxGenerics.ConstraintClauses(_typeParameters, _constraints);
+        return clauses.Count == 0 ? method : method.WithConstraintClauses(clauses);
     }
-
-    private static TypeParameterConstraintSyntax BuildConstraint(string constraint)
-        => constraint.Trim() switch
-        {
-            "class" => ClassOrStructConstraint(SyntaxKind.ClassConstraint),
-            "struct" => ClassOrStructConstraint(SyntaxKind.StructConstraint),
-            "new()" => ConstructorConstraint(),
-            var other => TypeConstraint(ParseTypeName(other)),
-        };
 
     private MethodBuilder With(Action action)
     {

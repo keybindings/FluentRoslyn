@@ -39,10 +39,10 @@ public class ClassBuilder : TypeBuilder<ClassBuilder>
 
     protected override TypeDeclarationSyntax BuildTypeDeclaration()
     {
-        var declaration = ClassDeclaration(Name)
+        var declaration = ApplyGenerics(ClassDeclaration(Name)
             .WithAttributeLists(BuildAttributeLists())
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial))
-            .WithMembers(BuildMembers());
+            .WithMembers(BuildMembers()));
 
         // Base class (if any) first, then implemented interfaces.
         var baseList = BuildBaseList(ParentType?.BuildTypeSyntax());

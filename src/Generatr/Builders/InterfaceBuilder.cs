@@ -17,6 +17,8 @@ public class InterfaceBuilder : NamedBuilder
     private readonly List<InterfaceMethodBuilder> _methods = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly List<TypeSyntax> _baseInterfaces = [];
+    private readonly List<string> _typeParameters = [];
+    private readonly Dictionary<string, List<string>> _constraints = [];
 
     internal InterfaceBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
     {
@@ -45,6 +47,19 @@ public class InterfaceBuilder : NamedBuilder
     /// <summary>Extends a base interface from a type, e.g. <c>Extends&lt;IDisposable&gt;()</c>.</summary>
     public InterfaceBuilder Extends<TInterface>()
         => With(() => _baseInterfaces.Add(TypeNameBuilder.New<TInterface>().BuildTypeSyntax()));
+
+    /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>IName&lt;T&gt;</c>.</summary>
+    public InterfaceBuilder WithTypeParameter(string name)
+        => With(() => _typeParameters.Add(name ?? throw new ArgumentNullException(nameof(name))));
+
+    /// <summary>Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>.</summary>
+    public InterfaceBuilder WithConstraint(string typeParameter, string constraint) => With(() =>
+    {
+        if (constraint is null) throw new ArgumentNullException(nameof(constraint));
+        if (!_constraints.TryGetValue(typeParameter, out var list))
+            _constraints[typeParameter] = list = [];
+        list.Add(constraint);
+    });
 
     #endregion
 
@@ -84,9 +99,18 @@ public class InterfaceBuilder : NamedBuilder
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
             .WithMembers(List(members));
 
-        return SyntaxBaseList.From(_baseInterfaces) is { } baseList
-            ? declaration.WithBaseList(baseList)
-            : declaration;
+        SyntaxGenerics.Validate($"Interface '{Name}'", _typeParameters, _constraints);
+        if (SyntaxGenerics.TypeParameterList(_typeParameters) is { } typeParams)
+            declaration = declaration.WithTypeParameterList(typeParams);
+
+        if (SyntaxBaseList.From(_baseInterfaces) is { } baseList)
+            declaration = declaration.WithBaseList(baseList);
+
+        var clauses = SyntaxGenerics.ConstraintClauses(_typeParameters, _constraints);
+        if (clauses.Count > 0)
+            declaration = declaration.WithConstraintClauses(clauses);
+
+        return declaration;
     }
 
     public CompilationUnitSyntax BuildCompilationUnit()

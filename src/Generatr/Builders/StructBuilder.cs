@@ -31,10 +31,10 @@ public class StructBuilder : TypeBuilder<StructBuilder>
 
     protected override TypeDeclarationSyntax BuildTypeDeclaration()
     {
-        var declaration = StructDeclaration(Name)
+        var declaration = ApplyGenerics(StructDeclaration(Name)
             .WithAttributeLists(BuildAttributeLists())
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, isReadonly: IsReadonly, isPartial: IsPartial))
-            .WithMembers(BuildMembers());
+            .WithMembers(BuildMembers()));
 
         // Structs have no base class, only implemented interfaces.
         var baseList = BuildBaseList(null);

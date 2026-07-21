@@ -23,6 +23,8 @@ public abstract class TypeBuilder : NamedBuilder
     private readonly List<MethodBuilder> _methods = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly List<TypeSyntax> _interfaces = [];
+    private readonly List<string> _typeParameters = [];
+    private readonly Dictionary<string, List<string>> _constraints = [];
 
     private protected TypeBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
     {
@@ -110,6 +112,30 @@ public abstract class TypeBuilder : NamedBuilder
 
     private protected void AddInterface(TypeSyntax @interface)
         => _interfaces.Add(@interface);
+
+    private protected void AddTypeParameter(string name)
+        => _typeParameters.Add(name ?? throw new ArgumentNullException(nameof(name)));
+
+    private protected void AddConstraint(string typeParameter, string constraint)
+    {
+        if (constraint is null) throw new ArgumentNullException(nameof(constraint));
+        if (!_constraints.TryGetValue(typeParameter, out var list))
+            _constraints[typeParameter] = list = [];
+        list.Add(constraint);
+    }
+
+    // Applies the type-parameter list and where-clauses to a declaration.
+    private protected TDeclaration ApplyGenerics<TDeclaration>(TDeclaration declaration)
+        where TDeclaration : TypeDeclarationSyntax
+    {
+        SyntaxGenerics.Validate($"Type '{Name}'", _typeParameters, _constraints);
+
+        if (SyntaxGenerics.TypeParameterList(_typeParameters) is { } list)
+            declaration = (TDeclaration)declaration.WithTypeParameterList(list);
+
+        var clauses = SyntaxGenerics.ConstraintClauses(_typeParameters, _constraints);
+        return clauses.Count == 0 ? declaration : (TDeclaration)declaration.WithConstraintClauses(clauses);
+    }
 
     /// <summary>
     /// Builds the base list from an optional base type followed by the implemented
@@ -200,6 +226,23 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     public TSelf WithInterface<TInterface>()
     {
         AddInterface(TypeNameBuilder.New<TInterface>().BuildTypeSyntax());
+        return (TSelf)this;
+    }
+
+    /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>
+    public TSelf WithTypeParameter(string name)
+    {
+        AddTypeParameter(name);
+        return (TSelf)this;
+    }
+
+    /// <summary>
+    /// Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>. Call once
+    /// per constraint; C# order is class/struct first, new() last.
+    /// </summary>
+    public TSelf WithConstraint(string typeParameter, string constraint)
+    {
+        AddConstraint(typeParameter, constraint);
         return (TSelf)this;
     }
 }

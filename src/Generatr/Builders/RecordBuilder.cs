@@ -18,6 +18,8 @@ public class RecordBuilder : NamedBuilder
     private readonly List<IParameter> _params = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly List<TypeSyntax> _interfaces = [];
+    private readonly List<string> _typeParameters = [];
+    private readonly Dictionary<string, List<string>> _constraints = [];
     private bool _isStruct;
 
     internal RecordBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
@@ -54,6 +56,19 @@ public class RecordBuilder : NamedBuilder
     public RecordBuilder WithInterface<TInterface>()
         => With(() => _interfaces.Add(TypeNameBuilder.New<TInterface>().BuildTypeSyntax()));
 
+    /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>
+    public RecordBuilder WithTypeParameter(string name)
+        => With(() => _typeParameters.Add(name ?? throw new ArgumentNullException(nameof(name))));
+
+    /// <summary>Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>.</summary>
+    public RecordBuilder WithConstraint(string typeParameter, string constraint) => With(() =>
+    {
+        if (constraint is null) throw new ArgumentNullException(nameof(constraint));
+        if (!_constraints.TryGetValue(typeParameter, out var list))
+            _constraints[typeParameter] = list = [];
+        list.Add(constraint);
+    });
+
     #endregion
 
     internal RecordDeclarationSyntax BuildRecordDeclaration()
@@ -66,8 +81,16 @@ public class RecordBuilder : NamedBuilder
             .WithParameterList(SyntaxParameters.List(_params))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
+        SyntaxGenerics.Validate($"Record '{Name}'", _typeParameters, _constraints);
+        if (SyntaxGenerics.TypeParameterList(_typeParameters) is { } typeParams)
+            declaration = declaration.WithTypeParameterList(typeParams);
+
         if (SyntaxBaseList.From(_interfaces) is { } baseList)
             declaration = declaration.WithBaseList(baseList);
+
+        var clauses = SyntaxGenerics.ConstraintClauses(_typeParameters, _constraints);
+        if (clauses.Count > 0)
+            declaration = declaration.WithConstraintClauses(clauses);
 
         // A record struct carries an explicit `struct` keyword; a record class carries none.
         return _isStruct
