@@ -30,8 +30,14 @@ public class StructBuilder : TypeBuilder<StructBuilder>
     #endregion
 
     protected override TypeDeclarationSyntax BuildTypeDeclaration()
-        => StructDeclaration(Name)
+    {
+        var declaration = StructDeclaration(Name)
             .WithAttributeLists(BuildAttributeLists())
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, isReadonly: IsReadonly, isPartial: IsPartial))
             .WithMembers(BuildMembers());
+
+        // Structs have no base class, only implemented interfaces.
+        var baseList = BuildBaseList(null);
+        return baseList is null ? declaration : declaration.WithBaseList(baseList);
+    }
 }

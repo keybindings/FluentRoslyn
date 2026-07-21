@@ -44,9 +44,8 @@ public class ClassBuilder : TypeBuilder<ClassBuilder>
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial))
             .WithMembers(BuildMembers());
 
-        return ParentType is { } parent
-            ? declaration.WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
-                SimpleBaseType(parent.BuildTypeSyntax()))))
-            : declaration;
+        // Base class (if any) first, then implemented interfaces.
+        var baseList = BuildBaseList(ParentType?.BuildTypeSyntax());
+        return baseList is null ? declaration : declaration.WithBaseList(baseList);
     }
 }

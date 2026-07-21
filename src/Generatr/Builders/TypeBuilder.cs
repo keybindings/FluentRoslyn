@@ -22,6 +22,7 @@ public abstract class TypeBuilder : NamedBuilder
     private readonly List<PropertyBuilder> _properties = [];
     private readonly List<MethodBuilder> _methods = [];
     private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<TypeSyntax> _interfaces = [];
 
     private protected TypeBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
     {
@@ -107,6 +108,22 @@ public abstract class TypeBuilder : NamedBuilder
     private protected void AddAttribute(string attribute)
         => _attributes.Add(SyntaxAttributes.Attribute(attribute));
 
+    private protected void AddInterface(TypeSyntax @interface)
+        => _interfaces.Add(@interface);
+
+    /// <summary>
+    /// Builds the base list from an optional base type followed by the implemented
+    /// interfaces (C# requires the base class first). Null when there is neither.
+    /// </summary>
+    private protected BaseListSyntax? BuildBaseList(TypeSyntax? baseType)
+    {
+        var baseTypes = new List<BaseTypeSyntax>();
+        if (baseType is not null) baseTypes.Add(SimpleBaseType(baseType));
+        baseTypes.AddRange(_interfaces.Select(i => (BaseTypeSyntax)SimpleBaseType(i)));
+
+        return baseTypes.Count == 0 ? null : BaseList(SeparatedList(baseTypes));
+    }
+
     public CompilationUnitSyntax BuildCompilationUnit()
         => Namespace.CompilationUnitFor(BuildTypeDeclaration(), IsFileScopedNamespace);
 
@@ -163,6 +180,23 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     public TSelf WithAttribute(string attribute)
     {
         AddAttribute(attribute);
+        return (TSelf)this;
+    }
+
+    /// <summary>
+    /// Adds an implemented interface from a raw name, e.g.
+    /// <c>WithInterface("IEquatable&lt;Point&gt;")</c>.
+    /// </summary>
+    public TSelf WithInterface(string interfaceName)
+    {
+        AddInterface(ParseTypeName(interfaceName ?? throw new ArgumentNullException(nameof(interfaceName))));
+        return (TSelf)this;
+    }
+
+    /// <summary>Adds an implemented interface from a type, e.g. <c>WithInterface&lt;IDisposable&gt;()</c>.</summary>
+    public TSelf WithInterface<TInterface>()
+    {
+        AddInterface(TypeNameBuilder.New<TInterface>().BuildTypeSyntax());
         return (TSelf)this;
     }
 }
