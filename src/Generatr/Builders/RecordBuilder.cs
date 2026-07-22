@@ -50,7 +50,7 @@ public class RecordBuilder : NamedBuilder
 
     /// <summary>Adds an implemented interface from a raw name, e.g. <c>WithInterface("IEquatable&lt;Person&gt;")</c>.</summary>
     public RecordBuilder WithInterface(string interfaceName)
-        => With(() => _interfaces.Add(ParseTypeName(interfaceName ?? throw new ArgumentNullException(nameof(interfaceName)))));
+        => With(() => _interfaces.Add(SyntaxParse.TypeName(interfaceName)));
 
     /// <summary>Adds an implemented interface from a type, e.g. <c>WithInterface&lt;IDisposable&gt;()</c>.</summary>
     public RecordBuilder WithInterface<TInterface>()

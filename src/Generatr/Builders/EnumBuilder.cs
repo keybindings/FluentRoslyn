@@ -20,7 +20,7 @@ public class EnumBuilder : NamedBuilder
         typeof(int), typeof(uint), typeof(long), typeof(ulong),
     ];
 
-    private readonly List<(string Name, long? Value)> _members = [];
+    private readonly List<(string Name, long? Value, ExpressionSyntax? Raw)> _members = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private TypeNameBuilder? _underlyingType;
     private Type? _underlyingClrType;
@@ -55,10 +55,18 @@ public class EnumBuilder : NamedBuilder
     public EnumBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
     /// <summary>Adds a member with an implicit value: <c>Name</c>.</summary>
-    public EnumBuilder AddMember(string name) => With(() => _members.Add((RequireName(name), null)));
+    public EnumBuilder AddMember(string name) => With(() => _members.Add((RequireName(name), null, null)));
 
     /// <summary>Adds a member with an explicit value: <c>Name = value</c>.</summary>
-    public EnumBuilder AddMember(string name, long value) => With(() => _members.Add((RequireName(name), value)));
+    public EnumBuilder AddMember(string name, long value) => With(() => _members.Add((RequireName(name), value, null)));
+
+    /// <summary>
+    /// Adds a member whose value is a raw constant expression, e.g.
+    /// <c>AddMember("All", "0xFFFFFFFFFFFFFFFF")</c> or <c>AddMember("Flag", "1 &lt;&lt; 20")</c> —
+    /// the escape hatch for values a <see cref="long"/> cannot express.
+    /// </summary>
+    public EnumBuilder AddMember(string name, string valueExpression)
+        => With(() => _members.Add((RequireName(name), null, SyntaxParse.Expression(valueExpression))));
 
     #endregion
 
@@ -85,9 +93,12 @@ public class EnumBuilder : NamedBuilder
 
     internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
 
-    private static EnumMemberDeclarationSyntax BuildMember((string Name, long? Value) member)
+    private static EnumMemberDeclarationSyntax BuildMember((string Name, long? Value, ExpressionSyntax? Raw) member)
     {
         var declaration = EnumMemberDeclaration(Identifier(member.Name));
+
+        if (member.Raw is { } raw)
+            return declaration.WithEqualsValue(EqualsValueClause(raw));
 
         if (member.Value is not long value)
             return declaration;
@@ -105,7 +116,7 @@ public class EnumBuilder : NamedBuilder
     private void ValidateMembers()
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var (name, value) in _members)
+        foreach (var (name, value, _) in _members)
         {
             if (!seen.Add(name))
                 throw new InvalidOperationException($"Enum '{Name}' has a duplicate member '{name}'.");

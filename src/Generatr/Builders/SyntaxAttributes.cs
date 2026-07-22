@@ -22,15 +22,18 @@ internal static class SyntaxAttributes
             text = text.Substring(1, text.Length - 2).Trim();
 
         // Attach the attribute to a throwaway declaration and lift it back out; there is
-        // no public ParseAttribute entry point.
+        // no public ParseAttribute entry point. The wrapper is always well-formed, so any
+        // diagnostics come from the attribute itself — reject them rather than emit a
+        // broken `[...]` (Roslyn's error recovery keeps the counts at 1 regardless).
         if (ParseMemberDeclaration($"[{text}] class __AttrProbe {{ }}") is BaseTypeDeclarationSyntax decl
+            && !decl.ContainsDiagnostics
             && decl.AttributeLists.Count == 1
             && decl.AttributeLists[0].Attributes.Count == 1)
         {
             return decl.AttributeLists[0].Attributes[0];
         }
 
-        throw new ArgumentException($"Could not parse a single attribute from '{attribute}'.", nameof(attribute));
+        throw new ArgumentException($"'{attribute}' is not a valid C# attribute.", nameof(attribute));
     }
 
     /// <summary>

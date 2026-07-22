@@ -11,5 +11,5 @@ internal static class SyntaxBodies
     /// <c>if</c> block. The raw-text escape hatch until statements get a fluent model.
     /// </summary>
     internal static StatementSyntax Statement(string statement)
-        => ParseStatement(statement ?? throw new ArgumentNullException(nameof(statement)));
+        => SyntaxParse.Statement(statement);
 }

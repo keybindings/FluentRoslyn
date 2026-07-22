@@ -72,6 +72,26 @@ public class EnumBuilderTests
     }
 
     [TestMethod]
+    public void RawValueMember_EmitsExpressionVerbatim()
+    {
+        var e = NamespaceBuilder.Get("N").Enum("Perm")
+            .WithUnderlyingType<ulong>()
+            .WithAttribute("Flags")
+            .AddMember("None", 0)
+            .AddMember("All", "0xFFFFFFFFFFFFFFFF");
+
+        e.ToString().Should().Contain("All = 0xFFFFFFFFFFFFFFFF");
+    }
+
+    [TestMethod]
+    public void RawValueMember_Malformed_Throws()
+    {
+        var act = () => NamespaceBuilder.Get("N").Enum("E").AddMember("X", "1 <<");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [TestMethod]
     public void DuplicateMemberNames_Throws()
     {
         var e = NamespaceBuilder.Get("N").Enum("E").AddMember("A").AddMember("A");

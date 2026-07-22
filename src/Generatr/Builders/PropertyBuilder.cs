@@ -235,7 +235,7 @@ public class PropertyBuilder<T> : PropertyBuilder
         => access is null ? accessor : accessor.WithModifiers(SyntaxFormatting.Modifiers(access));
 
     private static ExpressionSyntax ParseExpr(string expression)
-        => ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression)));
+        => SyntaxParse.Expression(expression);
 
     private static List<StatementSyntax> ParseStatements(string[] statements)
     {

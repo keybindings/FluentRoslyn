@@ -63,6 +63,6 @@ internal static class SyntaxGenerics
             "class" => ClassOrStructConstraint(SyntaxKind.ClassConstraint),
             "struct" => ClassOrStructConstraint(SyntaxKind.StructConstraint),
             "new()" => ConstructorConstraint(),
-            var other => TypeConstraint(ParseTypeName(other)),
+            var other => TypeConstraint(SyntaxParse.TypeName(other)),
         };
 }

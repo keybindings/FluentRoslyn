@@ -42,7 +42,7 @@ public class InterfaceBuilder : NamedBuilder
 
     /// <summary>Extends a base interface from a raw name, e.g. <c>Extends("IDisposable")</c>.</summary>
     public InterfaceBuilder Extends(string interfaceName)
-        => With(() => _baseInterfaces.Add(ParseTypeName(interfaceName ?? throw new ArgumentNullException(nameof(interfaceName)))));
+        => With(() => _baseInterfaces.Add(SyntaxParse.TypeName(interfaceName)));
 
     /// <summary>Extends a base interface from a type, e.g. <c>Extends&lt;IDisposable&gt;()</c>.</summary>
     public InterfaceBuilder Extends<TInterface>()

@@ -41,7 +41,7 @@ public class FieldBuilder<T> : FieldBuilder
     /// escape hatch for values a literal cannot express.
     /// </summary>
     public FieldBuilder<T> WithInitializerExpression(string expression)
-        => With(() => Initializer = ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression))));
+        => With(() => Initializer = SyntaxParse.Expression(expression));
 
     #endregion
 

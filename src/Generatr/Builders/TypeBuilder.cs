@@ -216,7 +216,7 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     /// </summary>
     public TSelf WithInterface(string interfaceName)
     {
-        AddInterface(ParseTypeName(interfaceName ?? throw new ArgumentNullException(nameof(interfaceName))));
+        AddInterface(SyntaxParse.TypeName(interfaceName));
         return (TSelf)this;
     }
 

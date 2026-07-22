@@ -63,7 +63,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// </summary>
     public MethodBuilder Returns(string typeName) => With(() =>
     {
-        _returnType = ParseTypeName(typeName ?? throw new ArgumentNullException(nameof(typeName)));
+        _returnType = SyntaxParse.TypeName(typeName);
         _returnsVoid = false;
     });
 
@@ -88,7 +88,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// both void and value-returning methods.
     /// </summary>
     public MethodBuilder AsExpressionBody(string expression)
-        => With(() => _expressionBody = ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression))));
+        => With(() => _expressionBody = SyntaxParse.Expression(expression));
 
     /// <summary>
     /// Appends a complete statement to the method body, e.g. <c>"return a + b;"</c>.

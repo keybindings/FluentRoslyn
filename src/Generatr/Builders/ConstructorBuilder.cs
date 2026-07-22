@@ -55,7 +55,7 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
 
     /// <summary>Gives the constructor an expression body: <c>C(...) =&gt; expression;</c>.</summary>
     public ConstructorBuilder AsExpressionBody(string expression)
-        => With(() => _expressionBody = ParseExpression(expression ?? throw new ArgumentNullException(nameof(expression))));
+        => With(() => _expressionBody = SyntaxParse.Expression(expression));
 
     /// <summary>Appends a complete statement to the constructor body.</summary>
     public ConstructorBuilder AddStatement(string statement)
@@ -117,7 +117,7 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
         if (arguments is null) throw new ArgumentNullException(nameof(arguments));
 
         return ConstructorInitializer(kind, ArgumentList(SeparatedList(
-            arguments.Select(a => Argument(ParseExpression(a ?? throw new ArgumentNullException(nameof(arguments))))))));
+            arguments.Select(a => Argument(SyntaxParse.Expression(a))))));
     }
 
     private ConstructorBuilder With(Action action)
