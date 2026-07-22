@@ -16,8 +16,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     private readonly List<IParameter> _params;
     private readonly List<StatementSyntax> _statements = [];
     private readonly List<AttributeSyntax> _attributes = [];
-    private readonly List<string> _typeParameters = [];
-    private readonly Dictionary<string, List<string>> _constraints = [];
+    private readonly GenericParameters _generics = new();
     private ExpressionSyntax? _expressionBody;
 
     private MethodBuilder(
@@ -54,7 +53,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     public MethodBuilder WithParameter<T>(string name) => With(() => _params.Add(Parameter<T>.New(name)));
 
     /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>
-    public MethodBuilder WithTypeParameter(string name) => With(() => _typeParameters.Add(name ?? throw new ArgumentNullException(nameof(name))));
+    public MethodBuilder WithTypeParameter(string name) => With(() => _generics.AddTypeParameter(name));
 
     /// <summary>
     /// Sets the return type from a raw type name, e.g. <c>Returns("T")</c> or
@@ -72,13 +71,8 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// <c>WithConstraint("T", "IComparable&lt;T&gt;")</c>, or <c>WithConstraint("T", "new()")</c>.
     /// Call once per constraint; C# order is class/struct first, new() last.
     /// </summary>
-    public MethodBuilder WithConstraint(string typeParameter, string constraint) => With(() =>
-    {
-        if (constraint is null) throw new ArgumentNullException(nameof(constraint));
-        if (!_constraints.TryGetValue(typeParameter, out var list))
-            _constraints[typeParameter] = list = [];
-        list.Add(constraint);
-    });
+    public MethodBuilder WithConstraint(string typeParameter, string constraint)
+        => With(() => _generics.AddConstraint(typeParameter, constraint));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
     public MethodBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
@@ -115,7 +109,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
             .WithParameterList(SyntaxParameters.List(_params));
 
-        method = ApplyGenerics(method);
+        method = _generics.ApplyTo(method, $"Method '{Name}'");
 
         if (_expressionBody is not null)
         {
@@ -145,17 +139,6 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildMethod();
 
     internal override SyntaxNode BuildSyntax() => BuildMethod();
-
-    private MethodDeclarationSyntax ApplyGenerics(MethodDeclarationSyntax method)
-    {
-        SyntaxGenerics.Validate($"Method '{Name}'", _typeParameters, _constraints);
-
-        if (SyntaxGenerics.TypeParameterList(_typeParameters) is { } list)
-            method = method.WithTypeParameterList(list);
-
-        var clauses = SyntaxGenerics.ConstraintClauses(_typeParameters, _constraints);
-        return clauses.Count == 0 ? method : method.WithConstraintClauses(clauses);
-    }
 
     private MethodBuilder With(Action action)
     {

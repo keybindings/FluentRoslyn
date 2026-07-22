@@ -23,8 +23,7 @@ public abstract class TypeBuilder : NamedBuilder
     private readonly List<MethodBuilder> _methods = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly List<TypeSyntax> _interfaces = [];
-    private readonly List<string> _typeParameters = [];
-    private readonly Dictionary<string, List<string>> _constraints = [];
+    private readonly GenericParameters _generics = new();
 
     private protected TypeBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
     {
@@ -114,28 +113,15 @@ public abstract class TypeBuilder : NamedBuilder
         => _interfaces.Add(@interface);
 
     private protected void AddTypeParameter(string name)
-        => _typeParameters.Add(name ?? throw new ArgumentNullException(nameof(name)));
+        => _generics.AddTypeParameter(name);
 
     private protected void AddConstraint(string typeParameter, string constraint)
-    {
-        if (constraint is null) throw new ArgumentNullException(nameof(constraint));
-        if (!_constraints.TryGetValue(typeParameter, out var list))
-            _constraints[typeParameter] = list = [];
-        list.Add(constraint);
-    }
+        => _generics.AddConstraint(typeParameter, constraint);
 
     // Applies the type-parameter list and where-clauses to a declaration.
     private protected TDeclaration ApplyGenerics<TDeclaration>(TDeclaration declaration)
         where TDeclaration : TypeDeclarationSyntax
-    {
-        SyntaxGenerics.Validate($"Type '{Name}'", _typeParameters, _constraints);
-
-        if (SyntaxGenerics.TypeParameterList(_typeParameters) is { } list)
-            declaration = (TDeclaration)declaration.WithTypeParameterList(list);
-
-        var clauses = SyntaxGenerics.ConstraintClauses(_typeParameters, _constraints);
-        return clauses.Count == 0 ? declaration : (TDeclaration)declaration.WithConstraintClauses(clauses);
-    }
+        => _generics.ApplyTo(declaration, $"Type '{Name}'");
 
     /// <summary>
     /// Builds the base list from an optional base type followed by the implemented
