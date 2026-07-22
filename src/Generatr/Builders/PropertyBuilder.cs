@@ -12,7 +12,7 @@ public class PropertyBuilder<T> : PropertyBuilder
 {
     private readonly TypeNameBuilder _typeName = TypeNameBuilder.New<T>();
 
-    public PropertyBuilder(TypeBuilder declaringType, string name, AccessModifier accessModifier) : base(declaringType, name, accessModifier)
+    public PropertyBuilder(string name, AccessModifier accessModifier) : base(name, accessModifier)
     {
     }
 
@@ -255,8 +255,8 @@ public class PropertyBuilder<T> : PropertyBuilder
     }
 }
 
-public abstract class PropertyBuilder(TypeBuilder declaringType, string name, AccessModifier accessModifier)
-    : NamedBuilder(name, NameValidation), IAccessModifier, IMemberSyntaxBuilder
+public abstract class PropertyBuilder(string name, AccessModifier accessModifier)
+    : NamedBuilder(name, Identifiers.Validate), IAccessModifier, IMemberSyntaxBuilder
 {
     // C#'s rule for accessor modifiers: the modifier must be strictly more restrictive
     // than the property's own accessibility. The valid (property -> accessor) pairs do
@@ -271,8 +271,6 @@ public abstract class PropertyBuilder(TypeBuilder declaringType, string name, Ac
         [AccessModifier.PrivateProtected] = [AccessModifier.Private],
         [AccessModifier.Private] = [],
     };
-
-    public TypeBuilder DeclaringType { get; } = declaringType;
 
     public bool IsStatic { get; set; }
 
@@ -324,7 +322,4 @@ public abstract class PropertyBuilder(TypeBuilder declaringType, string name, Ac
             throw new InvalidOperationException(
                 $"Property '{Name}': setter access modifier '{SetterAccessModifier}' must be strictly more restrictive than the property's '{AccessModifier}'.");
     }
-
-    private static void NameValidation(string name)
-        => Identifiers.Validate(name);
 }

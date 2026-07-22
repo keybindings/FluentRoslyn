@@ -25,7 +25,7 @@ public class EnumBuilder : NamedBuilder
     private TypeNameBuilder? _underlyingType;
     private Type? _underlyingClrType;
 
-    internal EnumBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
+    internal EnumBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
     {
         Namespace = @namespace;
     }
@@ -146,9 +146,6 @@ public class EnumBuilder : NamedBuilder
         Identifiers.Validate(name);
         return name;
     }
-
-    private static void NameValidation(string name)
-        => Identifiers.Validate(name);
 
     private EnumBuilder With(Action action)
     {

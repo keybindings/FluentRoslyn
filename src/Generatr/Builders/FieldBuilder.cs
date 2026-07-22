@@ -9,7 +9,7 @@ namespace Generatr.Builders;
 
 public class FieldBuilder<T> : FieldBuilder
 {
-    internal FieldBuilder(TypeBuilder declaringType, string name, AccessModifier accessModifier) : base(declaringType, TypeNameBuilder.New<T>(), name, accessModifier)
+    internal FieldBuilder(string name, AccessModifier accessModifier) : base(TypeNameBuilder.New<T>(), name, accessModifier)
     {
     }
 
@@ -53,19 +53,16 @@ public class FieldBuilder<T> : FieldBuilder
 }
 
 public abstract class FieldBuilder(
-    TypeBuilder declaringType,
     TypeNameBuilder typeName,
     string name,
     AccessModifier accessModifier)
-    : NamedBuilder(name, NameValidation), IAccessModifier, IMemberSyntaxBuilder
+    : NamedBuilder(name, Identifiers.Validate), IAccessModifier, IMemberSyntaxBuilder
 {
     public bool IsReadonly { get; set; }
 
     public bool IsStatic { get; set; }
 
     public bool IsConst { get; set; }
-
-    public TypeBuilder DeclaringType { get; } = declaringType;
 
     public AccessModifier AccessModifier { get; set; } = accessModifier;
 
@@ -98,7 +95,4 @@ public abstract class FieldBuilder(
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildField();
 
     internal override SyntaxNode BuildSyntax() => BuildField();
-
-    private static void NameValidation(string name)
-        => Identifiers.Validate(name);
 }

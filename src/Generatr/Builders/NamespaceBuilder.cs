@@ -9,7 +9,7 @@ namespace Generatr.Builders;
 public class NamespaceBuilder : NamedBuilder
 {
     public static readonly NamespaceBuilder None = new(string.Empty, _ => {});
-    private NamespaceBuilder(NamespaceBuilder parent, string name) : base(name, NameValidation)
+    private NamespaceBuilder(NamespaceBuilder parent, string name) : base(name, Identifiers.Validate)
     {
         Parent = parent;
     }
@@ -97,7 +97,4 @@ public class NamespaceBuilder : NamedBuilder
     internal override SyntaxNode BuildSyntax() => BuildNameSyntax();
 
     public override string ToString() => IsGlobal ? string.Empty : base.ToString();
-
-    internal static void NameValidation(string name)
-        => Identifiers.Validate(name);
 }

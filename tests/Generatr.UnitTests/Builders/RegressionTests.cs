@@ -228,7 +228,7 @@ public class RegressionTests
     [TestMethod]
     public void Property_AutoProperty_BuildsGetAndSet()
     {
-        var pb = new PropertyBuilder<int>(NewClass(), "Count", AccessModifier.Public);
+        var pb = new PropertyBuilder<int>("Count", AccessModifier.Public);
 
         pb.ToString().Should().Be("public int Count { get; set; }");
     }
@@ -236,7 +236,7 @@ public class RegressionTests
     [TestMethod]
     public void Property_StaticAutoProperty_BuildsStaticKeyword()
     {
-        var pb = new PropertyBuilder<string>(NewClass(), "Name", AccessModifier.Private) { IsStatic = true };
+        var pb = new PropertyBuilder<string>("Name", AccessModifier.Private) { IsStatic = true };
 
         pb.ToString().Should().Be("private static string Name { get; set; }");
     }
@@ -244,7 +244,7 @@ public class RegressionTests
     [TestMethod]
     public void Property_NonAutoProperty_WithoutBody_Throws()
     {
-        var pb = new PropertyBuilder<int>(NewClass(), "Count", AccessModifier.Public) { IsAutoProperty = false };
+        var pb = new PropertyBuilder<int>("Count", AccessModifier.Public) { IsAutoProperty = false };
 
         var act = () => pb.ToString();
 

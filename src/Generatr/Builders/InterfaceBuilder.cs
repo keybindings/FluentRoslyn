@@ -20,7 +20,7 @@ public class InterfaceBuilder : NamedBuilder
     private readonly List<string> _typeParameters = [];
     private readonly Dictionary<string, List<string>> _constraints = [];
 
-    internal InterfaceBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
+    internal InterfaceBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
     {
         Namespace = @namespace;
     }
@@ -120,9 +120,6 @@ public class InterfaceBuilder : NamedBuilder
         => SourceText.From(ToString(), Encoding.UTF8);
 
     internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
-
-    private static void NameValidation(string name)
-        => Identifiers.Validate(name);
 
     private InterfaceBuilder With(Action action)
     {

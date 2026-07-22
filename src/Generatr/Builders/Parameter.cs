@@ -6,7 +6,7 @@ namespace Generatr.Builders;
 
 public class Parameter<T> : NamedBuilder, IParameter
 {
-    private Parameter(string name) : base(name, NameValidation)
+    private Parameter(string name) : base(name, Identifiers.Validate)
     {
         TypeName = TypeNameBuilder.New<T>();
     }
@@ -18,7 +18,4 @@ public class Parameter<T> : NamedBuilder, IParameter
     internal override SyntaxNode BuildSyntax()
         => SyntaxFactory.Parameter(SyntaxFactory.Identifier(Name))
             .WithType(TypeName.BuildTypeSyntax());
-
-    private static void NameValidation(string name)
-        => Identifiers.Validate(name);
 }

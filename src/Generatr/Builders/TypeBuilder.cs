@@ -26,7 +26,7 @@ public abstract class TypeBuilder : NamedBuilder
     private readonly List<string> _typeParameters = [];
     private readonly Dictionary<string, List<string>> _constraints = [];
 
-    private protected TypeBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
+    private protected TypeBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
     {
         Namespace = @namespace;
     }
@@ -44,7 +44,7 @@ public abstract class TypeBuilder : NamedBuilder
 
     public FieldBuilder<T> DefineField<T>(string name, AccessModifier accessModifier)
     {
-        var fb = new FieldBuilder<T>(this, name, accessModifier);
+        var fb = new FieldBuilder<T>(name, accessModifier);
         _fields.Add(fb);
         return fb;
     }
@@ -64,7 +64,7 @@ public abstract class TypeBuilder : NamedBuilder
 
     public PropertyBuilder<T> DefineProperty<T>(string name, AccessModifier accessModifier)
     {
-        var pb = new PropertyBuilder<T>(this, name, accessModifier);
+        var pb = new PropertyBuilder<T>(name, accessModifier);
         _properties.Add(pb);
         return pb;
     }
@@ -166,9 +166,6 @@ public abstract class TypeBuilder : NamedBuilder
             : QualifiedName(Namespace.BuildNameSyntax(), IdentifierName(Name));
 
     internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
-
-    private static void NameValidation(string name)
-        => Identifiers.Validate(name);
 
     // AccessabilityLevel runs Public = 0 through Private = 5, so ascending gives
     // least protected first.

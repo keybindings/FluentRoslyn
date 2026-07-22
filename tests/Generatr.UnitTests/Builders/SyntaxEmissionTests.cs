@@ -135,7 +135,7 @@ public class SyntaxEmissionTests
     [TestMethod]
     public void Property_GetOnly_OmitsSetAccessor()
     {
-        var pb = new PropertyBuilder<int>(NewClass(), "Count", AccessModifier.Public) { HasSet = false };
+        var pb = new PropertyBuilder<int>("Count", AccessModifier.Public) { HasSet = false };
 
         pb.ToString().Should().Be("public int Count { get; }");
     }
@@ -143,7 +143,7 @@ public class SyntaxEmissionTests
     [TestMethod]
     public void Property_WithoutGetter_Throws()
     {
-        var pb = new PropertyBuilder<int>(NewClass(), "Count", AccessModifier.Public) { HasGet = false };
+        var pb = new PropertyBuilder<int>("Count", AccessModifier.Public) { HasGet = false };
 
         var act = () => pb.ToString();
 

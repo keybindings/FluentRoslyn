@@ -19,12 +19,9 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
 
     internal ConstructorBuilder(TypeBuilder declaringType, AccessModifier accessModifier, IEnumerable<IParameter> @params) : base(declaringType.Name, _ => { })
     {
-        DeclaringType = declaringType;
         AccessModifier = accessModifier;
         _params = @params.ToList();
     }
-
-    public TypeBuilder DeclaringType { get; }
 
     public bool IsStatic { get; set; }
 

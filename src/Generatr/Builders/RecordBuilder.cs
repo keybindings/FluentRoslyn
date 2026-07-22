@@ -22,7 +22,7 @@ public class RecordBuilder : NamedBuilder
     private readonly Dictionary<string, List<string>> _constraints = [];
     private bool _isStruct;
 
-    internal RecordBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
+    internal RecordBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
     {
         Namespace = @namespace;
     }
@@ -105,9 +105,6 @@ public class RecordBuilder : NamedBuilder
         => SourceText.From(ToString(), Encoding.UTF8);
 
     internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
-
-    private static void NameValidation(string name)
-        => Identifiers.Validate(name);
 
     private RecordBuilder With(Action action)
     {
