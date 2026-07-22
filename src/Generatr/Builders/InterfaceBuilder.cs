@@ -11,24 +11,16 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
-public class InterfaceBuilder : NamedBuilder
+public class InterfaceBuilder : TypeDeclarationBuilder
 {
     private readonly List<InterfacePropertyBuilder> _properties = [];
     private readonly List<InterfaceMethodBuilder> _methods = [];
-    private readonly List<AttributeSyntax> _attributes = [];
     private readonly List<TypeSyntax> _baseInterfaces = [];
     private readonly GenericParameters _generics = new();
 
-    internal InterfaceBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
+    internal InterfaceBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
     {
-        Namespace = @namespace;
     }
-
-    public NamespaceBuilder Namespace { get; }
-
-    public bool IsFileScopedNamespace { get; set; } = true;
-
-    public AccessModifier AccessModifier { get; set; } = AccessModifier.Public;
 
     #region FluentMethods
 
@@ -37,7 +29,7 @@ public class InterfaceBuilder : NamedBuilder
     public InterfaceBuilder BlockScopedNamespace() => With(() => IsFileScopedNamespace = false);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
-    public InterfaceBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public InterfaceBuilder WithAttribute(string attribute) => With(() => AddAttribute(attribute));
 
     /// <summary>Extends a base interface from a raw name, e.g. <c>Extends("IDisposable")</c>.</summary>
     public InterfaceBuilder Extends(string interfaceName)
@@ -82,14 +74,14 @@ public class InterfaceBuilder : NamedBuilder
 
     #endregion
 
-    internal InterfaceDeclarationSyntax BuildInterfaceDeclaration()
+    protected override MemberDeclarationSyntax BuildDeclaration()
     {
         // Signatures group as properties then methods, preserving insertion order.
         var members = _properties.Select(p => (MemberDeclarationSyntax)p.BuildProperty())
             .Concat(_methods.Select(m => (MemberDeclarationSyntax)m.BuildMethod()));
 
         var declaration = InterfaceDeclaration(Name)
-            .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
+            .WithAttributeLists(BuildAttributeLists())
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
             .WithMembers(List(members));
 
@@ -100,14 +92,6 @@ public class InterfaceBuilder : NamedBuilder
 
         return declaration;
     }
-
-    public CompilationUnitSyntax BuildCompilationUnit()
-        => Namespace.CompilationUnitFor(BuildInterfaceDeclaration(), IsFileScopedNamespace);
-
-    public SourceText ToSourceText()
-        => SourceText.From(ToString(), Encoding.UTF8);
-
-    internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
 
     private InterfaceBuilder With(Action action)
     {

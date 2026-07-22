@@ -12,7 +12,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
-public class EnumBuilder : NamedBuilder
+public class EnumBuilder : TypeDeclarationBuilder
 {
     private static readonly HashSet<Type> IntegralTypes =
     [
@@ -21,20 +21,12 @@ public class EnumBuilder : NamedBuilder
     ];
 
     private readonly List<(string Name, long? Value, ExpressionSyntax? Raw)> _members = [];
-    private readonly List<AttributeSyntax> _attributes = [];
     private TypeNameBuilder? _underlyingType;
     private Type? _underlyingClrType;
 
-    internal EnumBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
+    internal EnumBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
     {
-        Namespace = @namespace;
     }
-
-    public NamespaceBuilder Namespace { get; }
-
-    public bool IsFileScopedNamespace { get; set; } = true;
-
-    public AccessModifier AccessModifier { get; set; } = AccessModifier.Public;
 
     #region FluentMethods
 
@@ -52,7 +44,7 @@ public class EnumBuilder : NamedBuilder
     });
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Flags")</c>.</summary>
-    public EnumBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public EnumBuilder WithAttribute(string attribute) => With(() => AddAttribute(attribute));
 
     /// <summary>Adds a member with an implicit value: <c>Name</c>.</summary>
     public EnumBuilder AddMember(string name) => With(() => _members.Add((RequireName(name), null, null)));
@@ -70,12 +62,12 @@ public class EnumBuilder : NamedBuilder
 
     #endregion
 
-    internal EnumDeclarationSyntax BuildEnumDeclaration()
+    protected override MemberDeclarationSyntax BuildDeclaration()
     {
         ValidateMembers();
 
         var declaration = EnumDeclaration(Name)
-            .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
+            .WithAttributeLists(BuildAttributeLists())
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
             .WithMembers(SeparatedList(_members.Select(BuildMember)));
 
@@ -84,14 +76,6 @@ public class EnumBuilder : NamedBuilder
             : declaration.WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(
                 SimpleBaseType(_underlyingType.BuildTypeSyntax()))));
     }
-
-    public CompilationUnitSyntax BuildCompilationUnit()
-        => Namespace.CompilationUnitFor(BuildEnumDeclaration(), IsFileScopedNamespace);
-
-    public SourceText ToSourceText()
-        => SourceText.From(ToString(), Encoding.UTF8);
-
-    internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
 
     private static EnumMemberDeclarationSyntax BuildMember((string Name, long? Value, ExpressionSyntax? Raw) member)
     {

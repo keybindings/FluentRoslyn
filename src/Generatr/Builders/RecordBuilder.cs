@@ -13,24 +13,16 @@ namespace Generatr.Builders;
 /// <summary>
 /// Builds a positional record: <c>public record Person(string Name, int Age);</c>.
 /// </summary>
-public class RecordBuilder : NamedBuilder
+public class RecordBuilder : TypeDeclarationBuilder
 {
     private readonly List<IParameter> _params = [];
-    private readonly List<AttributeSyntax> _attributes = [];
     private readonly List<TypeSyntax> _interfaces = [];
     private readonly GenericParameters _generics = new();
     private bool _isStruct;
 
-    internal RecordBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
+    internal RecordBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
     {
-        Namespace = @namespace;
     }
-
-    public NamespaceBuilder Namespace { get; }
-
-    public bool IsFileScopedNamespace { get; set; } = true;
-
-    public AccessModifier AccessModifier { get; set; } = AccessModifier.Public;
 
     #region FluentMethods
 
@@ -45,7 +37,7 @@ public class RecordBuilder : NamedBuilder
     public RecordBuilder WithParameter<T>(string name) => With(() => _params.Add(Parameter<T>.New(name)));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Serializable")</c>.</summary>
-    public RecordBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public RecordBuilder WithAttribute(string attribute) => With(() => AddAttribute(attribute));
 
     /// <summary>Adds an implemented interface from a raw name, e.g. <c>WithInterface("IEquatable&lt;Person&gt;")</c>.</summary>
     public RecordBuilder WithInterface(string interfaceName)
@@ -65,12 +57,12 @@ public class RecordBuilder : NamedBuilder
 
     #endregion
 
-    internal RecordDeclarationSyntax BuildRecordDeclaration()
+    protected override MemberDeclarationSyntax BuildDeclaration()
     {
         var kind = _isStruct ? SyntaxKind.RecordStructDeclaration : SyntaxKind.RecordDeclaration;
 
         var declaration = RecordDeclaration(kind, Token(SyntaxKind.RecordKeyword), Identifier(Name))
-            .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
+            .WithAttributeLists(BuildAttributeLists())
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
             .WithParameterList(SyntaxParameters.List(_params))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
@@ -85,14 +77,6 @@ public class RecordBuilder : NamedBuilder
             ? declaration.WithClassOrStructKeyword(Token(SyntaxKind.StructKeyword))
             : declaration;
     }
-
-    public CompilationUnitSyntax BuildCompilationUnit()
-        => Namespace.CompilationUnitFor(BuildRecordDeclaration(), IsFileScopedNamespace);
-
-    public SourceText ToSourceText()
-        => SourceText.From(ToString(), Encoding.UTF8);
-
-    internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
 
     private RecordBuilder With(Action action)
     {
