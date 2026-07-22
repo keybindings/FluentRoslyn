@@ -66,7 +66,9 @@ public class StructBuilderTests
         var s = NewStruct();
         s.DefineMethod("Run");
         s.DefineProperty<int>("X");
-        s.DefineConstructor();
+        // Assign all fields so the emitted struct actually compiles (CS0171) rather than
+        // asserting member order on invalid source.
+        s.DefineConstructor().AddStatement("_x = 0;").AddStatement("X = 0;");
         s.DefineField<int>("_x");
 
         var value = s.ToString();
