@@ -30,12 +30,12 @@ public class EnumBuilder : TypeDeclarationBuilder
 
     #region FluentMethods
 
-    public EnumBuilder WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+    public EnumBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
-    public EnumBuilder BlockScopedNamespace() => With(() => IsFileScopedNamespace = false);
+    public EnumBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
     /// <summary>Sets the underlying integral type: <c>enum Name : byte</c>.</summary>
-    public EnumBuilder WithUnderlyingType<T>() => With(() =>
+    public EnumBuilder WithUnderlyingType<T>() => this.With(() =>
     {
         if (!IntegralTypes.Contains(typeof(T)))
             throw new ArgumentException($"Enum underlying type must be an integral type, not '{typeof(T)}'.", nameof(T));
@@ -44,13 +44,13 @@ public class EnumBuilder : TypeDeclarationBuilder
     });
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Flags")</c>.</summary>
-    public EnumBuilder WithAttribute(string attribute) => With(() => AddAttribute(attribute));
+    public EnumBuilder WithAttribute(string attribute) => this.With(() => AddAttribute(attribute));
 
     /// <summary>Adds a member with an implicit value: <c>Name</c>.</summary>
-    public EnumBuilder AddMember(string name) => With(() => _members.Add((RequireName(name), null, null)));
+    public EnumBuilder AddMember(string name) => this.With(() => _members.Add((RequireName(name), null, null)));
 
     /// <summary>Adds a member with an explicit value: <c>Name = value</c>.</summary>
-    public EnumBuilder AddMember(string name, long value) => With(() => _members.Add((RequireName(name), value, null)));
+    public EnumBuilder AddMember(string name, long value) => this.With(() => _members.Add((RequireName(name), value, null)));
 
     /// <summary>
     /// Adds a member whose value is a raw constant expression, e.g.
@@ -58,7 +58,7 @@ public class EnumBuilder : TypeDeclarationBuilder
     /// the escape hatch for values a <see cref="long"/> cannot express.
     /// </summary>
     public EnumBuilder AddMember(string name, string valueExpression)
-        => With(() => _members.Add((RequireName(name), null, SyntaxParse.Expression(valueExpression))));
+        => this.With(() => _members.Add((RequireName(name), null, SyntaxParse.Expression(valueExpression))));
 
     #endregion
 
@@ -129,11 +129,5 @@ public class EnumBuilder : TypeDeclarationBuilder
     {
         Identifiers.Validate(name);
         return name;
-    }
-
-    private EnumBuilder With(Action action)
-    {
-        action();
-        return this;
     }
 }

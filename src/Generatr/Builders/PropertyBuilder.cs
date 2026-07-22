@@ -18,18 +18,18 @@ public class PropertyBuilder<T> : PropertyBuilder
 
     #region FluentMethods
 
-    public PropertyBuilder<T> Static() => With(() => IsStatic = true);
+    public PropertyBuilder<T> Static() => this.With(() => IsStatic = true);
 
-    public PropertyBuilder<T> WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+    public PropertyBuilder<T> WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonIgnore")</c>.</summary>
-    public PropertyBuilder<T> WithAttribute(string attribute) => With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public PropertyBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
     /// <summary>Emits a get-only auto-property (<c>{ get; }</c>) by dropping the setter.</summary>
-    public PropertyBuilder<T> GetOnly() => With(() => HasSet = false);
+    public PropertyBuilder<T> GetOnly() => this.With(() => HasSet = false);
 
     /// <summary>Emits the setter as an init accessor: <c>{ get; init; }</c>.</summary>
-    public PropertyBuilder<T> InitOnly() => With(() =>
+    public PropertyBuilder<T> InitOnly() => this.With(() =>
     {
         HasSet = true;
         SetterIsInit = true;
@@ -40,28 +40,28 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// must be strictly more restrictive than the property's own.
     /// </summary>
     public PropertyBuilder<T> WithSetterAccessModifier(AccessModifier accessModifier)
-        => With(() => SetterAccessModifier = accessModifier);
+        => this.With(() => SetterAccessModifier = accessModifier);
 
     /// <summary>
     /// Sets a default value: <c>{ get; set; } = value;</c>. Supports the primitive
     /// types with a literal form; use <see cref="WithInitializerExpression"/> for
     /// enums, object construction, or any other expression.
     /// </summary>
-    public PropertyBuilder<T> WithInitializer(T value) => With(() => Initializer = SyntaxLiterals.Expression(value));
+    public PropertyBuilder<T> WithInitializer(T value) => this.With(() => Initializer = SyntaxLiterals.Expression(value));
 
     /// <summary>
     /// Sets a default value from a raw C# expression, e.g. <c>"new()"</c> or
     /// <c>"TimeSpan.Zero"</c>. The escape hatch for values a literal cannot express.
     /// </summary>
     public PropertyBuilder<T> WithInitializerExpression(string expression)
-        => With(() => Initializer = ParseExpr(expression));
+        => this.With(() => Initializer = ParseExpr(expression));
 
     /// <summary>
     /// Emits an expression-bodied property: <c>public int Count =&gt; _count;</c>.
     /// Replaces the accessor list entirely.
     /// </summary>
     public PropertyBuilder<T> AsExpressionBody(string expression)
-        => With(() =>
+        => this.With(() =>
         {
             IsAutoProperty = false;
             ExpressionBody = ParseExpr(expression);
@@ -72,7 +72,7 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// property into a non-auto property with expression-bodied accessors.
     /// </summary>
     public PropertyBuilder<T> WithGetterExpression(string expression)
-        => With(() =>
+        => this.With(() =>
         {
             IsAutoProperty = false;
             GetterExpression = ParseExpr(expression);
@@ -83,7 +83,7 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// being assigned is available as <c>value</c>.
     /// </summary>
     public PropertyBuilder<T> WithSetterExpression(string expression)
-        => With(() =>
+        => this.With(() =>
         {
             IsAutoProperty = false;
             HasSet = true;
@@ -95,7 +95,7 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// return on all paths.
     /// </summary>
     public PropertyBuilder<T> WithGetterBody(params string[] statements)
-        => With(() =>
+        => this.With(() =>
         {
             IsAutoProperty = false;
             GetterStatements = ParseStatements(statements);
@@ -106,7 +106,7 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// assigned is available as <c>value</c>.
     /// </summary>
     public PropertyBuilder<T> WithSetterBody(params string[] statements)
-        => With(() =>
+        => this.With(() =>
         {
             IsAutoProperty = false;
             HasSet = true;
@@ -246,12 +246,6 @@ public class PropertyBuilder<T> : PropertyBuilder
             parsed.Add(SyntaxBodies.Statement(statement));
 
         return parsed;
-    }
-
-    private PropertyBuilder<T> With(Action action)
-    {
-        action();
-        return this;
     }
 }
 

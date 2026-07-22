@@ -33,34 +33,34 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     /// Marks the constructor <c>static</c>. A static constructor takes no parameters,
     /// no access modifier, and no base/this initializer.
     /// </summary>
-    public ConstructorBuilder Static() => With(() => IsStatic = true);
+    public ConstructorBuilder Static() => this.With(() => IsStatic = true);
 
-    public ConstructorBuilder WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+    public ConstructorBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
-    public ConstructorBuilder WithParameter<T>(string name) => With(() => _params.Add(Parameter<T>.New(name)));
+    public ConstructorBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonConstructor")</c>.</summary>
-    public ConstructorBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public ConstructorBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
     /// <summary>Chains to a base constructor: <c>: base(arguments)</c>.</summary>
     public ConstructorBuilder CallingBase(params string[] arguments)
-        => With(() => _initializer = BuildInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
+        => this.With(() => _initializer = BuildInitializer(SyntaxKind.BaseConstructorInitializer, arguments));
 
     /// <summary>Chains to another constructor on this type: <c>: this(arguments)</c>.</summary>
     public ConstructorBuilder CallingThis(params string[] arguments)
-        => With(() => _initializer = BuildInitializer(SyntaxKind.ThisConstructorInitializer, arguments));
+        => this.With(() => _initializer = BuildInitializer(SyntaxKind.ThisConstructorInitializer, arguments));
 
     /// <summary>Gives the constructor an expression body: <c>C(...) =&gt; expression;</c>.</summary>
     public ConstructorBuilder AsExpressionBody(string expression)
-        => With(() => _expressionBody = SyntaxParse.Expression(expression));
+        => this.With(() => _expressionBody = SyntaxParse.Expression(expression));
 
     /// <summary>Appends a complete statement to the constructor body.</summary>
     public ConstructorBuilder AddStatement(string statement)
-        => With(() => _statements.Add(SyntaxBodies.Statement(statement)));
+        => this.With(() => _statements.Add(SyntaxBodies.Statement(statement)));
 
     /// <summary>Replaces the constructor body with the given statements.</summary>
     public ConstructorBuilder WithBody(params string[] statements)
-        => With(() =>
+        => this.With(() =>
         {
             _statements.Clear();
             foreach (var statement in statements ?? throw new ArgumentNullException(nameof(statements)))
@@ -115,11 +115,5 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
 
         return ConstructorInitializer(kind, ArgumentList(SeparatedList(
             arguments.Select(a => Argument(SyntaxParse.Expression(a))))));
-    }
-
-    private ConstructorBuilder With(Action action)
-    {
-        action();
-        return this;
     }
 }

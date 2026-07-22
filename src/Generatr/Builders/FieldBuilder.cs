@@ -15,41 +15,35 @@ public class FieldBuilder<T> : FieldBuilder
 
     #region FluentMethods
 
-    public FieldBuilder<T> Static() => With(() => IsStatic = true);
+    public FieldBuilder<T> Static() => this.With(() => IsStatic = true);
 
-    public FieldBuilder<T> Readonly() => With(() => IsReadonly = true);
+    public FieldBuilder<T> Readonly() => this.With(() => IsReadonly = true);
 
-    public FieldBuilder<T> WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+    public FieldBuilder<T> WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonProperty(\"name\")")</c>.</summary>
-    public FieldBuilder<T> WithAttribute(string attribute) => With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public FieldBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
     /// <summary>
     /// Marks the field <c>const</c>. A const field requires an initializer and cannot
     /// also be static or readonly.
     /// </summary>
-    public FieldBuilder<T> Const() => With(() => IsConst = true);
+    public FieldBuilder<T> Const() => this.With(() => IsConst = true);
 
     /// <summary>
     /// Sets a field initializer: <c>= value;</c>. Supports the primitive types with a
     /// literal form; use <see cref="WithInitializerExpression"/> for other expressions.
     /// </summary>
-    public FieldBuilder<T> WithInitializer(T value) => With(() => Initializer = SyntaxLiterals.Expression(value));
+    public FieldBuilder<T> WithInitializer(T value) => this.With(() => Initializer = SyntaxLiterals.Expression(value));
 
     /// <summary>
     /// Sets a field initializer from a raw C# expression, e.g. <c>"new()"</c>. The
     /// escape hatch for values a literal cannot express.
     /// </summary>
     public FieldBuilder<T> WithInitializerExpression(string expression)
-        => With(() => Initializer = SyntaxParse.Expression(expression));
+        => this.With(() => Initializer = SyntaxParse.Expression(expression));
 
     #endregion
-
-    private FieldBuilder<T> With(Action action)
-    {
-        action();
-        return this;
-    }
 }
 
 public abstract class FieldBuilder(

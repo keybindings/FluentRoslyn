@@ -24,28 +24,28 @@ public class InterfaceBuilder : TypeDeclarationBuilder
 
     #region FluentMethods
 
-    public InterfaceBuilder WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+    public InterfaceBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
-    public InterfaceBuilder BlockScopedNamespace() => With(() => IsFileScopedNamespace = false);
+    public InterfaceBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
-    public InterfaceBuilder WithAttribute(string attribute) => With(() => AddAttribute(attribute));
+    public InterfaceBuilder WithAttribute(string attribute) => this.With(() => AddAttribute(attribute));
 
     /// <summary>Extends a base interface from a raw name, e.g. <c>Extends("IDisposable")</c>.</summary>
     public InterfaceBuilder Extends(string interfaceName)
-        => With(() => _baseInterfaces.Add(SyntaxParse.TypeName(interfaceName)));
+        => this.With(() => _baseInterfaces.Add(SyntaxParse.TypeName(interfaceName)));
 
     /// <summary>Extends a base interface from a type, e.g. <c>Extends&lt;IDisposable&gt;()</c>.</summary>
     public InterfaceBuilder Extends<TInterface>()
-        => With(() => _baseInterfaces.Add(TypeNameBuilder.New<TInterface>().BuildTypeSyntax()));
+        => this.With(() => _baseInterfaces.Add(TypeNameBuilder.New<TInterface>().BuildTypeSyntax()));
 
     /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>IName&lt;T&gt;</c>.</summary>
     public InterfaceBuilder WithTypeParameter(string name)
-        => With(() => _generics.AddTypeParameter(name));
+        => this.With(() => _generics.AddTypeParameter(name));
 
     /// <summary>Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>.</summary>
     public InterfaceBuilder WithConstraint(string typeParameter, string constraint)
-        => With(() => _generics.AddConstraint(typeParameter, constraint));
+        => this.With(() => _generics.AddConstraint(typeParameter, constraint));
 
     #endregion
 
@@ -91,12 +91,6 @@ public class InterfaceBuilder : TypeDeclarationBuilder
             declaration = declaration.WithBaseList(baseList);
 
         return declaration;
-    }
-
-    private InterfaceBuilder With(Action action)
-    {
-        action();
-        return this;
     }
 }
 

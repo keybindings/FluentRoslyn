@@ -46,21 +46,21 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     #region FluentMethods
 
-    public MethodBuilder Static() => With(() => IsStatic = true);
+    public MethodBuilder Static() => this.With(() => IsStatic = true);
 
-    public MethodBuilder WithAccessModifier(AccessModifier accessModifier) => With(() => AccessModifier = accessModifier);
+    public MethodBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
-    public MethodBuilder WithParameter<T>(string name) => With(() => _params.Add(Parameter<T>.New(name)));
+    public MethodBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
 
     /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>
-    public MethodBuilder WithTypeParameter(string name) => With(() => _generics.AddTypeParameter(name));
+    public MethodBuilder WithTypeParameter(string name) => this.With(() => _generics.AddTypeParameter(name));
 
     /// <summary>
     /// Sets the return type from a raw type name, e.g. <c>Returns("T")</c> or
     /// <c>Returns("List&lt;T&gt;")</c> — for returning a generic type parameter that is
     /// not a CLR type. Requires a body.
     /// </summary>
-    public MethodBuilder Returns(string typeName) => With(() =>
+    public MethodBuilder Returns(string typeName) => this.With(() =>
     {
         _returnType = SyntaxParse.TypeName(typeName);
         _returnsVoid = false;
@@ -72,28 +72,28 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// Call once per constraint; C# order is class/struct first, new() last.
     /// </summary>
     public MethodBuilder WithConstraint(string typeParameter, string constraint)
-        => With(() => _generics.AddConstraint(typeParameter, constraint));
+        => this.With(() => _generics.AddConstraint(typeParameter, constraint));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
-    public MethodBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public MethodBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
     /// <summary>
     /// Gives the method an expression body: <c>Name(...) =&gt; expression;</c>. Valid for
     /// both void and value-returning methods.
     /// </summary>
     public MethodBuilder AsExpressionBody(string expression)
-        => With(() => _expressionBody = SyntaxParse.Expression(expression));
+        => this.With(() => _expressionBody = SyntaxParse.Expression(expression));
 
     /// <summary>
     /// Appends a complete statement to the method body, e.g. <c>"return a + b;"</c>.
     /// A value-returning method's body must return on all paths.
     /// </summary>
     public MethodBuilder AddStatement(string statement)
-        => With(() => _statements.Add(SyntaxBodies.Statement(statement)));
+        => this.With(() => _statements.Add(SyntaxBodies.Statement(statement)));
 
     /// <summary>Replaces the method body with the given statements.</summary>
     public MethodBuilder WithBody(params string[] statements)
-        => With(() =>
+        => this.With(() =>
         {
             _statements.Clear();
             foreach (var statement in statements ?? throw new ArgumentNullException(nameof(statements)))
@@ -139,10 +139,4 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildMethod();
 
     internal override SyntaxNode BuildSyntax() => BuildMethod();
-
-    private MethodBuilder With(Action action)
-    {
-        action();
-        return this;
-    }
 }
