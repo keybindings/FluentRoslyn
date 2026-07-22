@@ -88,6 +88,43 @@ public class InterfaceBuilderTests
             "}"));
     }
 
+    [TestMethod]
+    public void GenericMethodSignature_WithConstraint_Emits()
+    {
+        var i = NewInterface();
+        i.DefineMethod("Parse").Returns("T").WithTypeParameter("T").WithConstraint("T", "class").WithParameter<string>("s");
+
+        i.ToString().Should().Contain("T Parse<T>(string s)")
+            .And.Contain("where T : class");
+    }
+
+    [TestMethod]
+    public void MethodSignature_WithAttribute_Emits()
+    {
+        var i = NewInterface();
+        i.DefineMethod<int>("Count").WithAttribute("Obsolete");
+
+        i.ToString().Should().Contain("[Obsolete]").And.Contain("int Count();");
+    }
+
+    [TestMethod]
+    public void PropertySignature_InitOnly_EmitsInitAccessor()
+    {
+        var i = NewInterface();
+        i.DefineProperty<int>("Id").InitOnly();
+
+        i.ToString().Should().Contain("int Id { get; init; }");
+    }
+
+    [TestMethod]
+    public void PropertySignature_WithAttribute_Emits()
+    {
+        var i = NewInterface();
+        i.DefineProperty<int>("Id").WithAttribute("JsonIgnore");
+
+        i.ToString().Should().Contain("[JsonIgnore]").And.Contain("int Id { get; set; }");
+    }
+
     private static InterfaceBuilder NewInterface()
         => NamespaceBuilder.Get("TestNamespace").Interface("IThing");
 }

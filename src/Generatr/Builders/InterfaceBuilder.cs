@@ -97,8 +97,10 @@ public class InterfaceBuilder : TypeDeclarationBuilder
 /// <summary>A method signature on an interface: <c>ReturnType Name(params);</c>.</summary>
 public class InterfaceMethodBuilder : NamedBuilder
 {
-    private readonly TypeSyntax _returnType;
     private readonly List<IParameter> _params;
+    private readonly List<AttributeSyntax> _attributes = [];
+    private readonly GenericParameters _generics = new();
+    private TypeSyntax _returnType;
 
     internal InterfaceMethodBuilder(string name, TypeSyntax returnType, IEnumerable<IParameter> @params) : base(name, Identifiers.Validate)
     {
@@ -106,16 +108,30 @@ public class InterfaceMethodBuilder : NamedBuilder
         _params = @params.ToList();
     }
 
-    public InterfaceMethodBuilder WithParameter<T>(string name)
-    {
-        _params.Add(Parameter<T>.New(name));
-        return this;
-    }
+    public InterfaceMethodBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
+
+    /// <summary>Adds a generic type parameter: <c>ReturnType Name&lt;T&gt;(...);</c>.</summary>
+    public InterfaceMethodBuilder WithTypeParameter(string name) => this.With(() => _generics.AddTypeParameter(name));
+
+    /// <summary>Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>.</summary>
+    public InterfaceMethodBuilder WithConstraint(string typeParameter, string constraint)
+        => this.With(() => _generics.AddConstraint(typeParameter, constraint));
+
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
+    public InterfaceMethodBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+
+    /// <summary>Sets the return type from a raw name, e.g. <c>Returns("T")</c> for a generic return.</summary>
+    public InterfaceMethodBuilder Returns(string typeName) => this.With(() => _returnType = SyntaxParse.TypeName(typeName));
 
     internal MethodDeclarationSyntax BuildMethod()
-        => MethodDeclaration(_returnType, Identifier(Name))
+    {
+        var method = MethodDeclaration(_returnType, Identifier(Name))
+            .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithParameterList(SyntaxParameters.List(_params))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+        return _generics.ApplyTo(method, $"Interface method '{Name}'");
+    }
 
     internal override SyntaxNode BuildSyntax() => BuildMethod();
 }
@@ -124,6 +140,7 @@ public class InterfaceMethodBuilder : NamedBuilder
 public class InterfacePropertyBuilder : NamedBuilder
 {
     private readonly TypeNameBuilder _type;
+    private readonly List<AttributeSyntax> _attributes = [];
 
     internal InterfacePropertyBuilder(string name, TypeNameBuilder type) : base(name, Identifiers.Validate)
     {
@@ -134,12 +151,20 @@ public class InterfacePropertyBuilder : NamedBuilder
 
     public bool HasSet { get; set; } = true;
 
+    public bool SetterIsInit { get; set; }
+
     /// <summary>Drops the setter, leaving a get-only signature: <c>{ get; }</c>.</summary>
-    public InterfacePropertyBuilder GetOnly()
+    public InterfacePropertyBuilder GetOnly() => this.With(() => HasSet = false);
+
+    /// <summary>Emits the setter as an init accessor: <c>{ get; init; }</c>.</summary>
+    public InterfacePropertyBuilder InitOnly() => this.With(() =>
     {
-        HasSet = false;
-        return this;
-    }
+        HasSet = true;
+        SetterIsInit = true;
+    });
+
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
+    public InterfacePropertyBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
     internal PropertyDeclarationSyntax BuildProperty()
     {
@@ -148,9 +173,10 @@ public class InterfacePropertyBuilder : NamedBuilder
 
         var accessors = new List<AccessorDeclarationSyntax>();
         if (HasGet) accessors.Add(Accessor(SyntaxKind.GetAccessorDeclaration));
-        if (HasSet) accessors.Add(Accessor(SyntaxKind.SetAccessorDeclaration));
+        if (HasSet) accessors.Add(Accessor(SetterIsInit ? SyntaxKind.InitAccessorDeclaration : SyntaxKind.SetAccessorDeclaration));
 
         return PropertyDeclaration(_type.BuildTypeSyntax(), Identifier(Name))
+            .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithAccessorList(AccessorList(List(accessors)));
     }
 
