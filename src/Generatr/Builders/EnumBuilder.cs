@@ -14,9 +14,16 @@ namespace Generatr.Builders;
 
 public class EnumBuilder : NamedBuilder
 {
+    private static readonly HashSet<Type> IntegralTypes =
+    [
+        typeof(byte), typeof(sbyte), typeof(short), typeof(ushort),
+        typeof(int), typeof(uint), typeof(long), typeof(ulong),
+    ];
+
     private readonly List<(string Name, long? Value)> _members = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private TypeNameBuilder? _underlyingType;
+    private Type? _underlyingClrType;
 
     internal EnumBuilder(NamespaceBuilder @namespace, string name) : base(name, NameValidation)
     {
@@ -36,7 +43,13 @@ public class EnumBuilder : NamedBuilder
     public EnumBuilder BlockScopedNamespace() => With(() => IsFileScopedNamespace = false);
 
     /// <summary>Sets the underlying integral type: <c>enum Name : byte</c>.</summary>
-    public EnumBuilder WithUnderlyingType<T>() => With(() => _underlyingType = TypeNameBuilder.New<T>());
+    public EnumBuilder WithUnderlyingType<T>() => With(() =>
+    {
+        if (!IntegralTypes.Contains(typeof(T)))
+            throw new ArgumentException($"Enum underlying type must be an integral type, not '{typeof(T)}'.", nameof(T));
+        _underlyingType = TypeNameBuilder.New<T>();
+        _underlyingClrType = typeof(T);
+    });
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Flags")</c>.</summary>
     public EnumBuilder WithAttribute(string attribute) => With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
@@ -51,6 +64,8 @@ public class EnumBuilder : NamedBuilder
 
     internal EnumDeclarationSyntax BuildEnumDeclaration()
     {
+        ValidateMembers();
+
         var declaration = EnumDeclaration(Name)
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
@@ -83,6 +98,37 @@ public class EnumBuilder : NamedBuilder
 
         return declaration.WithEqualsValue(EqualsValueClause(literal));
     }
+
+    // Member names must be unique, and any explicit value must fit the underlying type
+    // (default int). Deferred to build time because WithUnderlyingType may be called
+    // after the members.
+    private void ValidateMembers()
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (name, value) in _members)
+        {
+            if (!seen.Add(name))
+                throw new InvalidOperationException($"Enum '{Name}' has a duplicate member '{name}'.");
+
+            if (value is long v && !FitsUnderlyingType(v))
+                throw new InvalidOperationException(
+                    $"Enum '{Name}' member '{name}' value {v} is out of range for underlying type '{(_underlyingClrType ?? typeof(int)).Name}'.");
+        }
+    }
+
+    private bool FitsUnderlyingType(long value)
+        => Type.GetTypeCode(_underlyingClrType ?? typeof(int)) switch
+        {
+            TypeCode.SByte => value >= sbyte.MinValue && value <= sbyte.MaxValue,
+            TypeCode.Byte => value >= byte.MinValue && value <= byte.MaxValue,
+            TypeCode.Int16 => value >= short.MinValue && value <= short.MaxValue,
+            TypeCode.UInt16 => value >= ushort.MinValue && value <= ushort.MaxValue,
+            TypeCode.Int32 => value >= int.MinValue && value <= int.MaxValue,
+            TypeCode.UInt32 => value >= uint.MinValue && value <= uint.MaxValue,
+            TypeCode.Int64 => true,
+            TypeCode.UInt64 => value >= 0,
+            _ => true,
+        };
 
     private static string RequireName(string name)
     {

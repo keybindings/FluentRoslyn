@@ -35,6 +35,63 @@ public class EnumBuilderTests
     }
 
     [TestMethod]
+    public void WithUnderlyingType_NonIntegral_Throws()
+    {
+        var act = () => NamespaceBuilder.Get("N").Enum("E").WithUnderlyingType<string>();
+
+        act.Should().Throw<ArgumentException>().WithMessage("*integral type*");
+    }
+
+    [TestMethod]
+    public void MemberValue_OutOfRangeForUnderlyingType_Throws()
+    {
+        var e = NamespaceBuilder.Get("N").Enum("E").WithUnderlyingType<byte>().AddMember("Big", 300);
+
+        var act = () => e.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*out of range*");
+    }
+
+    [TestMethod]
+    public void MemberValue_OutOfRangeForUnderlyingType_OrderIndependent()
+    {
+        // Underlying type set AFTER the member — validation must still catch it.
+        var e = NamespaceBuilder.Get("N").Enum("E").AddMember("Big", 300).WithUnderlyingType<byte>();
+
+        var act = () => e.ToString();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [TestMethod]
+    public void MemberValue_InRangeForUnderlyingType_DoesNotThrow()
+    {
+        var e = NamespaceBuilder.Get("N").Enum("E").WithUnderlyingType<byte>().AddMember("Ok", 200);
+
+        e.ToString().Should().Contain("Ok = 200");
+    }
+
+    [TestMethod]
+    public void DuplicateMemberNames_Throws()
+    {
+        var e = NamespaceBuilder.Get("N").Enum("E").AddMember("A").AddMember("A");
+
+        var act = () => e.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*duplicate member*");
+    }
+
+    [TestMethod]
+    public void ValueTooLargeForDefaultIntUnderlying_Throws()
+    {
+        var e = NamespaceBuilder.Get("N").Enum("E").AddMember("Huge", 5_000_000_000L);
+
+        var act = () => e.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*out of range*");
+    }
+
+    [TestMethod]
     public void Enum_WithUnderlyingType_EmitsBaseList()
     {
         var e = NamespaceBuilder.Get("TestNamespace").Enum("Small")
