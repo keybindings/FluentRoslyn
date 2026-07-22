@@ -143,6 +143,16 @@ public class PropertyBuilderTests
         pb.ToString().Should().Be("public int Count { get; init; } = 7;");
     }
 
+    [TestMethod]
+    public void StaticInitOnly_Throws()
+    {
+        var pb = NewClassBuilder().DefineProperty<int>("Count").Static().InitOnly();
+
+        var act = () => pb.ToString();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*static property cannot have an init accessor*");
+    }
+
     #region Setter access modifier validation
 
     [TestMethod]
@@ -231,13 +241,12 @@ public class PropertyBuilderTests
     }
 
     [TestMethod]
-    public void SetterExpression_WithoutGetter_Throws()
+    public void SetterExpression_WithoutGetter_EmitsWriteOnlyProperty()
     {
         var pb = NewClassBuilder().DefineProperty<int>("Count").WithSetterExpression("_count = value");
 
-        var act = () => pb.ToString();
-
-        act.Should().Throw<InvalidOperationException>().WithMessage("*must also have a getter*");
+        // A bodied property may be write-only (unlike an auto-property).
+        pb.ToString().Should().Be("public int Count { set => _count = value; }");
     }
 
     [TestMethod]
@@ -332,13 +341,18 @@ public class PropertyBuilderTests
     }
 
     [TestMethod]
-    public void SetterBody_WithoutGetter_Throws()
+    public void SetterBody_WithoutGetter_EmitsWriteOnlyProperty()
     {
         var pb = NewClassBuilder().DefineProperty<int>("Count").WithSetterBody("_count = value;");
 
-        var act = () => pb.ToString();
-
-        act.Should().Throw<InvalidOperationException>().WithMessage("*must also have a getter*");
+        pb.ToString().Should().Be(string.Join("\n",
+            "public int Count",
+            "{",
+            "    set",
+            "    {",
+            "        _count = value;",
+            "    }",
+            "}"));
     }
 
     #endregion

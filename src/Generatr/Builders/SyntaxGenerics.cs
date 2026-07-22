@@ -26,7 +26,22 @@ internal static class SyntaxGenerics
         => List(typeParameters
             .Where(constraints.ContainsKey)
             .Select(t => TypeParameterConstraintClause(IdentifierName(t))
-                .WithConstraints(SeparatedList(constraints[t].Select(Constraint)))));
+                .WithConstraints(SeparatedList(Ordered(constraints[t]).Select(Constraint)))));
+
+    // C# requires a specific constraint order: the primary constraint (class/struct/
+    // notnull/unmanaged) first, then interface/type constraints, then new() last.
+    // Callers add constraints in any order, so normalize here rather than emit invalid
+    // clauses like `where T : new(), class`.
+    private static IEnumerable<string> Ordered(IEnumerable<string> constraints)
+        => constraints.OrderBy(Rank);
+
+    private static int Rank(string constraint)
+        => constraint.Trim() switch
+        {
+            "class" or "struct" or "notnull" or "unmanaged" => 0,
+            "new()" => 2,
+            _ => 1,
+        };
 
     /// <summary>Validates that every constraint names a declared type parameter.</summary>
     internal static void Validate(

@@ -117,6 +117,11 @@ public class PropertyBuilder<T> : PropertyBuilder
 
     internal override PropertyDeclarationSyntax BuildProperty()
     {
+        // init accessors run during object initialization, which a static property has no
+        // part in, so `static { get; init; }` does not compile.
+        if (IsStatic && SetterIsInit)
+            throw new InvalidOperationException($"Property '{Name}': a static property cannot have an init accessor.");
+
         var property = PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(Attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic));
@@ -137,18 +142,16 @@ public class PropertyBuilder<T> : PropertyBuilder
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
-        // 2. Accessor bodies, expression or statement: { get => a; set { ...; } }
+        // 2. Accessor bodies, expression or statement: { get => a; set { ...; } }.
+        // Unlike auto-properties, a bodied property may be write-only ({ set => ...; }).
         if (hasGetterBody || hasSetterBody)
         {
             GuardNoInitializer("a property with accessor bodies");
-            if (!hasGetterBody)
-                throw new InvalidOperationException(
-                    $"Property '{Name}' with a bodied setter must also have a getter.");
 
-            var bodied = new List<AccessorDeclarationSyntax>
-            {
-                BuildAccessor(SyntaxKind.GetAccessorDeclaration, GetterExpression, GetterStatements),
-            };
+            var bodied = new List<AccessorDeclarationSyntax>();
+
+            if (hasGetterBody)
+                bodied.Add(BuildAccessor(SyntaxKind.GetAccessorDeclaration, GetterExpression, GetterStatements));
 
             if (hasSetterBody)
             {

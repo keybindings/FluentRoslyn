@@ -99,6 +99,19 @@ public class TypeGenericsTests
     }
 
     [TestMethod]
+    public void Constraints_AddedOutOfOrder_EmitInCanonicalOrder()
+    {
+        // new() before class must still emit `class, ..., new()`.
+        var c = NamespaceBuilder.Get("N").Class("Repo")
+            .WithTypeParameter("T")
+            .WithConstraint("T", "new()")
+            .WithConstraint("T", "IComparable<T>")
+            .WithConstraint("T", "class");
+
+        c.ToString().Should().Contain("where T : class, IComparable<T>, new()");
+    }
+
+    [TestMethod]
     public void ConstraintForUndeclaredTypeParameter_Throws()
     {
         var c = NamespaceBuilder.Get("N").Class("Repo")
