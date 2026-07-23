@@ -34,6 +34,8 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     public bool IsStatic { get; set; }
 
+    public bool IsPartial { get; set; }
+
     public AccessModifier AccessModifier { get; set; }
 
     /// <summary>A void method: <c>void Name(...) { }</c>.</summary>
@@ -47,6 +49,9 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     #region FluentMethods
 
     public MethodBuilder Static() => this.With(() => IsStatic = true);
+
+    /// <summary>Marks the method <c>partial</c> (e.g. a source generator implementing a partial method).</summary>
+    public MethodBuilder Partial() => this.With(() => IsPartial = true);
 
     public MethodBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
@@ -106,7 +111,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     {
         var method = MethodDeclaration(_returnType, Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
-            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic))
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial))
             .WithParameterList(SyntaxParameters.List(_params));
 
         method = _generics.ApplyTo(method, $"Method '{Name}'");

@@ -258,6 +258,32 @@ public class MethodBuilderTests
 
     #endregion
 
+    [TestMethod]
+    public void NoneAccessModifier_EmitsNoAccessKeyword()
+    {
+        var mb = NewClass().DefineMethod("DoThing", AccessModifier.None);
+
+        mb.ToString().Should().StartWith("void DoThing()").And.NotContain("public");
+    }
+
+    [TestMethod]
+    public void Partial_EmitsPartialKeyword()
+    {
+        var mb = NewClass().DefineMethod("DoThing").Partial();
+
+        mb.ToString().Should().StartWith("public partial void DoThing()");
+    }
+
+    [TestMethod]
+    public void StaticPartialNoAccess_ExpressionBody_MatchesPartialImplementationShape()
+    {
+        var mb = NewClass().DefineMethod("HelloFrom", AccessModifier.None, Parameter<string>.New("name"))
+            .Static().Partial()
+            .AsExpressionBody("System.Console.WriteLine(name)");
+
+        mb.ToString().Should().Be("static partial void HelloFrom(string name) => System.Console.WriteLine(name);");
+    }
+
     private static ClassBuilder NewClass(string name = "TestClass")
         => NamespaceBuilder.Get("TestNamespace").Class(name);
 }

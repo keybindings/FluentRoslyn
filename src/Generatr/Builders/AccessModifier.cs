@@ -28,4 +28,11 @@ public sealed class AccessModifier
     public static readonly AccessModifier ProtectedInternal = new(3, SyntaxKind.ProtectedKeyword, SyntaxKind.InternalKeyword);
     public static readonly AccessModifier PrivateProtected = new(4, SyntaxKind.PrivateKeyword, SyntaxKind.ProtectedKeyword);
     public static readonly AccessModifier Private = new(5, SyntaxKind.PrivateKeyword);
+
+    /// <summary>
+    /// No explicit access modifier — the member's accessibility is left implicit
+    /// (private for members, internal for types). Required for classic partial methods,
+    /// which cannot carry an accessibility keyword. Sorts with private for member order.
+    /// </summary>
+    public static readonly AccessModifier None = new(5);
 }
