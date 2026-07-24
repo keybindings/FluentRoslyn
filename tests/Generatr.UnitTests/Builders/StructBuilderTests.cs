@@ -20,7 +20,7 @@ public class StructBuilderTests
     [TestMethod]
     public void ReadOnlyPartial_EmitsBothModifiersInOrder()
     {
-        var s = NewStruct().ReadOnly().Partial();
+        var s = NewStruct().Readonly().Partial();
 
         s.ToString().Should().Contain("public readonly partial struct Point");
     }

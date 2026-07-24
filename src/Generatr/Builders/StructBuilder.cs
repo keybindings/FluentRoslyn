@@ -15,7 +15,7 @@ public class StructBuilder : TypeBuilder<StructBuilder>
 
     #region FluentMethods
 
-    public StructBuilder ReadOnly()
+    public StructBuilder Readonly()
     {
         IsReadonly = true;
         return this;
