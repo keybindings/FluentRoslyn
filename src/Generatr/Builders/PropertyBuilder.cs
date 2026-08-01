@@ -44,7 +44,7 @@ public class PropertyBuilder<T> : PropertyBuilder
     public PropertyBuilder<T> Required() => this.With(() => IsRequired = true);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonIgnore")</c>.</summary>
-    public PropertyBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public PropertyBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.AttributeList(attribute)));
 
     /// <summary>Emits a get-only auto-property (<c>{ get; }</c>) by dropping the setter.</summary>
     public PropertyBuilder<T> GetOnly() => this.With(() => HasSet = false);
@@ -338,7 +338,7 @@ public abstract class PropertyBuilder(string name, AccessModifier accessModifier
     /// <summary>The property's accessibility. Public by default.</summary>
     public AccessModifier AccessModifier { get; set; } = accessModifier;
 
-    internal List<AttributeSyntax> Attributes { get; } = [];
+    internal List<AttributeListSyntax> Attributes { get; } = [];
 
     internal DocComment Docs { get; } = new();
 

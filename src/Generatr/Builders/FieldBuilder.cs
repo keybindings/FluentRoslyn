@@ -39,7 +39,7 @@ public class FieldBuilder<T> : FieldBuilder
     public FieldBuilder<T> Required() => this.With(() => IsRequired = true);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonProperty(\"name\")")</c>.</summary>
-    public FieldBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public FieldBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.AttributeList(attribute)));
 
     /// <summary>
     /// Marks the field <c>const</c>. A const field requires an initializer and cannot
@@ -96,7 +96,7 @@ public abstract class FieldBuilder(
     // The field's initializer expression, or null when it has none.
     internal ExpressionSyntax? Initializer { get; set; }
 
-    internal List<AttributeSyntax> Attributes { get; } = [];
+    internal List<AttributeListSyntax> Attributes { get; } = [];
 
     internal DocComment Docs { get; } = new();
 

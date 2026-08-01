@@ -16,7 +16,7 @@ namespace Generatr.Builders;
 /// </summary>
 public abstract class TypeDeclarationBuilder : NamedBuilder
 {
-    private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<AttributeListSyntax> _attributes = [];
     private readonly DocComment _docs = new();
     private readonly TypeImports _imports = new();
 
@@ -106,7 +106,7 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
         => SyntaxAttributes.Lists(_attributes);
 
     private protected void AddAttribute(string attribute)
-        => _attributes.Add(SyntaxAttributes.Attribute(attribute));
+        => _attributes.Add(SyntaxAttributes.AttributeList(attribute));
 
     private protected void AddSummary(string text)
         => _docs.SetSummary(text);

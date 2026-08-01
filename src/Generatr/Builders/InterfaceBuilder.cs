@@ -119,7 +119,7 @@ public class InterfaceBuilder : TypeDeclarationBuilder
 public class InterfaceMethodBuilder : NamedBuilder
 {
     private readonly List<IParameter> _params;
-    private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<AttributeListSyntax> _attributes = [];
     private readonly GenericParameters _generics = new();
     private readonly DocComment _docs = new();
     private TypeSyntax _returnType;
@@ -141,7 +141,7 @@ public class InterfaceMethodBuilder : NamedBuilder
         => this.With(() => _generics.AddConstraint(typeParameter, constraint));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
-    public InterfaceMethodBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public InterfaceMethodBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.AttributeList(attribute)));
 
     /// <summary>Documents the signature with an XML <c>&lt;summary&gt;</c>.</summary>
     public InterfaceMethodBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
@@ -175,7 +175,7 @@ public class InterfaceMethodBuilder : NamedBuilder
 public class InterfacePropertyBuilder : NamedBuilder
 {
     private readonly TypeNameBuilder _type;
-    private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<AttributeListSyntax> _attributes = [];
     private readonly DocComment _docs = new();
 
     internal InterfacePropertyBuilder(string name, TypeNameBuilder type) : base(name, Identifiers.Validate)
@@ -203,7 +203,7 @@ public class InterfacePropertyBuilder : NamedBuilder
     });
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
-    public InterfacePropertyBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public InterfacePropertyBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.AttributeList(attribute)));
 
     /// <summary>Documents the signature with an XML <c>&lt;summary&gt;</c>.</summary>
     public InterfacePropertyBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));

@@ -17,7 +17,7 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
 {
     private readonly List<IParameter> _params = [];
     private readonly List<StatementSyntax> _statements = [];
-    private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<AttributeListSyntax> _attributes = [];
     private readonly DocComment _docs = new();
     private ExpressionSyntax? _expressionBody;
     private ConstructorInitializerSyntax? _initializer;
@@ -55,7 +55,7 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
         => this.With(() => _docs.AddParameter(parameterName, text));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonConstructor")</c>.</summary>
-    public ConstructorBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public ConstructorBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.AttributeList(attribute)));
 
     /// <summary>Chains to a base constructor: <c>: base(arguments)</c>.</summary>
     public ConstructorBuilder CallingBase(params string[] arguments)

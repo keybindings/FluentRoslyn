@@ -18,7 +18,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     private bool _returnsVoid;
     private readonly List<IParameter> _params = [];
     private readonly List<StatementSyntax> _statements = [];
-    private readonly List<AttributeSyntax> _attributes = [];
+    private readonly List<AttributeListSyntax> _attributes = [];
     private readonly GenericParameters _generics = new();
     private readonly DocComment _docs = new();
     private ExpressionSyntax? _expressionBody;
@@ -136,7 +136,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         => this.With(() => _generics.AddConstraint(typeParameter, constraint));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
-    public MethodBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
+    public MethodBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.AttributeList(attribute)));
 
     /// <summary>
     /// Gives the method an expression body: <c>Name(...) =&gt; expression;</c>. Valid for
