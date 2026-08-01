@@ -32,6 +32,12 @@ public class FieldBuilder<T> : FieldBuilder
     /// <summary>Documents the field with an XML <c>&lt;summary&gt;</c>.</summary>
     public FieldBuilder<T> WithSummary(string text) => this.With(() => Docs.SetSummary(text));
 
+    /// <summary>
+    /// Marks the field <c>required</c> (C# 11): callers must set it in an object
+    /// initializer. Cannot combine with <c>static</c> or <c>const</c>.
+    /// </summary>
+    public FieldBuilder<T> Required() => this.With(() => IsRequired = true);
+
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonProperty(\"name\")")</c>.</summary>
     public FieldBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
@@ -79,6 +85,11 @@ public abstract class FieldBuilder(
     /// </summary>
     public bool IsConst { get; set; }
 
+    /// <summary>
+    /// Whether the field is <c>required</c>. Cannot combine with static or const.
+    /// </summary>
+    public bool IsRequired { get; set; }
+
     /// <summary>The field's accessibility. Private by default.</summary>
     public AccessModifier AccessModifier { get; set; } = accessModifier;
 
@@ -99,6 +110,11 @@ public abstract class FieldBuilder(
                 throw new InvalidOperationException($"Const field '{Name}' cannot also be static or readonly.");
         }
 
+        // A required member is set by the caller during initialization, which neither a
+        // static nor a const field participates in.
+        if (IsRequired && (IsStatic || IsConst))
+            throw new InvalidOperationException($"Required field '{Name}' cannot also be static or const.");
+
         var declarator = VariableDeclarator(Identifier(Name));
         if (Initializer is not null)
             declarator = declarator.WithInitializer(EqualsValueClause(Initializer));
@@ -107,7 +123,8 @@ public abstract class FieldBuilder(
                 typeName.BuildTypeSyntax(),
                 SingletonSeparatedList(declarator)))
             .WithAttributeLists(SyntaxAttributes.Lists(Attributes))
-            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, IsReadonly, isConst: IsConst));
+            .WithModifiers(SyntaxFormatting.Modifiers(
+                AccessModifier, IsStatic, IsReadonly, isConst: IsConst, isRequired: IsRequired));
 
         return Docs.IsEmpty ? field : field.WithLeadingTrivia(Docs.Build());
     }

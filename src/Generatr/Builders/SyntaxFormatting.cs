@@ -8,8 +8,8 @@ internal static class SyntaxFormatting
 {
     /// <summary>
     /// Builds a modifier token list in canonical C# order: access modifiers, const,
-    /// static, sealed, the inheritance modifier (virtual / abstract / override),
-    /// readonly, async, partial.
+    /// required, static, sealed, the inheritance modifier (virtual / abstract /
+    /// override), readonly, async, partial.
     /// </summary>
     internal static SyntaxTokenList Modifiers(
         AccessModifier accessModifier,
@@ -19,10 +19,12 @@ internal static class SyntaxFormatting
         bool isConst = false,
         Inheritance inheritance = Inheritance.None,
         bool isSealed = false,
-        bool isAsync = false)
+        bool isAsync = false,
+        bool isRequired = false)
     {
         var tokens = new List<SyntaxToken>(accessModifier.Tokens);
         if (isConst) tokens.Add(SyntaxFactory.Token(SyntaxKind.ConstKeyword));
+        if (isRequired) tokens.Add(SyntaxFactory.Token(SyntaxKind.RequiredKeyword));
         if (isStatic) tokens.Add(SyntaxFactory.Token(SyntaxKind.StaticKeyword));
         // A sealed *type* stands alone; a sealed member only exists as `sealed override`,
         // which Inheritance covers.

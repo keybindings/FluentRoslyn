@@ -37,6 +37,12 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// <summary>Documents the property with an XML <c>&lt;summary&gt;</c>.</summary>
     public PropertyBuilder<T> WithSummary(string text) => this.With(() => Docs.SetSummary(text));
 
+    /// <summary>
+    /// Marks the property <c>required</c> (C# 11): callers must set it in an object
+    /// initializer. Cannot combine with <c>static</c>, and needs a settable accessor.
+    /// </summary>
+    public PropertyBuilder<T> Required() => this.With(() => IsRequired = true);
+
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonIgnore")</c>.</summary>
     public PropertyBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
@@ -137,9 +143,20 @@ public class PropertyBuilder<T> : PropertyBuilder
         if (IsStatic && SetterIsInit)
             throw new InvalidOperationException($"Property '{Name}': a static property cannot have an init accessor.");
 
+        if (IsRequired)
+        {
+            // A required member is assigned by the caller during initialization, so a
+            // static or unsettable property can never satisfy it.
+            if (IsStatic)
+                throw new InvalidOperationException($"Property '{Name}': a static property cannot be required.");
+            if (!HasSet)
+                throw new InvalidOperationException(
+                    $"Property '{Name}': a required property needs a set or init accessor.");
+        }
+
         var property = PropertyDeclaration(_typeName.BuildTypeSyntax(), Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(Attributes))
-            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic));
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isRequired: IsRequired));
 
         var hasGetterBody = GetterExpression is not null || GetterStatements is not null;
         var hasSetterBody = SetterExpression is not null || SetterStatements is not null;
@@ -287,6 +304,12 @@ public abstract class PropertyBuilder(string name, AccessModifier accessModifier
 
     /// <summary>Whether the property is <c>static</c>.</summary>
     public bool IsStatic { get; set; }
+
+    /// <summary>
+    /// Whether the property is <c>required</c>. Cannot combine with static, and needs a
+    /// settable accessor.
+    /// </summary>
+    public bool IsRequired { get; set; }
 
     /// <summary>
     /// Whether the property declares a getter. True by default; an auto-property must
