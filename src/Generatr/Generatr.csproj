@@ -4,6 +4,24 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Ship the XML doc file so documented members get IntelliSense. CS1591 (missing
+         doc) stays suppressed until the public-API doc pass — see docs/ROADMAP.md #4. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package">
+    <PackageId>Generatr</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Cameron Lambert</Authors>
+    <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
+    <PackageTags>roslyn;source-generator;codegen;code-generation;syntaxfactory;fluent;csharp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/Cameron097/Generatr</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Cameron097/Generatr</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>Initial preview: fluent builders for classes, structs, records, enums, and interfaces, with fields, constructors, properties, and methods; attributes, generics with constraints, base types, initializers, and expression/statement bodies.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +31,11 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Generatr.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
