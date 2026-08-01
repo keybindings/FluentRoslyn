@@ -1,5 +1,8 @@
 # Generatr
 
+[![CI](https://github.com/Cameron097/Generatr/actions/workflows/ci.yml/badge.svg)](https://github.com/Cameron097/Generatr/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A fluent C# API for generating C# source code — a readable facade over Roslyn's
 `SyntaxFactory`.
 
