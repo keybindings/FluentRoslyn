@@ -168,6 +168,31 @@ Statement bodies use `.AddStatement("…")` / `.WithBody("…", "…")`. Propert
 support the same forms plus initializers, `init`, get-only, and per-accessor
 access modifiers.
 
+### Using directives
+
+Type references are fully qualified by default, which is always correct.
+`SimplifyTypeNames()` shortens them and adds the imports they need:
+
+```csharp
+var repo = NamespaceBuilder.Get("MyApp").Class("Repo").SimplifyTypeNames();
+repo.DefineField<List<int>>("_items");
+```
+
+```csharp
+using System.Collections.Generic;
+
+namespace MyApp;
+public class Repo
+{
+    private List<int> _items;
+}
+```
+
+A name offered by two different namespaces — or one the file declares itself —
+stays fully qualified rather than becoming ambiguous. `WithUsing("System.Linq")`
+adds a directive explicitly, which is also how you shorten names inside raw
+expression strings.
+
 ## Escape hatches
 
 Statement- and expression-bearing members take raw C# text, parsed into the
