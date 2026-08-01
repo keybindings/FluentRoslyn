@@ -19,8 +19,8 @@ them, not speculatively).
 | ~~5~~ | ~~**Using-directive management**~~ | Feature | Med | High | **Done** (2026-08-01). Opt-in `SimplifyTypeNames()` plus explicit `WithUsing(name)`. Builders annotate the nodes they emit so the simplifier knows namespace-vs-nested-type without semantics; ambiguous and self-declared names stay qualified. |
 | ~~6~~ | ~~**`async` methods**~~ | Feature | Med | Low | **Done** (2026-08-01). `Async()` on MethodBuilder. Return-type guard rejects only non-awaitable built-ins, so custom awaitables pass without an allowlist. |
 | ~~7~~ | ~~**Nested types** (type inside a type)~~ | Feature | Med | Med | **Done** (2026-08-01). All five kinds nestable in a class or struct, any depth. Nested types qualify through their declaring type (`Ns.Outer.Inner`) and emit standalone as a bare declaration. |
-| 8 | **`required` members** (C# 11) | Feature | Low | Low | One modifier on field/property. |
-| 9 | **Record inheritance** (`: Base(args)`) | Feature | Low | Med | Positional-record base with base-args; noted deferred during review. |
+| ~~8~~ | ~~**`required` members** (C# 11)~~ | Feature | Low | Low | **Done** (2026-08-01). `Required()` on fields and properties, guarded against static/const and get-only, which can never satisfy the requirement. |
+| ~~9~~ | ~~**Record inheritance** (`: Base(args)`)~~ | Feature | Low | Med | **Done** (2026-08-01). `WithParent` forwards arguments to the base primary constructor via `PrimaryConstructorBaseType`; base emitted before interfaces. |
 | ~~10~~ | ~~**Emit `///` doc comments on generated members**~~ | Feature | Med | Med | **Done** (2026-08-01). `WithSummary` everywhere, plus `WithParameterDoc`/`WithReturnsDoc` on methods and constructors. Emitted as plain comment trivia so `NormalizeWhitespace` cannot reformat the XML attributes; text is XML-escaped. |
 | 11 | **Events / delegates** | Feature | Low | Med each | No current builders; niche for most generators. |
 | 12 | **Attribute target specifiers** (`[return:]`, `[field:]`) | Feature | Low | Low | The attribute probe strips them today. |
@@ -34,11 +34,10 @@ them, not speculatively).
   decision on whether 0.1.0 goes out as a preview).
 - **#5, #6, #7 and #10 are done** — usings, async methods, nested types, and doc
   comments on generated output. That clears every Medium-value item.
-- **What remains is small and narrow** (#8, #9, #11, #12, #13). Add these when a
-  real generator needs them, not speculatively.
-- **#5 and below** are real but demand-driven. #5 (usings) is the one large
-  feature that would most change how the output *feels*, if non-qualified names
-  ever become desirable.
+- **#8 and #9 are done** — required members and record inheritance.
+- **Only #11, #12 and #13 remain**, all Low value and narrow: events/delegates,
+  attribute target specifiers, and configurable formatting. Add these when a real
+  generator needs them, not speculatively.
 
 ## Deliberate decisions (not gaps)
 
