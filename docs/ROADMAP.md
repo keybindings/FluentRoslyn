@@ -25,6 +25,7 @@ them, not speculatively).
 | ~~11~~ | ~~**Events / delegates**~~ | Feature | Low | Med each | **Done** (2026-08-01). `DefineEvent<THandler>` (field-like events, ordered after constructors) and `NamespaceBuilder.Delegate` / `DefineDelegate` for nested. |
 | ~~12~~ | ~~**Attribute target specifiers** (`[return:]`, `[field:]`)~~ | Feature | Low | Low | **Done** (2026-08-01). Targets split off before parsing; an unrecognised one is rejected rather than silently dropped, and named arguments are not mistaken for targets. |
 | ~~13~~ | ~~**Configurable formatting** (indent/eol)~~ | Polish | Low | Med | **Done** (2026-08-01). `WithIndentation`/`WithLineEndings`, strictly opt-in — the 4-space/LF default is unchanged, so byte-identical cross-OS output is still what you get for free. |
+| ~~14~~ | ~~**Typed references + `Assign`**~~ | Feature | High | Med | **Done** (2026-08-02). `IReference<T>`; `PropertyBuilder<T>`/`FieldBuilder<T>` are references directly, parameters yield one via `WithParameter<T>(name, out …)` so chaining survives. `Assign` type-matches both sides at generator compile time, and qualifies with `this.` when a parameter shadows the member — otherwise `name = name;` would silently self-assign. |
 
 ## Reading of the table
 
@@ -37,7 +38,9 @@ them, not speculatively).
 - **Every item on this roadmap is now done.** The list is kept as a record of
   what was built and why.
 - **New work should come from a real generator's needs**, not from a
-  speculative list.
+  speculative list. #14 is the first item added that way: writing a constructor
+  by hand made it obvious that `AddStatement("Name = name;")` is the one place
+  the library still lets you emit silently wrong code.
 - **Publishing is the remaining step.** The package is prepared as
   `FluentRoslyn` version `0.1.0-preview.1` — the original name `Generatr` collides
   with an unrelated database scaffolder on nuget.org, and ids are
@@ -61,9 +64,19 @@ These look like omissions but are choices:
 - **Raw-string escape hatches** for statements/expressions/constraints, rather
   than a fluent expression model. Malformed fragments are rejected at build
   time, so they cannot silently emit broken source. A fluent expression tree is
-  a much larger project and may never be worth it.
-- **`Parameter<T>` / `IParameter` are internal.** Parameters are added
-  exclusively via `WithParameter<T>(name)` — one obvious way.
+  a much larger project and may never be worth it. **Narrowed by #14:**
+  assignment now has a typed form (`Assign`), because it was the one statement
+  common enough — and error-prone enough — to justify the machinery. Every other
+  statement is still raw text.
+- **`Parameter<T>` / `IParameter` stay internal.** Parameters are still added
+  only via `WithParameter<T>(name)`; the #14 overload hands back an
+  `IReference<T>`, which is a name and a phantom type, not the parameter builder.
+- **`IReference<T>` is invariant.** C# generic constraints cannot express
+  "implicitly convertible to", so exact matching is the only contract that can
+  actually be enforced. Covariance would let `Assign(stringTarget, objectValue)`
+  compile by inferring a common base — the exact bug the type parameter exists
+  to catch. Widening (`object` ← `string`, `long` ← `int`) falls back to
+  `AddStatement`.
 
 ## Known constraints
 

@@ -192,6 +192,45 @@ Statement bodies use `.AddStatement("…")` / `.WithBody("…", "…")`. Propert
 support the same forms plus initializers, `init`, get-only, and per-accessor
 access modifiers.
 
+### Typed references
+
+`AddStatement("Name = name;")` is raw text — nothing checks that `Name` exists or
+that the two sides have the same type. Assignment is common enough in a generated
+constructor to be worth checking, so it has a typed form.
+
+Property and field builders *are* references; a parameter hands one back through
+an `out` argument, which keeps the fluent chain intact:
+
+```csharp
+var user = NamespaceBuilder.Get("MyApp.Models").Class("User");
+var id   = user.DefineProperty<int>("Id").GetOnly();
+var name = user.DefineProperty<string>("Name");
+
+user.DefineConstructor(AccessModifier.Public)
+    .WithParameter<int>("id",      out var idParam)
+    .WithParameter<string>("name", out var nameParam)
+    .Assign(id, idParam)
+    .Assign(name, nameParam);
+```
+
+```csharp
+public User(int id, string name)
+{
+    Id = id;
+    Name = name;
+}
+```
+
+`Assign` takes two `IReference<T>` sharing one `T`, so `Assign(name, idParam)` is
+a compile error in *your* generator rather than generated code that won't build.
+When a parameter shadows the member it targets, the member is qualified
+automatically — you get `this.value = value;` instead of a silent self-assignment.
+
+`T` is invariant, so widening (`object` ← `string`, `long` ← `int`) is rejected:
+C# generic constraints can't express "implicitly convertible to", and a looser
+rule would let the mismatch it exists to catch slip through. Use `AddStatement`
+for those.
+
 ### Using directives
 
 Type references are fully qualified by default, which is always correct.
@@ -221,7 +260,8 @@ expression strings.
 
 Statement- and expression-bearing members take raw C# text, parsed into the
 tree. Malformed fragments are rejected (they don't silently produce broken
-source):
+source). Assignment is the exception — it has a checked form, see
+[Typed references](#typed-references):
 
 - `.AsExpressionBody("a + b")`, `.AddStatement("return x;")`
 - `.WithInitializerExpression("new()")`

@@ -47,6 +47,29 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
     public ConstructorBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
 
+    /// <summary>
+    /// Appends a parameter of type <typeparamref name="T"/> and hands back a typed
+    /// reference to it, for use with <see cref="Assign{TValue}"/>. Returns the builder,
+    /// so the fluent chain is unbroken:
+    /// <c>.WithParameter&lt;int&gt;("id", out var id)</c>.
+    /// </summary>
+    public ConstructorBuilder WithParameter<T>(string name, out IReference<T> reference)
+    {
+        var parameter = Parameter<T>.New(name);
+        _params.Add(parameter);
+        reference = new ParameterReference<T>(parameter.Name);
+        return this;
+    }
+
+    /// <summary>
+    /// Appends an assignment statement, e.g. <c>Name = name;</c>. Both sides are
+    /// references of the same type, so assigning the wrong one is a compile error in the
+    /// generator rather than broken generated source.
+    /// </summary>
+    public ConstructorBuilder Assign<TValue>(IReference<TValue> target, IReference<TValue> value)
+        => this.With(() => _statements.Add(
+            SyntaxReferences.Assignment(target, value, _params, IsStatic, $"Constructor for '{Name}'")));
+
     /// <summary>Documents the constructor with an XML <c>&lt;summary&gt;</c>.</summary>
     public ConstructorBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
 

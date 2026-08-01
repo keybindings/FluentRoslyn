@@ -14,9 +14,13 @@ namespace FluentRoslyn.Builders;
 /// expression bodies, and statement-bodied accessors.
 /// </summary>
 /// <typeparam name="T">The property's type.</typeparam>
-public class PropertyBuilder<T> : PropertyBuilder
+public class PropertyBuilder<T> : PropertyBuilder, IReference<T>, IReferenceInfo
 {
     private readonly TypeNameBuilder _typeName = TypeNameBuilder.New<T>();
+
+    ReferenceKind IReferenceInfo.Kind => ReferenceKind.Member;
+
+    bool IReferenceInfo.IsStaticMember => IsStatic;
 
     /// <summary>
     /// Creates a standalone property builder. Prefer <c>DefineProperty&lt;T&gt;</c> on a

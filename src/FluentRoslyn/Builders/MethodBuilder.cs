@@ -54,7 +54,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// <summary>The method's accessibility.</summary>
     public AccessModifier AccessModifier { get; set; }
 
-    /// <summary>A void method: <c>void Name(...) { }</c>. Add parameters with <see cref="WithParameter{T}"/>.</summary>
+    /// <summary>A void method: <c>void Name(...) { }</c>. Add parameters with <see cref="WithParameter{T}(string)"/>.</summary>
     internal static MethodBuilder Action(string name, AccessModifier accessModifier)
         => new(name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)), returnsVoid: true);
 
@@ -98,6 +98,29 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     public MethodBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
 
     /// <summary>
+    /// Appends a parameter of type <typeparamref name="T"/> and hands back a typed
+    /// reference to it, for use with <see cref="Assign{TValue}"/>. Returns the builder,
+    /// so the fluent chain is unbroken:
+    /// <c>.WithParameter&lt;int&gt;("id", out var id)</c>.
+    /// </summary>
+    public MethodBuilder WithParameter<T>(string name, out IReference<T> reference)
+    {
+        var parameter = Parameter<T>.New(name);
+        _params.Add(parameter);
+        reference = new ParameterReference<T>(parameter.Name);
+        return this;
+    }
+
+    /// <summary>
+    /// Appends an assignment statement, e.g. <c>Name = name;</c>. Both sides are
+    /// references of the same type, so assigning the wrong one is a compile error in the
+    /// generator rather than broken generated source.
+    /// </summary>
+    public MethodBuilder Assign<TValue>(IReference<TValue> target, IReference<TValue> value)
+        => this.With(() => _statements.Add(
+            SyntaxReferences.Assignment(target, value, _params, IsStatic, $"Method '{Name}'")));
+
+    /// <summary>
     /// Documents the method with an XML <c>&lt;summary&gt;</c>. Newlines become separate
     /// comment lines, and XML markup characters are escaped.
     /// </summary>
@@ -105,7 +128,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     /// <summary>
     /// Documents a parameter: <c>&lt;param name="..."&gt;</c>. The name must match a
-    /// parameter added with <see cref="WithParameter{T}"/>.
+    /// parameter added with <see cref="WithParameter{T}(string)"/>.
     /// </summary>
     public MethodBuilder WithParameterDoc(string parameterName, string text)
         => this.With(() => _docs.AddParameter(parameterName, text));

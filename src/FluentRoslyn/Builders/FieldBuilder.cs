@@ -12,11 +12,15 @@ namespace FluentRoslyn.Builders;
 /// <c>DefineField&lt;T&gt;</c> on a type builder.
 /// </summary>
 /// <typeparam name="T">The field's type.</typeparam>
-public class FieldBuilder<T> : FieldBuilder
+public class FieldBuilder<T> : FieldBuilder, IReference<T>, IReferenceInfo
 {
     internal FieldBuilder(string name, AccessModifier accessModifier) : base(TypeNameBuilder.New<T>(), name, accessModifier)
     {
     }
+
+    ReferenceKind IReferenceInfo.Kind => ReferenceKind.Member;
+
+    bool IReferenceInfo.IsStaticMember => IsStatic;
 
     #region FluentMethods
 
