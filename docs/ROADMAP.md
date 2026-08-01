@@ -12,9 +12,9 @@ them, not speculatively).
 
 | # | Item | Category | Value | Effort | Notes |
 |---|------|----------|:---:|:---:|-------|
-| 1 | **NuGet packaging** (metadata, versioning, README-in-package) | Ship | High | Low | The one thing between "done" and "usable by anyone". Nothing else unblocks adoption. |
-| 2 | **CI pipeline** (build + test on push) | Ship | Med | Low | GitHub Actions; guards the green-tests invariant. Pairs naturally with #1. |
-| 3 | **Method modifiers** — `virtual`/`abstract`/`override`/`sealed` | Feature | Med | Low | Generators emitting overrides/abstracts hit this fast. `SyntaxFormatting` already centralizes modifiers, so it is a small extension. |
+| ~~1~~ | ~~**NuGet packaging**~~ | Ship | High | Low | **Done** (2026-08-01). Full metadata, MIT license, README/LICENSE packed, XML docs shipped. Verified: dependency group is empty, so Roslyn does not flow to consumers. Not yet *published* to nuget.org. |
+| ~~2~~ | ~~**CI pipeline**~~ | Ship | Med | Low | **Done** (2026-08-01). `.github/workflows/ci.yml` — restore, build, test, run the example end-to-end (asserts on output), pack, upload artifact. |
+| 3 | **Method modifiers** — `virtual`/`abstract`/`override`/`sealed` | Feature | Med | Low | Next up. Generators emitting overrides/abstracts hit this fast. `SyntaxFormatting` already centralizes modifiers, so it is a small extension. |
 | 4 | **XML doc comments on the public API** | Ship | Med | Med | IntelliSense for consumers. Partial coverage exists; needs a completeness pass. |
 | 5 | **Using-directive management** | Feature | Med | High | Output is fully qualified today (`System.Console`). Real payoff, but needs import collection + dedup + collision handling — a genuine subsystem. |
 | 6 | **`async` methods** | Feature | Med | Low | `async` modifier + `Task`/`Task<T>` return awareness. Common in generated service code. |
@@ -28,7 +28,10 @@ them, not speculatively).
 
 ## Reading of the table
 
-- **#1–#3** are the "actually finish it" cluster — small and high-leverage.
+- **#1–#2 are done**; the package builds and CI is green. The remaining step to
+  actual availability is publishing to nuget.org (needs an API key and a
+  decision on whether 0.1.0 goes out as a preview).
+- **#3** is the next small, self-contained slice.
 - **#4** rounds out the shippable story.
 - **#5 and below** are real but demand-driven. #5 (usings) is the one large
   feature that would most change how the output *feels*, if non-qualified names
