@@ -22,6 +22,10 @@
     <PackageTags>roslyn;source-generator;codegen;code-generation;syntaxfactory;fluent;csharp</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- PackageIcon, not the deprecated iconUrl: the image ships inside the nupkg.
+         nuget.org accepts PNG/JPEG only and recommends 128x128; the SVG source it is
+         rendered from lives in assets/. -->
+    <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -40,6 +44,7 @@
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

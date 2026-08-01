@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <!-- GitHub social preview, 1280x640. Same glyph as icon.svg, no tile (the banner
+       itself is the indigo ground). Glyph spans y 188-452, centred on the banner's
+       vertical middle. -->
+  <rect width="1280" height="640" fill="#1E2A47"/>
+  <g transform="translate(77.4,108.8) scale(3.3)" fill="#3DD9B3">
+    <rect x="56" y="24" width="16" height="80"/>
+    <rect x="22" y="24" width="36" height="13"/>
+    <rect x="24" y="56" width="34" height="13"/>
+    <path fill-rule="evenodd" d="M70 24 L86 24 A20 20 0 0 1 106 44 L106 49 A20 20 0 0 1 86 69 L70 69 Z M72 37 L86 37 A7 7 0 0 1 93 44 L93 49 A7 7 0 0 1 86 56 L72 56 Z"/>
+    <path d="M74 62 L88 62 L106 104 L92 104 Z"/>
+  </g>
+  <text x="500" y="308" font-family="Segoe UI, Arial, sans-serif" font-size="92" font-weight="700" fill="#EDF1F7">FluentRoslyn</text>
+  <text x="502" y="378" font-family="Segoe UI, Arial, sans-serif" font-size="36" font-weight="400" fill="#3DD9B3">Readable source generators.</text>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- FluentRoslyn mark: a mirrored F and an R sharing one stem. Cap height 24-104,
+       ink span 22-106; both axes centre on 64. Weights: stem 16, limbs 13 (the leg's
+       14 horizontal = 13 perpendicular). Arms and bowl are tucked 2px under the stem
+       so joints overlap rather than abut - abutting edges can leave hairline seams
+       when rasterised. -->
+  <rect width="128" height="128" rx="28" fill="#1E2A47"/>
+  <g fill="#3DD9B3">
+    <rect x="56" y="24" width="16" height="80"/>
+    <rect x="22" y="24" width="36" height="13"/>
+    <rect x="24" y="56" width="34" height="13"/>
+    <path fill-rule="evenodd" d="M70 24 L86 24 A20 20 0 0 1 106 44 L106 49 A20 20 0 0 1 86 69 L70 69 Z M72 37 L86 37 A7 7 0 0 1 93 44 L93 49 A7 7 0 0 1 86 56 L72 56 Z"/>
+    <path d="M74 62 L88 62 L106 104 L92 104 Z"/>
+  </g>
+</svg>
