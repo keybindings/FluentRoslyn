@@ -22,8 +22,8 @@ them, not speculatively).
 | ~~8~~ | ~~**`required` members** (C# 11)~~ | Feature | Low | Low | **Done** (2026-08-01). `Required()` on fields and properties, guarded against static/const and get-only, which can never satisfy the requirement. |
 | ~~9~~ | ~~**Record inheritance** (`: Base(args)`)~~ | Feature | Low | Med | **Done** (2026-08-01). `WithParent` forwards arguments to the base primary constructor via `PrimaryConstructorBaseType`; base emitted before interfaces. |
 | ~~10~~ | ~~**Emit `///` doc comments on generated members**~~ | Feature | Med | Med | **Done** (2026-08-01). `WithSummary` everywhere, plus `WithParameterDoc`/`WithReturnsDoc` on methods and constructors. Emitted as plain comment trivia so `NormalizeWhitespace` cannot reformat the XML attributes; text is XML-escaped. |
-| 11 | **Events / delegates** | Feature | Low | Med each | No current builders; niche for most generators. |
-| 12 | **Attribute target specifiers** (`[return:]`, `[field:]`) | Feature | Low | Low | The attribute probe strips them today. |
+| ~~11~~ | ~~**Events / delegates**~~ | Feature | Low | Med each | **Done** (2026-08-01). `DefineEvent<THandler>` (field-like events, ordered after constructors) and `NamespaceBuilder.Delegate` / `DefineDelegate` for nested. |
+| ~~12~~ | ~~**Attribute target specifiers** (`[return:]`, `[field:]`)~~ | Feature | Low | Low | **Done** (2026-08-01). Targets split off before parsing; an unrecognised one is rejected rather than silently dropped, and named arguments are not mistaken for targets. |
 | 13 | **Configurable formatting** (indent/eol) | Polish | Low | Med | Currently hardcoded 4-space/LF (deliberate — see decisions below). Options only if someone asks. |
 
 ## Reading of the table
@@ -34,10 +34,11 @@ them, not speculatively).
   decision on whether 0.1.0 goes out as a preview).
 - **#5, #6, #7 and #10 are done** — usings, async methods, nested types, and doc
   comments on generated output. That clears every Medium-value item.
-- **#8 and #9 are done** — required members and record inheritance.
-- **Only #11, #12 and #13 remain**, all Low value and narrow: events/delegates,
-  attribute target specifiers, and configurable formatting. Add these when a real
-  generator needs them, not speculatively.
+- **#8, #9, #11 and #12 are done** — required members, record inheritance, events
+  and delegates, and attribute targets.
+- **Only #13 remains** (configurable formatting), and it is a deliberate
+  non-goal rather than a gap — see the decisions below. Every roadmap feature is
+  otherwise complete; new work should come from a real generator's needs.
 
 ## Deliberate decisions (not gaps)
 
