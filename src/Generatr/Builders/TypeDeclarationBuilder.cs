@@ -17,6 +17,7 @@ namespace Generatr.Builders;
 public abstract class TypeDeclarationBuilder : NamedBuilder
 {
     private readonly List<AttributeSyntax> _attributes = [];
+    private readonly DocComment _docs = new();
 
     private protected TypeDeclarationBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
     {
@@ -43,7 +44,15 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     /// this type. The escape hatch for anything the fluent API cannot express.
     /// </summary>
     public CompilationUnitSyntax BuildCompilationUnit()
-        => Namespace.CompilationUnitFor(BuildDeclaration(), IsFileScopedNamespace);
+        => Namespace.CompilationUnitFor(BuildDocumentedDeclaration(), IsFileScopedNamespace);
+
+    // Doc trivia is attached centrally, so every type kind gets it without repeating the
+    // wiring — and before NormalizeWhitespace, which is what indents it correctly.
+    private MemberDeclarationSyntax BuildDocumentedDeclaration()
+    {
+        var declaration = BuildDeclaration();
+        return _docs.IsEmpty ? declaration : declaration.WithLeadingTrivia(_docs.Build());
+    }
 
     /// <summary>
     /// The generated source as a UTF-8 <see cref="SourceText"/>, ready to hand to
@@ -65,4 +74,7 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
 
     private protected void AddAttribute(string attribute)
         => _attributes.Add(SyntaxAttributes.Attribute(attribute));
+
+    private protected void AddSummary(string text)
+        => _docs.SetSummary(text);
 }

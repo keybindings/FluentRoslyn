@@ -29,6 +29,9 @@ public class RecordBuilder : TypeDeclarationBuilder
     /// <summary>Sets the record's accessibility. Public by default.</summary>
     public RecordBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Documents the record with an XML <c>&lt;summary&gt;</c>.</summary>
+    public RecordBuilder WithSummary(string text) => this.With(() => AddSummary(text));
+
     /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
     public RecordBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 

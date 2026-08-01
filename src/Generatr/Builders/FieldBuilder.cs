@@ -29,6 +29,9 @@ public class FieldBuilder<T> : FieldBuilder
     /// <summary>Sets the field's accessibility. Private by default.</summary>
     public FieldBuilder<T> WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Documents the field with an XML <c>&lt;summary&gt;</c>.</summary>
+    public FieldBuilder<T> WithSummary(string text) => this.With(() => Docs.SetSummary(text));
+
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonProperty(\"name\")")</c>.</summary>
     public FieldBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
@@ -84,6 +87,8 @@ public abstract class FieldBuilder(
 
     internal List<AttributeSyntax> Attributes { get; } = [];
 
+    internal DocComment Docs { get; } = new();
+
     internal FieldDeclarationSyntax BuildField()
     {
         if (IsConst)
@@ -98,11 +103,13 @@ public abstract class FieldBuilder(
         if (Initializer is not null)
             declarator = declarator.WithInitializer(EqualsValueClause(Initializer));
 
-        return FieldDeclaration(VariableDeclaration(
+        var field = FieldDeclaration(VariableDeclaration(
                 typeName.BuildTypeSyntax(),
                 SingletonSeparatedList(declarator)))
             .WithAttributeLists(SyntaxAttributes.Lists(Attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, IsReadonly, isConst: IsConst));
+
+        return Docs.IsEmpty ? field : field.WithLeadingTrivia(Docs.Build());
     }
 
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildField();

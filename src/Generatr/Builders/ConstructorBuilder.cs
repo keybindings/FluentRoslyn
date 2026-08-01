@@ -18,6 +18,7 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     private readonly List<IParameter> _params = [];
     private readonly List<StatementSyntax> _statements = [];
     private readonly List<AttributeSyntax> _attributes = [];
+    private readonly DocComment _docs = new();
     private ExpressionSyntax? _expressionBody;
     private ConstructorInitializerSyntax? _initializer;
 
@@ -45,6 +46,13 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
 
     /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
     public ConstructorBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
+
+    /// <summary>Documents the constructor with an XML <c>&lt;summary&gt;</c>.</summary>
+    public ConstructorBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
+
+    /// <summary>Documents a parameter: <c>&lt;param name="..."&gt;</c>.</summary>
+    public ConstructorBuilder WithParameterDoc(string parameterName, string text)
+        => this.With(() => _docs.AddParameter(parameterName, text));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonConstructor")</c>.</summary>
     public ConstructorBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
@@ -77,6 +85,12 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     #endregion
 
     internal ConstructorDeclarationSyntax BuildConstructor()
+    {
+        var ctor = BuildConstructorCore();
+        return _docs.IsEmpty ? ctor : ctor.WithLeadingTrivia(_docs.Build());
+    }
+
+    private ConstructorDeclarationSyntax BuildConstructorCore()
     {
         var ctor = ConstructorDeclaration(Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))

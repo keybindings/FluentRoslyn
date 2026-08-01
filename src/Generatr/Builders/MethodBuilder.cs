@@ -20,6 +20,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     private readonly List<StatementSyntax> _statements = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly GenericParameters _generics = new();
+    private readonly DocComment _docs = new();
     private ExpressionSyntax? _expressionBody;
 
     private MethodBuilder(
@@ -96,6 +97,22 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
     public MethodBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
 
+    /// <summary>
+    /// Documents the method with an XML <c>&lt;summary&gt;</c>. Newlines become separate
+    /// comment lines, and XML markup characters are escaped.
+    /// </summary>
+    public MethodBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
+
+    /// <summary>
+    /// Documents a parameter: <c>&lt;param name="..."&gt;</c>. The name must match a
+    /// parameter added with <see cref="WithParameter{T}"/>.
+    /// </summary>
+    public MethodBuilder WithParameterDoc(string parameterName, string text)
+        => this.With(() => _docs.AddParameter(parameterName, text));
+
+    /// <summary>Documents the return value: <c>&lt;returns&gt;</c>.</summary>
+    public MethodBuilder WithReturnsDoc(string text) => this.With(() => _docs.SetReturns(text));
+
     /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>
     public MethodBuilder WithTypeParameter(string name) => this.With(() => _generics.AddTypeParameter(name));
 
@@ -147,6 +164,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     #endregion
 
     internal MethodDeclarationSyntax BuildMethod()
+    {
+        var method = BuildMethodCore();
+        return _docs.IsEmpty ? method : method.WithLeadingTrivia(_docs.Build());
+    }
+
+    private MethodDeclarationSyntax BuildMethodCore()
     {
         ValidateInheritance();
         ValidateAsync();

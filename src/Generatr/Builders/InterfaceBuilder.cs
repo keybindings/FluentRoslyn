@@ -31,6 +31,9 @@ public class InterfaceBuilder : TypeDeclarationBuilder
     /// <summary>Sets the interface's accessibility. Public by default.</summary>
     public InterfaceBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Documents the interface with an XML <c>&lt;summary&gt;</c>.</summary>
+    public InterfaceBuilder WithSummary(string text) => this.With(() => AddSummary(text));
+
     /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
     public InterfaceBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
@@ -112,6 +115,7 @@ public class InterfaceMethodBuilder : NamedBuilder
     private readonly List<IParameter> _params;
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly GenericParameters _generics = new();
+    private readonly DocComment _docs = new();
     private TypeSyntax _returnType;
 
     internal InterfaceMethodBuilder(string name, TypeSyntax returnType, IEnumerable<IParameter> @params) : base(name, Identifiers.Validate)
@@ -133,6 +137,16 @@ public class InterfaceMethodBuilder : NamedBuilder
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
     public InterfaceMethodBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
+    /// <summary>Documents the signature with an XML <c>&lt;summary&gt;</c>.</summary>
+    public InterfaceMethodBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
+
+    /// <summary>Documents a parameter: <c>&lt;param name="..."&gt;</c>.</summary>
+    public InterfaceMethodBuilder WithParameterDoc(string parameterName, string text)
+        => this.With(() => _docs.AddParameter(parameterName, text));
+
+    /// <summary>Documents the return value: <c>&lt;returns&gt;</c>.</summary>
+    public InterfaceMethodBuilder WithReturnsDoc(string text) => this.With(() => _docs.SetReturns(text));
+
     /// <summary>Sets the return type from a raw name, e.g. <c>Returns("T")</c> for a generic return.</summary>
     public InterfaceMethodBuilder Returns(string typeName) => this.With(() => _returnType = SyntaxParse.TypeName(typeName));
 
@@ -143,7 +157,9 @@ public class InterfaceMethodBuilder : NamedBuilder
             .WithParameterList(SyntaxParameters.List(_params))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
-        return _generics.ApplyTo(method, $"Interface method '{Name}'");
+        method = _generics.ApplyTo(method, $"Interface method '{Name}'");
+
+        return _docs.IsEmpty ? method : method.WithLeadingTrivia(_docs.Build());
     }
 
     internal override SyntaxNode BuildSyntax() => BuildMethod();
@@ -154,6 +170,7 @@ public class InterfacePropertyBuilder : NamedBuilder
 {
     private readonly TypeNameBuilder _type;
     private readonly List<AttributeSyntax> _attributes = [];
+    private readonly DocComment _docs = new();
 
     internal InterfacePropertyBuilder(string name, TypeNameBuilder type) : base(name, Identifiers.Validate)
     {
@@ -182,6 +199,9 @@ public class InterfacePropertyBuilder : NamedBuilder
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
     public InterfacePropertyBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
+    /// <summary>Documents the signature with an XML <c>&lt;summary&gt;</c>.</summary>
+    public InterfacePropertyBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
+
     internal PropertyDeclarationSyntax BuildProperty()
     {
         if (!HasGet && !HasSet)
@@ -191,9 +211,11 @@ public class InterfacePropertyBuilder : NamedBuilder
         if (HasGet) accessors.Add(Accessor(SyntaxKind.GetAccessorDeclaration));
         if (HasSet) accessors.Add(Accessor(SetterIsInit ? SyntaxKind.InitAccessorDeclaration : SyntaxKind.SetAccessorDeclaration));
 
-        return PropertyDeclaration(_type.BuildTypeSyntax(), Identifier(Name))
+        var property = PropertyDeclaration(_type.BuildTypeSyntax(), Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithAccessorList(AccessorList(List(accessors)));
+
+        return _docs.IsEmpty ? property : property.WithLeadingTrivia(_docs.Build());
     }
 
     internal override SyntaxNode BuildSyntax() => BuildProperty();

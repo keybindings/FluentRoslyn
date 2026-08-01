@@ -202,6 +202,16 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     }
 
     /// <summary>
+    /// Documents the type with an XML <c>&lt;summary&gt;</c>. Newlines become separate
+    /// comment lines, and XML markup characters are escaped.
+    /// </summary>
+    public TSelf WithSummary(string text)
+    {
+        AddSummary(text);
+        return (TSelf)this;
+    }
+
+    /// <summary>
     /// Adds an implemented interface from a raw name, e.g.
     /// <c>WithInterface("IEquatable&lt;Point&gt;")</c>.
     /// </summary>

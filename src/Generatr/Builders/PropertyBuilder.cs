@@ -34,6 +34,9 @@ public class PropertyBuilder<T> : PropertyBuilder
     /// <summary>Sets the property's accessibility. Public by default.</summary>
     public PropertyBuilder<T> WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Documents the property with an XML <c>&lt;summary&gt;</c>.</summary>
+    public PropertyBuilder<T> WithSummary(string text) => this.With(() => Docs.SetSummary(text));
+
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonIgnore")</c>.</summary>
     public PropertyBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.Attribute(attribute)));
 
@@ -314,6 +317,8 @@ public abstract class PropertyBuilder(string name, AccessModifier accessModifier
 
     internal List<AttributeSyntax> Attributes { get; } = [];
 
+    internal DocComment Docs { get; } = new();
+
     // The property's default-value expression, or null when it has no initializer.
     internal ExpressionSyntax? Initializer { get; set; }
 
@@ -332,9 +337,17 @@ public abstract class PropertyBuilder(string name, AccessModifier accessModifier
 
     internal abstract PropertyDeclarationSyntax BuildProperty();
 
-    MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildProperty();
+    // Both emission paths (as a type member, and standalone via ToString) route through
+    // here so docs are attached exactly once, wherever the property is built from.
+    private PropertyDeclarationSyntax BuildDocumentedProperty()
+    {
+        var property = BuildProperty();
+        return Docs.IsEmpty ? property : property.WithLeadingTrivia(Docs.Build());
+    }
 
-    internal override SyntaxNode BuildSyntax() => BuildProperty();
+    MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildDocumentedProperty();
+
+    internal override SyntaxNode BuildSyntax() => BuildDocumentedProperty();
 
     private protected void ValidateSetterAccessModifier()
     {

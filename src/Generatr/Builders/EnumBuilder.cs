@@ -36,6 +36,9 @@ public class EnumBuilder : TypeDeclarationBuilder
     /// <summary>Sets the enum's accessibility. Public by default.</summary>
     public EnumBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Documents the enum with an XML <c>&lt;summary&gt;</c>.</summary>
+    public EnumBuilder WithSummary(string text) => this.With(() => AddSummary(text));
+
     /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
     public EnumBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
