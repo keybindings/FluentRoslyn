@@ -246,6 +246,25 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
         return (TSelf)this;
     }
 
+    /// <summary>Adds a using directive, e.g. <c>WithUsing("System.Linq")</c>.</summary>
+    public TSelf WithUsing(string namespaceName)
+    {
+        AddUsing(namespaceName);
+        return (TSelf)this;
+    }
+
+    /// <summary>
+    /// Shortens generated type references and imports the namespaces they need, so
+    /// <c>System.Collections.Generic.List&lt;int&gt;</c> becomes <c>List&lt;int&gt;</c>
+    /// under a <c>using System.Collections.Generic;</c>. A name offered by two different
+    /// namespaces, or one this file declares itself, stays fully qualified.
+    /// </summary>
+    public TSelf SimplifyTypeNames()
+    {
+        EnableTypeNameSimplification();
+        return (TSelf)this;
+    }
+
     /// <summary>
     /// Adds an implemented interface from a raw name, e.g.
     /// <c>WithInterface("IEquatable&lt;Point&gt;")</c>.

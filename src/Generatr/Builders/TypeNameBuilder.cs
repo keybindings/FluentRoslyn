@@ -95,9 +95,13 @@ public class TypeNameBuilder : NamedBuilder
         if (_declaringType is not null)
             return QualifiedName((NameSyntax)_declaringType.BuildTypeSyntax(), simple);
 
-        return _namespaceBuilder.IsGlobal
-            ? simple
-            : QualifiedName(_namespaceBuilder.BuildNameSyntax(), simple);
+        if (_namespaceBuilder.IsGlobal)
+            return simple;
+
+        // Annotated so the simplifier can shorten this to `simple` and import the
+        // namespace, which a syntax-only pass could not work out on its own.
+        return QualifiedName(_namespaceBuilder.BuildNameSyntax(), simple)
+            .WithAdditionalAnnotations(TypeNameSimplifier.Annotation(_namespaceBuilder.ToString()));
     }
 
     private static TypeNameBuilder NewEmptyBuilder(Type type)

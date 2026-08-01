@@ -18,6 +18,7 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
 {
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly DocComment _docs = new();
+    private readonly TypeImports _imports = new();
 
     private protected TypeDeclarationBuilder(
         NamespaceBuilder @namespace,
@@ -57,7 +58,10 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     /// this type. The escape hatch for anything the fluent API cannot express.
     /// </summary>
     public CompilationUnitSyntax BuildCompilationUnit()
-        => Namespace.CompilationUnitFor(BuildDocumentedDeclaration(), IsFileScopedNamespace);
+    {
+        var unit = Namespace.CompilationUnitFor(BuildDocumentedDeclaration(), IsFileScopedNamespace);
+        return _imports.ApplyTo(unit, Namespace.IsGlobal ? null : Namespace.ToString());
+    }
 
     // Doc trivia is attached centrally, so every type kind gets it without repeating the
     // wiring — and before NormalizeWhitespace, which is what indents it correctly.
@@ -81,12 +85,16 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     /// </summary>
     internal TypeSyntax BuildTypeSyntax()
     {
+        // Only the innermost namespace qualification is annotated; simplifying it turns
+        // Ns.Outer.Inner into Outer.Inner, which is what `using Ns;` makes legal.
         if (DeclaringType is { } declaring)
             return QualifiedName((NameSyntax)declaring.BuildTypeSyntax(), IdentifierName(Name));
 
-        return Namespace.IsGlobal
-            ? IdentifierName(Name)
-            : QualifiedName(Namespace.BuildNameSyntax(), IdentifierName(Name));
+        if (Namespace.IsGlobal)
+            return IdentifierName(Name);
+
+        return QualifiedName(Namespace.BuildNameSyntax(), IdentifierName(Name))
+            .WithAdditionalAnnotations(TypeNameSimplifier.Annotation(Namespace.ToString()));
     }
 
     // A nested type is not a file, so emitting it standalone gives just the declaration
@@ -102,4 +110,10 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
 
     private protected void AddSummary(string text)
         => _docs.SetSummary(text);
+
+    private protected void AddUsing(string namespaceName)
+        => _imports.Add(namespaceName);
+
+    private protected void EnableTypeNameSimplification()
+        => _imports.EnableSimplification();
 }

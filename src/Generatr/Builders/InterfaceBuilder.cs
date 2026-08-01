@@ -34,6 +34,12 @@ public class InterfaceBuilder : TypeDeclarationBuilder
     /// <summary>Documents the interface with an XML <c>&lt;summary&gt;</c>.</summary>
     public InterfaceBuilder WithSummary(string text) => this.With(() => AddSummary(text));
 
+    /// <summary>Adds a using directive, e.g. <c>WithUsing("System.Linq")</c>.</summary>
+    public InterfaceBuilder WithUsing(string namespaceName) => this.With(() => AddUsing(namespaceName));
+
+    /// <summary>Shortens generated type references and imports the namespaces they need.</summary>
+    public InterfaceBuilder SimplifyTypeNames() => this.With(() => EnableTypeNameSimplification());
+
     /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
     public InterfaceBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
