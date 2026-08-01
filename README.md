@@ -3,6 +3,10 @@
 [![CI](https://github.com/Cameron097/Generatr/actions/workflows/ci.yml/badge.svg)](https://github.com/Cameron097/Generatr/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+> Ships on NuGet as **`FluentRoslyn`**. The bare `Generatr` id is taken by an
+> unrelated database scaffolder, and `FluentRoslyn` is what someone looking for
+> this library actually searches for.
+
 A fluent C# API for generating C# source code — a readable facade over Roslyn's
 `SyntaxFactory`.
 
@@ -42,13 +46,34 @@ public class User
 ## Why
 
 Roslyn already ships a fluent code-building layer — `SyntaxGenerator` — but it
-lives in `Microsoft.CodeAnalysis.Workspaces`, which **source generators cannot
-reference**. That leaves generator authors hand-writing verbose `SyntaxFactory`
-calls or, more often, concatenating strings and fighting formatting bugs.
+lives in `Microsoft.CodeAnalysis.Workspaces`, and **the compiler does not ship
+that assembly**. The SDK's compiler directory contains only:
 
-Generatr fills that gap: an intention-revealing builder API that targets
-`netstandard2.0`, so it works inside incremental source generators. The goal
-is generator code that reads like the code it produces.
+```
+Microsoft.CodeAnalysis.dll
+Microsoft.CodeAnalysis.CSharp.dll
+Microsoft.CodeAnalysis.VisualBasic.dll
+```
+
+Source generators run inside that process, so they can only bind against what it
+provides. The failure is worse than a compile error, because nothing stops you
+trying: referencing Workspaces from a generator compiles cleanly — no warning,
+even with `EnforceExtendedAnalyzerRules` — and the consuming build still reports
+success. The generator just dies at generation time and contributes nothing:
+
+```
+warning CS8785: Generator 'MyGenerator' failed to generate source. Exception was
+of type 'FileNotFoundException' with message 'Could not load file or assembly
+'Microsoft.CodeAnalysis.Workspaces, Version=4.9.0.0 ...'
+```
+
+A warning, easily scrolled past, with your generated file silently missing.
+
+So generator authors are left hand-writing verbose `SyntaxFactory` calls or, more
+often, concatenating strings and fighting formatting bugs. Generatr fills that
+gap: an intention-revealing builder API targeting `netstandard2.0`, so it works
+where `SyntaxGenerator` cannot. The goal is generator code that reads like the
+code it produces.
 
 ## Requirements
 
@@ -57,8 +82,8 @@ is generator code that reads like the code it produces.
 - Output: 4-space indentation, `\n` line endings (byte-identical across
   operating systems)
 
-> **Status:** not yet published to NuGet — reference the project directly for
-> now. See [What's next](#whats-next).
+> **Status:** packaged as `FluentRoslyn` but not yet pushed to nuget.org —
+> reference the project directly for now. See [What's next](#whats-next).
 
 ## Building blocks
 

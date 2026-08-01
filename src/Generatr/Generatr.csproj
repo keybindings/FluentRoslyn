@@ -11,8 +11,12 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Package">
-    <PackageId>Generatr</PackageId>
-    <Version>0.1.0</Version>
+    <!-- The package ships as FluentRoslyn: the bare `Generatr` id collides with an
+         unrelated database scaffolder already on nuget.org (ids are case-insensitive),
+         and FluentRoslyn is what someone searching for this library actually types.
+         Assembly, namespaces, and repo stay Generatr. -->
+    <PackageId>FluentRoslyn</PackageId>
+    <Version>0.1.0-preview.1</Version>
     <Authors>Cameron Lambert</Authors>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
     <PackageTags>roslyn;source-generator;codegen;code-generation;syntaxfactory;fluent;csharp</PackageTags>
@@ -21,7 +25,7 @@
     <PackageProjectUrl>https://github.com/Cameron097/Generatr</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Cameron097/Generatr</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>Initial preview: fluent builders for classes, structs, records, enums, and interfaces, with fields, constructors, properties, and methods; attributes, generics with constraints, base types, initializers, and expression/statement bodies.</PackageReleaseNotes>
+    <PackageReleaseNotes>First preview. Fluent builders for classes, structs, records, enums, interfaces, and delegates; fields, constructors, properties, methods, and events; generics with constraints, attributes (including targets), base types and interfaces, initializers, expression and statement bodies, async, required members, nested types, XML doc comments, and optional using-directive management. Output is 4-space/LF by default so it is byte-identical across operating systems.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

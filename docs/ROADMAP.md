@@ -37,8 +37,13 @@ them, not speculatively).
 - **Every item on this roadmap is now done.** The list is kept as a record of
   what was built and why.
 - **New work should come from a real generator's needs**, not from a
-  speculative list. The obvious remaining step is publishing to nuget.org
-  (needs an API key and a call on whether 0.1.0 ships as a preview).
+  speculative list.
+- **Publishing is the remaining step.** The package is prepared as
+  `FluentRoslyn` version `0.1.0-preview.1` — the bare `Generatr` id collides
+  with an unrelated database scaffolder on nuget.org, and ids are
+  case-insensitive. Pushing needs a nuget.org API key. Note that package
+  metadata is immutable once pushed, so settle the repository URL (i.e. any
+  GitHub account rename) *before* the first push.
 
 ## Deliberate decisions (not gaps)
 
