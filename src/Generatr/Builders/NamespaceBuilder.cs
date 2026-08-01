@@ -1,6 +1,7 @@
 ﻿using System;
 using Generatr.Abstractions;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -92,6 +93,14 @@ public class NamespaceBuilder : NamedBuilder
     /// <summary>Declares an interface in this namespace.</summary>
     public InterfaceBuilder Interface(string name)
         => new(this, name);
+
+    /// <summary>Declares a <c>void</c>-returning delegate in this namespace.</summary>
+    public DelegateBuilder Delegate(string name)
+        => new(this, name, PredefinedType(Token(SyntaxKind.VoidKeyword)));
+
+    /// <summary>Declares a delegate returning <typeparamref name="TReturn"/>.</summary>
+    public DelegateBuilder Delegate<TReturn>(string name)
+        => new(this, name, TypeNameBuilder.New<TReturn>().BuildTypeSyntax());
 
     /// <summary>
     /// Wraps a top-level type declaration in this namespace and a compilation unit. A

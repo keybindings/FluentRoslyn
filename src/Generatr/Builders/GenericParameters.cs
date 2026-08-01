@@ -50,6 +50,18 @@ internal sealed class GenericParameters
         return clauses.Count == 0 ? method : method.WithConstraintClauses(clauses);
     }
 
+    /// <summary>Applies the type-parameter list and where-clauses to a delegate declaration.</summary>
+    internal DelegateDeclarationSyntax ApplyTo(DelegateDeclarationSyntax @delegate, string owner)
+    {
+        Validate(owner);
+
+        if (SyntaxGenerics.TypeParameterList(_typeParameters) is { } list)
+            @delegate = @delegate.WithTypeParameterList(list);
+
+        var clauses = SyntaxGenerics.ConstraintClauses(_typeParameters, _constraints);
+        return clauses.Count == 0 ? @delegate : @delegate.WithConstraintClauses(clauses);
+    }
+
     private void Validate(string owner)
         => SyntaxGenerics.Validate(owner, _typeParameters, _constraints);
 }

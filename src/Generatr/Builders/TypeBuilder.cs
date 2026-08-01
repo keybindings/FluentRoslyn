@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Generatr.Abstractions;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -19,6 +20,7 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 {
     private readonly List<FieldBuilder> _fields = [];
     private readonly List<ConstructorBuilder> _constructors = [];
+    private readonly List<EventBuilder> _events = [];
     private readonly List<PropertyBuilder> _properties = [];
     private readonly List<MethodBuilder> _methods = [];
     private readonly List<TypeDeclarationBuilder> _nestedTypes = [];
@@ -65,6 +67,30 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         var pb = new PropertyBuilder<T>(name, accessModifier);
         _properties.Add(pb);
         return pb;
+    }
+
+    /// <summary>
+    /// Declares a field-like event whose handler type is <typeparamref name="THandler"/>,
+    /// e.g. <c>DefineEvent&lt;EventHandler&gt;("Changed")</c>.
+    /// </summary>
+    public EventBuilder DefineEvent<THandler>(string name)
+        => DefineEvent<THandler>(name, AccessModifier.Public);
+
+    /// <summary>Declares a field-like event whose handler type is <typeparamref name="THandler"/>.</summary>
+    public EventBuilder DefineEvent<THandler>(string name, AccessModifier accessModifier)
+        => AddEvent(new EventBuilder(name, TypeNameBuilder.New<THandler>().BuildTypeSyntax(), accessModifier));
+
+    /// <summary>
+    /// Declares a field-like event whose handler type is named by a raw string — for a
+    /// delegate that does not exist as a CLR type, such as one being generated alongside.
+    /// </summary>
+    public EventBuilder DefineEvent(string name, string handlerTypeName)
+        => AddEvent(new EventBuilder(name, SyntaxParse.TypeName(handlerTypeName), AccessModifier.Public));
+
+    private EventBuilder AddEvent(EventBuilder @event)
+    {
+        _events.Add(@event);
+        return @event;
     }
 
     /// <summary>Declares a public <c>void</c> method with an empty body.</summary>
@@ -115,6 +141,14 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     /// <summary>Declares an interface nested inside this type.</summary>
     public InterfaceBuilder DefineInterface(string name) => AddNested(new InterfaceBuilder(Namespace, name, this));
 
+    /// <summary>Declares a <c>void</c>-returning delegate nested inside this type.</summary>
+    public DelegateBuilder DefineDelegate(string name)
+        => AddNested(new DelegateBuilder(Namespace, name, PredefinedType(Token(SyntaxKind.VoidKeyword)), this));
+
+    /// <summary>Declares a nested delegate returning <typeparamref name="TReturn"/>.</summary>
+    public DelegateBuilder DefineDelegate<TReturn>(string name)
+        => AddNested(new DelegateBuilder(Namespace, name, TypeNameBuilder.New<TReturn>().BuildTypeSyntax(), this));
+
     private TNested AddNested<TNested>(TNested nested) where TNested : TypeDeclarationBuilder
     {
         _nestedTypes.Add(nested);
@@ -134,7 +168,8 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     /// </summary>
     private protected virtual bool AllowsAbstractMembers => false;
 
-    // Member group order: fields, constructors, properties, methods, nested types;
+    // Member group order: fields, constructors, events, properties, methods, nested
+    // types;
     // within each group, least protected first, then alphabetical.
     private protected SyntaxList<MemberDeclarationSyntax> BuildMembers()
     {
@@ -147,6 +182,7 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         var members = new List<MemberDeclarationSyntax>();
         AddMemberGroup(members, _fields);
         AddMemberGroup(members, _constructors);
+        AddMemberGroup(members, _events);
         AddMemberGroup(members, _properties);
         AddMemberGroup(members, _methods);
         AddNestedTypes(members);
