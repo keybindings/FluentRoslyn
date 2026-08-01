@@ -22,7 +22,7 @@ public class InterfaceBuilder : TypeDeclarationBuilder
     private readonly List<TypeSyntax> _baseInterfaces = [];
     private readonly GenericParameters _generics = new();
 
-    internal InterfaceBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
+    internal InterfaceBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
     {
     }
 

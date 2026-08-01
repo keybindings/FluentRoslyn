@@ -27,7 +27,7 @@ public class EnumBuilder : TypeDeclarationBuilder
     private TypeNameBuilder? _underlyingType;
     private Type? _underlyingClrType;
 
-    internal EnumBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
+    internal EnumBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
     {
     }
 

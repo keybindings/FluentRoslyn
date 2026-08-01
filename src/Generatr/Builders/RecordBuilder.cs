@@ -20,7 +20,7 @@ public class RecordBuilder : TypeDeclarationBuilder
     private readonly GenericParameters _generics = new();
     private bool _isStruct;
 
-    internal RecordBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
+    internal RecordBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
     {
     }
 

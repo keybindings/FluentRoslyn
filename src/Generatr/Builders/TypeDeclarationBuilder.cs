@@ -19,13 +19,26 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly DocComment _docs = new();
 
-    private protected TypeDeclarationBuilder(NamespaceBuilder @namespace, string name) : base(name, Identifiers.Validate)
+    private protected TypeDeclarationBuilder(
+        NamespaceBuilder @namespace,
+        string name,
+        TypeDeclarationBuilder? declaringType = null) : base(name, Identifiers.Validate)
     {
         Namespace = @namespace;
+        DeclaringType = declaringType;
     }
 
     /// <summary>The namespace this type is declared in.</summary>
     public NamespaceBuilder Namespace { get; }
+
+    /// <summary>
+    /// The type this one is nested inside, or null when it is declared directly in a
+    /// namespace.
+    /// </summary>
+    public TypeDeclarationBuilder? DeclaringType { get; }
+
+    /// <summary>Whether this type is nested inside another.</summary>
+    public bool IsNested => DeclaringType is not null;
 
     /// <summary>
     /// Whether to emit a file-scoped namespace (<c>namespace N;</c>). True by default;
@@ -48,7 +61,7 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
 
     // Doc trivia is attached centrally, so every type kind gets it without repeating the
     // wiring — and before NormalizeWhitespace, which is what indents it correctly.
-    private MemberDeclarationSyntax BuildDocumentedDeclaration()
+    internal MemberDeclarationSyntax BuildDocumentedDeclaration()
     {
         var declaration = BuildDeclaration();
         return _docs.IsEmpty ? declaration : declaration.WithLeadingTrivia(_docs.Build());
@@ -61,13 +74,25 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     public SourceText ToSourceText()
         => SourceText.From(ToString(), Encoding.UTF8);
 
-    /// <summary>The fully qualified name of this type, for use as a type reference.</summary>
+    /// <summary>
+    /// The fully qualified name of this type, for use as a type reference. A nested type
+    /// is qualified by its declaring type (<c>Ns.Outer.Inner</c>), not by the namespace
+    /// alone.
+    /// </summary>
     internal TypeSyntax BuildTypeSyntax()
-        => Namespace.IsGlobal
+    {
+        if (DeclaringType is { } declaring)
+            return QualifiedName((NameSyntax)declaring.BuildTypeSyntax(), IdentifierName(Name));
+
+        return Namespace.IsGlobal
             ? IdentifierName(Name)
             : QualifiedName(Namespace.BuildNameSyntax(), IdentifierName(Name));
+    }
 
-    internal override SyntaxNode BuildSyntax() => BuildCompilationUnit();
+    // A nested type is not a file, so emitting it standalone gives just the declaration
+    // rather than wrapping it in a namespace it does not own.
+    internal override SyntaxNode BuildSyntax()
+        => IsNested ? BuildDocumentedDeclaration() : BuildCompilationUnit();
 
     private protected SyntaxList<AttributeListSyntax> BuildAttributeLists()
         => SyntaxAttributes.Lists(_attributes);

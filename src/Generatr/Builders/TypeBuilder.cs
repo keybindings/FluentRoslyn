@@ -21,10 +21,11 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     private readonly List<ConstructorBuilder> _constructors = [];
     private readonly List<PropertyBuilder> _properties = [];
     private readonly List<MethodBuilder> _methods = [];
+    private readonly List<TypeDeclarationBuilder> _nestedTypes = [];
     private readonly List<TypeSyntax> _interfaces = [];
     private readonly GenericParameters _generics = new();
 
-    private protected TypeBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
+    private protected TypeBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType) : base(@namespace, name, declaringType)
     {
     }
 
@@ -97,6 +98,31 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 
     #endregion
 
+    #region Nested types
+
+    /// <summary>Declares a class nested inside this type.</summary>
+    public ClassBuilder DefineClass(string name) => AddNested(new ClassBuilder(Namespace, name, this));
+
+    /// <summary>Declares a struct nested inside this type.</summary>
+    public StructBuilder DefineStruct(string name) => AddNested(new StructBuilder(Namespace, name, this));
+
+    /// <summary>Declares an enum nested inside this type.</summary>
+    public EnumBuilder DefineEnum(string name) => AddNested(new EnumBuilder(Namespace, name, this));
+
+    /// <summary>Declares a positional record nested inside this type.</summary>
+    public RecordBuilder DefineRecord(string name) => AddNested(new RecordBuilder(Namespace, name, this));
+
+    /// <summary>Declares an interface nested inside this type.</summary>
+    public InterfaceBuilder DefineInterface(string name) => AddNested(new InterfaceBuilder(Namespace, name, this));
+
+    private TNested AddNested<TNested>(TNested nested) where TNested : TypeDeclarationBuilder
+    {
+        _nestedTypes.Add(nested);
+        return nested;
+    }
+
+    #endregion
+
     /// <summary>Builds the type declaration for this kind (class, struct, ...).</summary>
     private protected abstract TypeDeclarationSyntax BuildTypeDeclaration();
 
@@ -108,8 +134,8 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     /// </summary>
     private protected virtual bool AllowsAbstractMembers => false;
 
-    // Member group order: fields, constructors, properties, methods; within each group,
-    // least protected first, then alphabetical.
+    // Member group order: fields, constructors, properties, methods, nested types;
+    // within each group, least protected first, then alphabetical.
     private protected SyntaxList<MemberDeclarationSyntax> BuildMembers()
     {
         // An abstract member in a non-abstract type does not compile, and only the type
@@ -123,8 +149,17 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         AddMemberGroup(members, _constructors);
         AddMemberGroup(members, _properties);
         AddMemberGroup(members, _methods);
+        AddNestedTypes(members);
         return List(members);
     }
+
+    // Nested types sort by the same rule as members, but they are not IMemberSyntaxBuilder
+    // so they cannot go through AddMemberGroup.
+    private void AddNestedTypes(List<MemberDeclarationSyntax> members)
+        => members.AddRange(_nestedTypes
+            .OrderBy(x => x.AccessModifier.AccessabilityLevel)
+            .ThenBy(x => x.Name, StringComparer.Ordinal)
+            .Select(x => x.BuildDocumentedDeclaration()));
 
     private protected void AddInterface(TypeSyntax @interface)
         => _interfaces.Add(@interface);
@@ -173,7 +208,7 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 public abstract class TypeBuilder<TSelf> : TypeBuilder
     where TSelf : TypeBuilder<TSelf>
 {
-    private protected TypeBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
+    private protected TypeBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType) : base(@namespace, name, declaringType)
     {
     }
 

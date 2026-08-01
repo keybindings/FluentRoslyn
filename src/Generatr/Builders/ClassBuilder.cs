@@ -10,7 +10,7 @@ namespace Generatr.Builders;
 /// </summary>
 public class ClassBuilder : TypeBuilder<ClassBuilder>
 {
-    internal ClassBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
+    internal ClassBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
     {
     }
 

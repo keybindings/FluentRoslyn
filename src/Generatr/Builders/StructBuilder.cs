@@ -8,7 +8,7 @@ namespace Generatr.Builders;
 /// </summary>
 public class StructBuilder : TypeBuilder<StructBuilder>
 {
-    internal StructBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
+    internal StructBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
     {
     }
 
