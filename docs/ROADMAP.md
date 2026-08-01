@@ -15,7 +15,7 @@ them, not speculatively).
 | ~~1~~ | ~~**NuGet packaging**~~ | Ship | High | Low | **Done** (2026-08-01). Full metadata, MIT license, README/LICENSE packed, XML docs shipped. Verified: dependency group is empty, so Roslyn does not flow to consumers. Not yet *published* to nuget.org. |
 | ~~2~~ | ~~**CI pipeline**~~ | Ship | Med | Low | **Done** (2026-08-01). `.github/workflows/ci.yml` — restore, build, test, run the example end-to-end (asserts on output), pack, upload artifact. |
 | ~~3~~ | ~~**Method modifiers** — `virtual`/`abstract`/`override`/`sealed`~~ | Feature | Med | Low | **Done** (2026-08-01). Modelled as an `Inheritance` enum (mutually exclusive by construction) rather than independent bools. Classes also gained `Abstract()`/`Sealed()`. |
-| 4 | **XML doc comments on the public API** | Ship | Med | Med | IntelliSense for consumers. Partial coverage exists; needs a completeness pass. |
+| ~~4~~ | ~~**XML doc comments on the public API**~~ | Ship | Med | Med | **Done** (2026-08-01). Full coverage, enforced by `WarningsAsErrors;CS1591`. The pass also tightened members that were public but externally unreachable. |
 | 5 | **Using-directive management** | Feature | Med | High | Output is fully qualified today (`System.Console`). Real payoff, but needs import collection + dedup + collision handling — a genuine subsystem. |
 | 6 | **`async` methods** | Feature | Med | Low | `async` modifier + `Task`/`Task<T>` return awareness. Common in generated service code. |
 | 7 | **Nested types** (type inside a type) | Feature | Med | Med | Real generator need (builders, DTOs). Requires letting `TypeBuilder` hold child types. |
@@ -28,11 +28,12 @@ them, not speculatively).
 
 ## Reading of the table
 
-- **#1–#3 are done** — the "actually finish it" cluster. The package builds, CI
-  is green, and the inheritance modifiers are in. The remaining step to actual
-  availability is publishing to nuget.org (needs an API key and a decision on
-  whether 0.1.0 goes out as a preview).
-- **#4** is next, and rounds out the shippable story.
+- **#1–#4 are done** — the whole shippable story. The package builds with full
+  API docs, CI is green, and the inheritance modifiers are in. The one remaining
+  step to actual availability is publishing to nuget.org (needs an API key and a
+  decision on whether 0.1.0 goes out as a preview).
+- **Everything from #5 down is demand-driven.** Add these when a real generator
+  needs them, not speculatively.
 - **#5 and below** are real but demand-driven. #5 (usings) is the one large
   feature that would most change how the output *feels*, if non-qualified names
   ever become desirable.
