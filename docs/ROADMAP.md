@@ -3,7 +3,7 @@
 Status as of 2026-08-01. Ordered by priority; value and effort are relative to
 each other, not absolute.
 
-Generatr is feature-complete for common source-generator scenarios and fully
+FluentRoslyn is feature-complete for common source-generator scenarios and fully
 tested. The remaining work splits into **shipping** (making it usable by other
 people) and **long-tail language features** (add when a real generator needs
 them, not speculatively).
@@ -39,7 +39,7 @@ them, not speculatively).
 - **New work should come from a real generator's needs**, not from a
   speculative list.
 - **Publishing is the remaining step.** The package is prepared as
-  `FluentRoslyn` version `0.1.0-preview.1` — the bare `Generatr` id collides
+  `FluentRoslyn` version `0.1.0-preview.1` — the original name `Generatr` collides
   with an unrelated database scaffolder on nuget.org, and ids are
   case-insensitive. Pushing needs a nuget.org API key. Note that package
   metadata is immutable once pushed, so settle the repository URL (i.e. any

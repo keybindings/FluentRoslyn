@@ -1,0 +1,55 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33414.496
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{12BA102B-C96D-40F1-A767-6EF6A711184A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentRoslyn", "src\FluentRoslyn\FluentRoslyn.csproj", "{8D6BC34D-9F63-4684-904C-D50AB5A0628E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C0D57135-C0CA-475C-A48D-517D933C372D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentRoslyn.UnitTests", "tests\FluentRoslyn.UnitTests\FluentRoslyn.UnitTests.csproj", "{F10B8FDE-A157-472D-9C9C-E9597EB9ECF2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{0BD9D752-6373-4767-AA62-199C9231D13E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentRoslyn.Example.App", "examples\FluentRoslyn.Example.App\FluentRoslyn.Example.App.csproj", "{BE17661C-A9D6-4741-981B-B7039029A208}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentRoslyn.Example.Generator", "examples\FluentRoslyn.Example.Generator\FluentRoslyn.Example.Generator.csproj", "{0CE0EAEE-FD0F-48A1-819B-5A62F1439776}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8D6BC34D-9F63-4684-904C-D50AB5A0628E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D6BC34D-9F63-4684-904C-D50AB5A0628E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D6BC34D-9F63-4684-904C-D50AB5A0628E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D6BC34D-9F63-4684-904C-D50AB5A0628E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F10B8FDE-A157-472D-9C9C-E9597EB9ECF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F10B8FDE-A157-472D-9C9C-E9597EB9ECF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F10B8FDE-A157-472D-9C9C-E9597EB9ECF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F10B8FDE-A157-472D-9C9C-E9597EB9ECF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE17661C-A9D6-4741-981B-B7039029A208}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE17661C-A9D6-4741-981B-B7039029A208}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE17661C-A9D6-4741-981B-B7039029A208}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE17661C-A9D6-4741-981B-B7039029A208}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CE0EAEE-FD0F-48A1-819B-5A62F1439776}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CE0EAEE-FD0F-48A1-819B-5A62F1439776}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CE0EAEE-FD0F-48A1-819B-5A62F1439776}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CE0EAEE-FD0F-48A1-819B-5A62F1439776}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8D6BC34D-9F63-4684-904C-D50AB5A0628E} = {12BA102B-C96D-40F1-A767-6EF6A711184A}
+		{F10B8FDE-A157-472D-9C9C-E9597EB9ECF2} = {C0D57135-C0CA-475C-A48D-517D933C372D}
+		{BE17661C-A9D6-4741-981B-B7039029A208} = {0BD9D752-6373-4767-AA62-199C9231D13E}
+		{0CE0EAEE-FD0F-48A1-819B-5A62F1439776} = {0BD9D752-6373-4767-AA62-199C9231D13E}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0CE717C3-B1BC-43AD-ABAA-E3A92919178F}
+	EndGlobalSection
+EndGlobal

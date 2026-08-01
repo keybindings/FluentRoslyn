@@ -6,9 +6,8 @@
 A fluent C# API for generating C# source code — a readable facade over Roslyn's
 `SyntaxFactory`.
 
-> The project was previously called Generatr; the assembly and namespaces still
-> use that name (`Generatr.Builders`). The bare `Generatr` id was already taken
-> on NuGet by an unrelated database scaffolder.
+> Formerly called Generatr — renamed because that bare id was already taken on
+> NuGet by an unrelated database scaffolder.
 
 You describe the code you want with a builder chain; FluentRoslyn produces a
 well-formed syntax tree and formats it. Because it builds real syntax nodes

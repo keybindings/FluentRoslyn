@@ -29,20 +29,20 @@ jobs:
             10.0.x
 
       - name: Restore
-        run: dotnet restore Generatr.sln
+        run: dotnet restore FluentRoslyn.sln
 
       - name: Build
-        run: dotnet build Generatr.sln -c Release --no-restore
+        run: dotnet build FluentRoslyn.sln -c Release --no-restore
 
       - name: Test
-        run: dotnet test tests/Generatr.UnitTests -c Release --no-build --verbosity normal
+        run: dotnet test tests/FluentRoslyn.UnitTests -c Release --no-build --verbosity normal
 
       # The example generator builds its output entirely through the fluent API, so
       # running it proves the generated source actually compiles and behaves — the
       # end-to-end check that unit tests on their own cannot give.
       - name: Run example generator end-to-end
         run: |
-          output=$(dotnet run --project examples/Generatr.Example.App -c Release --no-build)
+          output=$(dotnet run --project examples/FluentRoslyn.Example.App -c Release --no-build)
           echo "$output"
           expected="Generator says: Hi from 'Generated Code'"
           if [ "$output" != "$expected" ]; then
@@ -53,7 +53,7 @@ jobs:
           fi
 
       - name: Pack
-        run: dotnet pack src/Generatr/Generatr.csproj -c Release --no-build -o artifacts
+        run: dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts
 
       - name: Upload package
         uses: actions/upload-artifact@v7

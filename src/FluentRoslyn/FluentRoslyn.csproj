@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The public API is fully documented; keep it that way by failing the build on a
+         missing XML comment rather than letting it slide. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package">
+    <!-- This library was originally called Generatr, but that bare id is already taken
+         on nuget.org by an unrelated database scaffolder (ids are case-insensitive).
+         FluentRoslyn is also what someone searching for this library actually types,
+         so the assembly, namespaces, repo, and package all use it. -->
+    <PackageId>FluentRoslyn</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Cameron Lambert</Authors>
+    <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
+    <PackageTags>roslyn;source-generator;codegen;code-generation;syntaxfactory;fluent;csharp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>First preview. Fluent builders for classes, structs, records, enums, interfaces, and delegates; fields, constructors, properties, methods, and events; generics with constraints, attributes (including targets), base types and interfaces, initializers, expression and statement bodies, async, required members, nested types, XML doc comments, and optional using-directive management. Output is 4-space/LF by default so it is byte-identical across operating systems.</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Roslyn is supplied by the analyzer host at run time; it must not flow to consumers. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentRoslyn.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
