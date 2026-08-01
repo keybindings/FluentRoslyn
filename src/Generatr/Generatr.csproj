@@ -22,8 +22,8 @@
     <PackageTags>roslyn;source-generator;codegen;code-generation;syntaxfactory;fluent;csharp</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>https://github.com/Cameron097/Generatr</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Cameron097/Generatr</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/keybindings/Generatr</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/keybindings/Generatr</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>First preview. Fluent builders for classes, structs, records, enums, interfaces, and delegates; fields, constructors, properties, methods, and events; generics with constraints, attributes (including targets), base types and interfaces, initializers, expression and statement bodies, async, required members, nested types, XML doc comments, and optional using-directive management. Output is 4-space/LF by default so it is byte-identical across operating systems.</PackageReleaseNotes>
   </PropertyGroup>
