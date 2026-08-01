@@ -202,5 +202,7 @@ that consumes it.
 ## What's next
 
 Feature-complete for common generator scenarios; the remaining work is
-packaging and long-tail language features. See the issue tracker for the
-current roadmap.
+packaging and long-tail language features. See [`docs/ROADMAP.md`](docs/ROADMAP.md)
+for the prioritised list, plus the deliberate design decisions behind things
+that look like gaps (fully-qualified names, fixed formatting, raw-string
+escape hatches).
