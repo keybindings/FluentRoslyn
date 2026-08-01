@@ -2,7 +2,7 @@
 
 namespace Generatr.Abstractions;
 
-public interface IParameter : INamedBuilder
+internal interface IParameter : INamedBuilder
 {
     TypeNameBuilder TypeName { get; }
 }

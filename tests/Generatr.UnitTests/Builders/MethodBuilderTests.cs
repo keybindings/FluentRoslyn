@@ -45,7 +45,7 @@ public class MethodBuilderTests
     [TestMethod]
     public void WithParameter_ComposesWithDefineMethodParameters()
     {
-        var mb = NewClass().DefineMethod("DoThing", AccessModifier.Public, Parameter<int>.New("count"))
+        var mb = NewClass().DefineMethod("DoThing", AccessModifier.Public).WithParameter<int>("count")
             .WithParameter<string>("name");
 
         mb.ToString().Should().StartWith("public void DoThing(int count, string name)");
@@ -277,7 +277,7 @@ public class MethodBuilderTests
     [TestMethod]
     public void StaticPartialNoAccess_ExpressionBody_MatchesPartialImplementationShape()
     {
-        var mb = NewClass().DefineMethod("HelloFrom", AccessModifier.None, Parameter<string>.New("name"))
+        var mb = NewClass().DefineMethod("HelloFrom", AccessModifier.None).WithParameter<string>("name")
             .Static().Partial()
             .AsExpressionBody("System.Console.WriteLine(name)");
 

@@ -43,9 +43,9 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     public ConstructorBuilder DefineConstructor()
         => DefineConstructor(AccessModifier.Public);
 
-    public ConstructorBuilder DefineConstructor(AccessModifier accessModifier, params IParameter[] parameters)
+    public ConstructorBuilder DefineConstructor(AccessModifier accessModifier)
     {
-        var cb = new ConstructorBuilder(this, accessModifier, parameters);
+        var cb = new ConstructorBuilder(this, accessModifier);
         _constructors.Add(cb);
         return cb;
     }
@@ -63,14 +63,14 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     public MethodBuilder DefineMethod(string name)
         => DefineMethod(name, AccessModifier.Public);
 
-    public MethodBuilder DefineMethod(string name, AccessModifier accessModifier, params IParameter[] parameters)
-        => AddMethod(MethodBuilder.Action(name, accessModifier, parameters));
+    public MethodBuilder DefineMethod(string name, AccessModifier accessModifier)
+        => AddMethod(MethodBuilder.Action(name, accessModifier));
 
     public MethodBuilder DefineMethod<TReturn>(string name)
         => DefineMethod<TReturn>(name, AccessModifier.Public);
 
-    public MethodBuilder DefineMethod<TReturn>(string name, AccessModifier accessModifier, params IParameter[] parameters)
-        => AddMethod(MethodBuilder.Returning(name, accessModifier, TypeNameBuilder.New<TReturn>(), parameters));
+    public MethodBuilder DefineMethod<TReturn>(string name, AccessModifier accessModifier)
+        => AddMethod(MethodBuilder.Returning(name, accessModifier, TypeNameBuilder.New<TReturn>()));
 
     private MethodBuilder AddMethod(MethodBuilder method)
     {

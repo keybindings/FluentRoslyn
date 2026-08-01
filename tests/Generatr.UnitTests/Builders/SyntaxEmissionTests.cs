@@ -34,7 +34,7 @@ public class SyntaxEmissionTests
     public void DefineMethod_ReachesClassOutput()
     {
         var cb = NewClass();
-        cb.DefineMethod("DoThing", AccessModifier.Public, Parameter<int>.New("count"));
+        cb.DefineMethod("DoThing", AccessModifier.Public).WithParameter<int>("count");
 
         var expected = string.Join("\n",
             "namespace TestNamespace;",

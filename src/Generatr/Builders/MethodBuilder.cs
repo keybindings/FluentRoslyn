@@ -13,7 +13,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 {
     private TypeSyntax _returnType;
     private bool _returnsVoid;
-    private readonly List<IParameter> _params;
+    private readonly List<IParameter> _params = [];
     private readonly List<StatementSyntax> _statements = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private readonly GenericParameters _generics = new();
@@ -23,13 +23,11 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         string name,
         AccessModifier accessModifier,
         TypeSyntax returnType,
-        bool returnsVoid,
-        IEnumerable<IParameter> @params) : base(name, Identifiers.Validate)
+        bool returnsVoid) : base(name, Identifiers.Validate)
     {
         AccessModifier = accessModifier;
         _returnType = returnType;
         _returnsVoid = returnsVoid;
-        _params = @params.ToList();
     }
 
     public bool IsStatic { get; set; }
@@ -38,13 +36,13 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     public AccessModifier AccessModifier { get; set; }
 
-    /// <summary>A void method: <c>void Name(...) { }</c>.</summary>
-    internal static MethodBuilder Action(string name, AccessModifier accessModifier, IEnumerable<IParameter> @params)
-        => new(name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)), returnsVoid: true, @params);
+    /// <summary>A void method: <c>void Name(...) { }</c>. Add parameters with <see cref="WithParameter{T}"/>.</summary>
+    internal static MethodBuilder Action(string name, AccessModifier accessModifier)
+        => new(name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)), returnsVoid: true);
 
     /// <summary>A method returning <paramref name="returnType"/>; requires a body.</summary>
-    internal static MethodBuilder Returning(string name, AccessModifier accessModifier, TypeNameBuilder returnType, IEnumerable<IParameter> @params)
-        => new(name, accessModifier, returnType.BuildTypeSyntax(), returnsVoid: false, @params);
+    internal static MethodBuilder Returning(string name, AccessModifier accessModifier, TypeNameBuilder returnType)
+        => new(name, accessModifier, returnType.BuildTypeSyntax(), returnsVoid: false);
 
     #region FluentMethods
 

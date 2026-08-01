@@ -58,7 +58,7 @@ public class NameValidationTests
     [TestMethod]
     public void InvalidParameterName_Throws()
     {
-        var act = () => Parameter<int>.New("not valid");
+        var act = () => NamespaceBuilder.Get("N").Class("C").DefineMethod("M").WithParameter<int>("not valid");
 
         act.Should().Throw<ArgumentException>();
     }

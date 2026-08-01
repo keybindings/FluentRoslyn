@@ -4,14 +4,14 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace Generatr.Builders;
 
-public class Parameter<T> : NamedBuilder, IParameter
+internal class Parameter<T> : NamedBuilder, IParameter
 {
     private Parameter(string name) : base(name, Identifiers.Validate)
     {
         TypeName = TypeNameBuilder.New<T>();
     }
 
-    public static IParameter New(string name) => new Parameter<T>(name);
+    internal static IParameter New(string name) => new Parameter<T>(name);
 
     public TypeNameBuilder TypeName { get; }
 

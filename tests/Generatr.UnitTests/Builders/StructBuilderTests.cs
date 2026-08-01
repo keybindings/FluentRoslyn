@@ -40,7 +40,7 @@ public class StructBuilderTests
         var s = NewStruct();
         s.DefineField<int>("_x");
         s.DefineProperty<int>("X");
-        s.DefineConstructor(AccessModifier.Public, Parameter<int>.New("x")).AddStatement("_x = x;");
+        s.DefineConstructor(AccessModifier.Public).WithParameter<int>("x").AddStatement("_x = x;");
         s.DefineMethod<int>("Get").AsExpressionBody("_x");
 
         var value = s.ToString();

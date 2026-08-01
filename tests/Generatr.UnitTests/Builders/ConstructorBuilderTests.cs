@@ -20,7 +20,7 @@ public class ConstructorBuilderTests
     public void Constructor_WithParametersAndBody_Emits()
     {
         var ctor = NewClass()
-            .DefineConstructor(AccessModifier.Public, Parameter<int>.New("id"))
+            .DefineConstructor(AccessModifier.Public).WithParameter<int>("id")
             .AddStatement("_id = id;");
 
         ctor.ToString().Should().Be(string.Join("\n",
@@ -52,7 +52,7 @@ public class ConstructorBuilderTests
     public void CallingBase_EmitsBaseInitializer()
     {
         var ctor = NewClass()
-            .DefineConstructor(AccessModifier.Public, Parameter<int>.New("id"))
+            .DefineConstructor(AccessModifier.Public).WithParameter<int>("id")
             .CallingBase("id");
 
         ctor.ToString().Should().StartWith("public Widget(int id) : base(id)");
@@ -70,7 +70,7 @@ public class ConstructorBuilderTests
     public void AsExpressionBody_EmitsArrowConstructor()
     {
         var ctor = NewClass()
-            .DefineConstructor(AccessModifier.Public, Parameter<int>.New("id"))
+            .DefineConstructor(AccessModifier.Public).WithParameter<int>("id")
             .AsExpressionBody("_id = id");
 
         ctor.ToString().Should().Be("public Widget(int id) => _id = id;");
@@ -103,7 +103,7 @@ public class ConstructorBuilderTests
     [TestMethod]
     public void StaticConstructor_WithParameters_Throws()
     {
-        var ctor = NewClass().DefineConstructor(AccessModifier.Public, Parameter<int>.New("id")).Static();
+        var ctor = NewClass().DefineConstructor(AccessModifier.Public).WithParameter<int>("id").Static();
 
         var act = () => ctor.ToString();
 
@@ -138,7 +138,7 @@ public class ConstructorBuilderTests
         var cb = NewClass();
         cb.DefineMethod("Run");
         cb.DefineField<int>("_id");
-        cb.DefineConstructor(AccessModifier.Public, Parameter<int>.New("id")).AddStatement("_id = id;");
+        cb.DefineConstructor(AccessModifier.Public).WithParameter<int>("id").AddStatement("_id = id;");
 
         var value = cb.ToString();
 

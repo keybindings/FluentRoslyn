@@ -28,7 +28,7 @@ public class HelloSourceGenerator : IIncrementalGenerator
         var program = NamespaceBuilder.Get("Generatr.Example.App")
             .Class("Program").Static().Partial();
 
-        program.DefineMethod("HelloFrom", AccessModifier.None, Parameter<string>.New("name"))
+        program.DefineMethod("HelloFrom", AccessModifier.None).WithParameter<string>("name")
             .Static().Partial()
             .AsExpressionBody("""System.Console.WriteLine($"Generator says: Hi from '{name}'")""");
 

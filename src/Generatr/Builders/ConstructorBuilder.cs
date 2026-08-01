@@ -11,16 +11,15 @@ namespace Generatr.Builders;
 
 public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 {
-    private readonly List<IParameter> _params;
+    private readonly List<IParameter> _params = [];
     private readonly List<StatementSyntax> _statements = [];
     private readonly List<AttributeSyntax> _attributes = [];
     private ExpressionSyntax? _expressionBody;
     private ConstructorInitializerSyntax? _initializer;
 
-    internal ConstructorBuilder(TypeBuilder declaringType, AccessModifier accessModifier, IEnumerable<IParameter> @params) : base(declaringType.Name, _ => { })
+    internal ConstructorBuilder(TypeBuilder declaringType, AccessModifier accessModifier) : base(declaringType.Name, _ => { })
     {
         AccessModifier = accessModifier;
-        _params = @params.ToList();
     }
 
     public bool IsStatic { get; set; }
