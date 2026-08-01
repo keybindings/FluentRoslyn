@@ -24,7 +24,7 @@ them, not speculatively).
 | ~~10~~ | ~~**Emit `///` doc comments on generated members**~~ | Feature | Med | Med | **Done** (2026-08-01). `WithSummary` everywhere, plus `WithParameterDoc`/`WithReturnsDoc` on methods and constructors. Emitted as plain comment trivia so `NormalizeWhitespace` cannot reformat the XML attributes; text is XML-escaped. |
 | ~~11~~ | ~~**Events / delegates**~~ | Feature | Low | Med each | **Done** (2026-08-01). `DefineEvent<THandler>` (field-like events, ordered after constructors) and `NamespaceBuilder.Delegate` / `DefineDelegate` for nested. |
 | ~~12~~ | ~~**Attribute target specifiers** (`[return:]`, `[field:]`)~~ | Feature | Low | Low | **Done** (2026-08-01). Targets split off before parsing; an unrecognised one is rejected rather than silently dropped, and named arguments are not mistaken for targets. |
-| 13 | **Configurable formatting** (indent/eol) | Polish | Low | Med | Currently hardcoded 4-space/LF (deliberate — see decisions below). Options only if someone asks. |
+| ~~13~~ | ~~**Configurable formatting** (indent/eol)~~ | Polish | Low | Med | **Done** (2026-08-01). `WithIndentation`/`WithLineEndings`, strictly opt-in — the 4-space/LF default is unchanged, so byte-identical cross-OS output is still what you get for free. |
 
 ## Reading of the table
 
@@ -34,11 +34,11 @@ them, not speculatively).
   decision on whether 0.1.0 goes out as a preview).
 - **#5, #6, #7 and #10 are done** — usings, async methods, nested types, and doc
   comments on generated output. That clears every Medium-value item.
-- **#8, #9, #11 and #12 are done** — required members, record inheritance, events
-  and delegates, and attribute targets.
-- **Only #13 remains** (configurable formatting), and it is a deliberate
-  non-goal rather than a gap — see the decisions below. Every roadmap feature is
-  otherwise complete; new work should come from a real generator's needs.
+- **Every item on this roadmap is now done.** The list is kept as a record of
+  what was built and why.
+- **New work should come from a real generator's needs**, not from a
+  speculative list. The obvious remaining step is publishing to nuget.org
+  (needs an API key and a call on whether 0.1.0 ships as a preview).
 
 ## Deliberate decisions (not gaps)
 
@@ -47,8 +47,10 @@ These look like omissions but are choices:
 - **Fully-qualified type names by default.** Correct without any collision
   analysis. `SimplifyTypeNames()` (#5) opts into shortened names plus imports;
   it stays opt-in so the safe behaviour is what you get for free.
-- **4-space indentation, `\n` line endings, hardcoded.** Guarantees output is
-  byte-identical across operating systems. See #13.
+- **4-space indentation and `\n` line endings by default.** Guarantees output is
+  byte-identical across operating systems, so generated files hash the same
+  everywhere. `WithIndentation`/`WithLineEndings` (#13) override it per builder;
+  they stay opt-in so the reproducible behaviour is the free one.
 - **No trailing newline** after the final `}` of a compilation unit — this is
   what Roslyn's `NormalizeWhitespace` produces; tests pin the actual behaviour.
 - **Raw-string escape hatches** for statements/expressions/constraints, rather
