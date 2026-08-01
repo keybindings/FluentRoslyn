@@ -1,16 +1,16 @@
-# Generatr
+# FluentRoslyn
 
-[![CI](https://github.com/keybindings/Generatr/actions/workflows/ci.yml/badge.svg)](https://github.com/keybindings/Generatr/actions/workflows/ci.yml)
+[![CI](https://github.com/keybindings/FluentRoslyn/actions/workflows/ci.yml/badge.svg)](https://github.com/keybindings/FluentRoslyn/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-> Ships on NuGet as **`FluentRoslyn`**. The bare `Generatr` id is taken by an
-> unrelated database scaffolder, and `FluentRoslyn` is what someone looking for
-> this library actually searches for.
 
 A fluent C# API for generating C# source code — a readable facade over Roslyn's
 `SyntaxFactory`.
 
-You describe the code you want with a builder chain; Generatr produces a
+> The project was previously called Generatr; the assembly and namespaces still
+> use that name (`Generatr.Builders`). The bare `Generatr` id was already taken
+> on NuGet by an unrelated database scaffolder.
+
+You describe the code you want with a builder chain; FluentRoslyn produces a
 well-formed syntax tree and formats it. Because it builds real syntax nodes
 rather than concatenating strings, whole classes of bugs — misplaced braces,
 missing commas, bad spacing — are structurally impossible.
@@ -70,7 +70,7 @@ of type 'FileNotFoundException' with message 'Could not load file or assembly
 A warning, easily scrolled past, with your generated file silently missing.
 
 So generator authors are left hand-writing verbose `SyntaxFactory` calls or, more
-often, concatenating strings and fighting formatting bugs. Generatr fills that
+often, concatenating strings and fighting formatting bugs. FluentRoslyn fills that
 gap: an intention-revealing builder API targeting `netstandard2.0`, so it works
 where `SyntaxGenerator` cannot. The goal is generator code that reads like the
 code it produces.
