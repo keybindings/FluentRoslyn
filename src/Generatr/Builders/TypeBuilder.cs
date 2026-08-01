@@ -85,10 +85,22 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 
     protected override MemberDeclarationSyntax BuildDeclaration() => BuildTypeDeclaration();
 
+    /// <summary>
+    /// Whether this type may declare abstract members. Only an abstract class can;
+    /// structs and non-abstract classes cannot.
+    /// </summary>
+    private protected virtual bool AllowsAbstractMembers => false;
+
     // Member group order: fields, constructors, properties, methods; within each group,
     // least protected first, then alphabetical.
     private protected SyntaxList<MemberDeclarationSyntax> BuildMembers()
     {
+        // An abstract member in a non-abstract type does not compile, and only the type
+        // knows both halves — so the check belongs here rather than in the member builder.
+        if (!AllowsAbstractMembers && _methods.FirstOrDefault(m => m.IsAbstract) is { } abstractMethod)
+            throw new InvalidOperationException(
+                $"Type '{Name}' declares abstract method '{abstractMethod.Name}' but is not abstract.");
+
         var members = new List<MemberDeclarationSyntax>();
         AddMemberGroup(members, _fields);
         AddMemberGroup(members, _constructors);

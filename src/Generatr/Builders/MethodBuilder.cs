@@ -34,6 +34,11 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     public bool IsPartial { get; set; }
 
+    /// <summary>The inheritance modifier — virtual, abstract, override, or sealed override.</summary>
+    public Inheritance Inheritance { get; set; }
+
+    internal bool IsAbstract => Inheritance == Inheritance.Abstract;
+
     public AccessModifier AccessModifier { get; set; }
 
     /// <summary>A void method: <c>void Name(...) { }</c>. Add parameters with <see cref="WithParameter{T}"/>.</summary>
@@ -50,6 +55,21 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     /// <summary>Marks the method <c>partial</c> (e.g. a source generator implementing a partial method).</summary>
     public MethodBuilder Partial() => this.With(() => IsPartial = true);
+
+    /// <summary>Marks the method <c>virtual</c>.</summary>
+    public MethodBuilder Virtual() => this.With(() => Inheritance = Inheritance.Virtual);
+
+    /// <summary>
+    /// Marks the method <c>abstract</c>: it emits no body, and the declaring type must
+    /// itself be abstract.
+    /// </summary>
+    public MethodBuilder Abstract() => this.With(() => Inheritance = Inheritance.Abstract);
+
+    /// <summary>Marks the method <c>override</c>.</summary>
+    public MethodBuilder Override() => this.With(() => Inheritance = Inheritance.Override);
+
+    /// <summary>Marks the method <c>sealed override</c>.</summary>
+    public MethodBuilder SealedOverride() => this.With(() => Inheritance = Inheritance.SealedOverride);
 
     public MethodBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
@@ -107,12 +127,18 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     internal MethodDeclarationSyntax BuildMethod()
     {
+        ValidateInheritance();
+
         var method = MethodDeclaration(_returnType, Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
-            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial))
+            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial, inheritance: Inheritance))
             .WithParameterList(SyntaxParameters.List(_params));
 
         method = _generics.ApplyTo(method, $"Method '{Name}'");
+
+        // An abstract method declares no body at all — just a semicolon.
+        if (IsAbstract)
+            return method.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
         if (_expressionBody is not null)
         {
@@ -138,6 +164,32 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
         return method.WithBody(Block());
     }
+
+    // The inheritance modifiers are mutually exclusive by construction, so what remains
+    // is their interaction with static, private, and the method body.
+    private void ValidateInheritance()
+    {
+        if (Inheritance == Inheritance.None)
+            return;
+
+        if (IsStatic)
+            throw new InvalidOperationException(
+                $"Method '{Name}' cannot be both static and {Describe(Inheritance)}.");
+
+        if (AccessModifier == AccessModifier.Private)
+            throw new InvalidOperationException(
+                $"Method '{Name}' cannot be private and {Describe(Inheritance)}.");
+
+        if (IsPartial)
+            throw new InvalidOperationException(
+                $"Method '{Name}' cannot be both partial and {Describe(Inheritance)}.");
+
+        if (IsAbstract && (_expressionBody is not null || _statements.Count > 0))
+            throw new InvalidOperationException($"Abstract method '{Name}' cannot have a body.");
+    }
+
+    private static string Describe(Inheritance inheritance)
+        => inheritance == Inheritance.SealedOverride ? "sealed override" : inheritance.ToString().ToLowerInvariant();
 
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildMethod();
 
