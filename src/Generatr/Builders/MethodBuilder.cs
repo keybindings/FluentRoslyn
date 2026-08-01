@@ -39,6 +39,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// <summary>Whether the method is <c>partial</c>.</summary>
     public bool IsPartial { get; set; }
 
+    /// <summary>
+    /// Whether the method is <c>async</c>. The return type must be awaitable —
+    /// <c>void</c>, <c>Task</c>, <c>Task&lt;T&gt;</c>, <c>ValueTask</c>, and so on.
+    /// </summary>
+    public bool IsAsync { get; set; }
+
     /// <summary>The inheritance modifier — virtual, abstract, override, or sealed override.</summary>
     public Inheritance Inheritance { get; set; }
 
@@ -62,6 +68,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     /// <summary>Marks the method <c>partial</c> (e.g. a source generator implementing a partial method).</summary>
     public MethodBuilder Partial() => this.With(() => IsPartial = true);
+
+    /// <summary>
+    /// Marks the method <c>async</c>. Pair it with an awaitable return type, e.g.
+    /// <c>DefineMethod&lt;Task&gt;("SaveAsync").Async()</c>.
+    /// </summary>
+    public MethodBuilder Async() => this.With(() => IsAsync = true);
 
     /// <summary>Marks the method <c>virtual</c>.</summary>
     public MethodBuilder Virtual() => this.With(() => Inheritance = Inheritance.Virtual);
@@ -137,10 +149,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     internal MethodDeclarationSyntax BuildMethod()
     {
         ValidateInheritance();
+        ValidateAsync();
 
         var method = MethodDeclaration(_returnType, Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
-            .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier, IsStatic, isPartial: IsPartial, inheritance: Inheritance))
+            .WithModifiers(SyntaxFormatting.Modifiers(
+                AccessModifier, IsStatic, isPartial: IsPartial, inheritance: Inheritance, isAsync: IsAsync))
             .WithParameterList(SyntaxParameters.List(_params));
 
         method = _generics.ApplyTo(method, $"Method '{Name}'");
@@ -195,6 +209,25 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
         if (IsAbstract && (_expressionBody is not null || _statements.Count > 0))
             throw new InvalidOperationException($"Abstract method '{Name}' cannot have a body.");
+    }
+
+    private void ValidateAsync()
+    {
+        if (!IsAsync)
+            return;
+
+        if (IsAbstract)
+            throw new InvalidOperationException($"Method '{Name}' cannot be both abstract and async.");
+
+        // Only the clearly-wrong cases are rejected: a built-in type other than void can
+        // never be awaitable. Named types pass, so Task, ValueTask, IAsyncEnumerable and
+        // any custom awaitable are all accepted without an allowlist to fall behind.
+        if (_returnType is PredefinedTypeSyntax predefined
+            && !predefined.Keyword.IsKind(SyntaxKind.VoidKeyword))
+        {
+            throw new InvalidOperationException(
+                $"Async method '{Name}' cannot return '{predefined}'. Use void, Task, Task<T>, or another awaitable type.");
+        }
     }
 
     private static string Describe(Inheritance inheritance)
