@@ -11,6 +11,10 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// Builds an interface declaration. Obtained from
+/// <see cref="NamespaceBuilder.Interface(string)"/>. Members are bodyless signatures.
+/// </summary>
 public class InterfaceBuilder : TypeDeclarationBuilder
 {
     private readonly List<InterfacePropertyBuilder> _properties = [];
@@ -24,8 +28,10 @@ public class InterfaceBuilder : TypeDeclarationBuilder
 
     #region FluentMethods
 
+    /// <summary>Sets the interface's accessibility. Public by default.</summary>
     public InterfaceBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
     public InterfaceBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
@@ -51,6 +57,10 @@ public class InterfaceBuilder : TypeDeclarationBuilder
 
     #region Members
 
+    /// <summary>
+    /// Declares a property signature of type <typeparamref name="T"/>:
+    /// <c>T Name { get; set; }</c>.
+    /// </summary>
     public InterfacePropertyBuilder DefineProperty<T>(string name)
     {
         var pb = new InterfacePropertyBuilder(name, TypeNameBuilder.New<T>());
@@ -58,6 +68,7 @@ public class InterfaceBuilder : TypeDeclarationBuilder
         return pb;
     }
 
+    /// <summary>Declares a <c>void</c> method signature.</summary>
     public InterfaceMethodBuilder DefineMethod(string name)
     {
         var mb = new InterfaceMethodBuilder(name, PredefinedType(Token(SyntaxKind.VoidKeyword)), []);
@@ -65,6 +76,7 @@ public class InterfaceBuilder : TypeDeclarationBuilder
         return mb;
     }
 
+    /// <summary>Declares a method signature returning <typeparamref name="TReturn"/>.</summary>
     public InterfaceMethodBuilder DefineMethod<TReturn>(string name)
     {
         var mb = new InterfaceMethodBuilder(name, TypeNameBuilder.New<TReturn>().BuildTypeSyntax(), []);
@@ -74,7 +86,7 @@ public class InterfaceBuilder : TypeDeclarationBuilder
 
     #endregion
 
-    protected override MemberDeclarationSyntax BuildDeclaration()
+    private protected override MemberDeclarationSyntax BuildDeclaration()
     {
         // Signatures group as properties then methods, preserving insertion order.
         var members = _properties.Select(p => (MemberDeclarationSyntax)p.BuildProperty())
@@ -108,6 +120,7 @@ public class InterfaceMethodBuilder : NamedBuilder
         _params = @params.ToList();
     }
 
+    /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
     public InterfaceMethodBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
 
     /// <summary>Adds a generic type parameter: <c>ReturnType Name&lt;T&gt;(...);</c>.</summary>
@@ -147,10 +160,13 @@ public class InterfacePropertyBuilder : NamedBuilder
         _type = type;
     }
 
+    /// <summary>Whether the signature declares a getter. True by default.</summary>
     public bool HasGet { get; set; } = true;
 
+    /// <summary>Whether the signature declares a setter. True by default.</summary>
     public bool HasSet { get; set; } = true;
 
+    /// <summary>Whether the setter is emitted as <c>init</c> rather than <c>set</c>.</summary>
     public bool SetterIsInit { get; set; }
 
     /// <summary>Drops the setter, leaving a get-only signature: <c>{ get; }</c>.</summary>

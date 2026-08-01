@@ -26,8 +26,10 @@ public class RecordBuilder : TypeDeclarationBuilder
 
     #region FluentMethods
 
+    /// <summary>Sets the record's accessibility. Public by default.</summary>
     public RecordBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
     public RecordBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
     /// <summary>Emits <c>record struct</c> rather than <c>record</c> (a record class).</summary>
@@ -57,7 +59,7 @@ public class RecordBuilder : TypeDeclarationBuilder
 
     #endregion
 
-    protected override MemberDeclarationSyntax BuildDeclaration()
+    private protected override MemberDeclarationSyntax BuildDeclaration()
     {
         var kind = _isStruct ? SyntaxKind.RecordStructDeclaration : SyntaxKind.RecordDeclaration;
 

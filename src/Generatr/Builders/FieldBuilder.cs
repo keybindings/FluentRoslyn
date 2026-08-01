@@ -7,6 +7,11 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// Builds a field declaration of type <typeparamref name="T"/>. Obtained from
+/// <c>DefineField&lt;T&gt;</c> on a type builder.
+/// </summary>
+/// <typeparam name="T">The field's type.</typeparam>
 public class FieldBuilder<T> : FieldBuilder
 {
     internal FieldBuilder(string name, AccessModifier accessModifier) : base(TypeNameBuilder.New<T>(), name, accessModifier)
@@ -15,10 +20,13 @@ public class FieldBuilder<T> : FieldBuilder
 
     #region FluentMethods
 
+    /// <summary>Marks the field <c>static</c>.</summary>
     public FieldBuilder<T> Static() => this.With(() => IsStatic = true);
 
+    /// <summary>Marks the field <c>readonly</c>.</summary>
     public FieldBuilder<T> Readonly() => this.With(() => IsReadonly = true);
 
+    /// <summary>Sets the field's accessibility. Private by default.</summary>
     public FieldBuilder<T> WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonProperty(\"name\")")</c>.</summary>
@@ -46,18 +54,29 @@ public class FieldBuilder<T> : FieldBuilder
     #endregion
 }
 
+/// <summary>
+/// The non-generic base of <see cref="FieldBuilder{T}"/>, carrying the state that does
+/// not depend on the field's type.
+/// </summary>
 public abstract class FieldBuilder(
     TypeNameBuilder typeName,
     string name,
     AccessModifier accessModifier)
     : NamedBuilder(name, Identifiers.Validate), IAccessModifier, IMemberSyntaxBuilder
 {
+    /// <summary>Whether the field is <c>readonly</c>.</summary>
     public bool IsReadonly { get; set; }
 
+    /// <summary>Whether the field is <c>static</c>.</summary>
     public bool IsStatic { get; set; }
 
+    /// <summary>
+    /// Whether the field is <c>const</c>. A const field requires an initializer and
+    /// cannot also be static or readonly.
+    /// </summary>
     public bool IsConst { get; set; }
 
+    /// <summary>The field's accessibility. Private by default.</summary>
     public AccessModifier AccessModifier { get; set; } = accessModifier;
 
     // The field's initializer expression, or null when it has none.

@@ -30,9 +30,11 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 
     #region Members
 
+    /// <summary>Declares a field of type <typeparamref name="T"/>, private by default.</summary>
     public FieldBuilder<T> DefineField<T>(string name)
         => DefineField<T>(name, AccessModifier.Private);
 
+    /// <summary>Declares a field of type <typeparamref name="T"/>.</summary>
     public FieldBuilder<T> DefineField<T>(string name, AccessModifier accessModifier)
     {
         var fb = new FieldBuilder<T>(name, accessModifier);
@@ -40,9 +42,11 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         return fb;
     }
 
+    /// <summary>Declares a public constructor. Add parameters with <c>WithParameter&lt;T&gt;</c>.</summary>
     public ConstructorBuilder DefineConstructor()
         => DefineConstructor(AccessModifier.Public);
 
+    /// <summary>Declares a constructor. Add parameters with <c>WithParameter&lt;T&gt;</c>.</summary>
     public ConstructorBuilder DefineConstructor(AccessModifier accessModifier)
     {
         var cb = new ConstructorBuilder(this, accessModifier);
@@ -50,9 +54,11 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         return cb;
     }
 
+    /// <summary>Declares a public auto-property of type <typeparamref name="T"/>.</summary>
     public PropertyBuilder<T> DefineProperty<T>(string name)
         => DefineProperty<T>(name, AccessModifier.Public);
 
+    /// <summary>Declares an auto-property of type <typeparamref name="T"/>.</summary>
     public PropertyBuilder<T> DefineProperty<T>(string name, AccessModifier accessModifier)
     {
         var pb = new PropertyBuilder<T>(name, accessModifier);
@@ -60,15 +66,26 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         return pb;
     }
 
+    /// <summary>Declares a public <c>void</c> method with an empty body.</summary>
     public MethodBuilder DefineMethod(string name)
         => DefineMethod(name, AccessModifier.Public);
 
+    /// <summary>Declares a <c>void</c> method with an empty body.</summary>
     public MethodBuilder DefineMethod(string name, AccessModifier accessModifier)
         => AddMethod(MethodBuilder.Action(name, accessModifier));
 
+    /// <summary>
+    /// Declares a public method returning <typeparamref name="TReturn"/>. A
+    /// value-returning method needs a body — see <c>AsExpressionBody</c> or
+    /// <c>AddStatement</c>.
+    /// </summary>
     public MethodBuilder DefineMethod<TReturn>(string name)
         => DefineMethod<TReturn>(name, AccessModifier.Public);
 
+    /// <summary>
+    /// Declares a method returning <typeparamref name="TReturn"/>. A value-returning
+    /// method needs a body — see <c>AsExpressionBody</c> or <c>AddStatement</c>.
+    /// </summary>
     public MethodBuilder DefineMethod<TReturn>(string name, AccessModifier accessModifier)
         => AddMethod(MethodBuilder.Returning(name, accessModifier, TypeNameBuilder.New<TReturn>()));
 
@@ -81,9 +98,9 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     #endregion
 
     /// <summary>Builds the type declaration for this kind (class, struct, ...).</summary>
-    protected abstract TypeDeclarationSyntax BuildTypeDeclaration();
+    private protected abstract TypeDeclarationSyntax BuildTypeDeclaration();
 
-    protected override MemberDeclarationSyntax BuildDeclaration() => BuildTypeDeclaration();
+    private protected override MemberDeclarationSyntax BuildDeclaration() => BuildTypeDeclaration();
 
     /// <summary>
     /// Whether this type may declare abstract members. Only an abstract class can;
@@ -160,12 +177,17 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     {
     }
 
+    /// <summary>Sets the type's accessibility. Public by default.</summary>
     public TSelf WithAccessModifier(AccessModifier accessModifier)
     {
         AccessModifier = accessModifier;
         return (TSelf)this;
     }
 
+    /// <summary>
+    /// Emits a block-scoped namespace (<c>namespace N { ... }</c>) instead of the
+    /// default file-scoped form (<c>namespace N;</c>).
+    /// </summary>
     public TSelf BlockScopedNamespace()
     {
         IsFileScopedNamespace = false;

@@ -12,6 +12,9 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// Builds an enum declaration. Obtained from <see cref="NamespaceBuilder.Enum(string)"/>.
+/// </summary>
 public class EnumBuilder : TypeDeclarationBuilder
 {
     private static readonly HashSet<Type> IntegralTypes =
@@ -30,8 +33,10 @@ public class EnumBuilder : TypeDeclarationBuilder
 
     #region FluentMethods
 
+    /// <summary>Sets the enum's accessibility. Public by default.</summary>
     public EnumBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
     public EnumBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
     /// <summary>Sets the underlying integral type: <c>enum Name : byte</c>.</summary>
@@ -62,7 +67,7 @@ public class EnumBuilder : TypeDeclarationBuilder
 
     #endregion
 
-    protected override MemberDeclarationSyntax BuildDeclaration()
+    private protected override MemberDeclarationSyntax BuildDeclaration()
     {
         ValidateMembers();
 

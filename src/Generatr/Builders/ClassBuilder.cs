@@ -5,20 +5,28 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// Builds a class declaration. Obtained from <see cref="NamespaceBuilder.Class(string)"/>.
+/// </summary>
 public class ClassBuilder : TypeBuilder<ClassBuilder>
 {
     internal ClassBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
     {
     }
 
+    /// <summary>Whether the class is <c>static</c>.</summary>
     public bool IsStatic { get; set; }
 
+    /// <summary>Whether the class is <c>abstract</c>.</summary>
     public bool IsAbstract { get; set; }
 
+    /// <summary>Whether the class is <c>sealed</c>.</summary>
     public bool IsSealed { get; set; }
 
+    /// <summary>Whether the class is <c>partial</c>.</summary>
     public bool IsPartial { get; set; }
 
+    /// <summary>The base class, emitted before any implemented interfaces.</summary>
     public ClassBuilder? ParentType { get; set; }
 
     // Abstract members are only legal in an abstract class.
@@ -26,6 +34,7 @@ public class ClassBuilder : TypeBuilder<ClassBuilder>
 
     #region FluentMethods
 
+    /// <summary>Marks the class <c>static</c>.</summary>
     public ClassBuilder Static()
     {
         IsStatic = true;
@@ -46,12 +55,14 @@ public class ClassBuilder : TypeBuilder<ClassBuilder>
         return this;
     }
 
+    /// <summary>Marks the class <c>partial</c>.</summary>
     public ClassBuilder Partial()
     {
         IsPartial = true;
         return this;
     }
 
+    /// <summary>Sets the base class, emitted before any implemented interfaces.</summary>
     public ClassBuilder WithParent(ClassBuilder type)
     {
         ParentType = type;
@@ -60,7 +71,7 @@ public class ClassBuilder : TypeBuilder<ClassBuilder>
 
     #endregion
 
-    protected override TypeDeclarationSyntax BuildTypeDeclaration()
+    private protected override TypeDeclarationSyntax BuildTypeDeclaration()
     {
         // static / abstract / sealed are mutually exclusive on a class.
         if (new[] { IsStatic, IsAbstract, IsSealed }.Count(set => set) > 1)

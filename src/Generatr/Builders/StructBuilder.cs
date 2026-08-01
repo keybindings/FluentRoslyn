@@ -3,24 +3,31 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// Builds a struct declaration. Obtained from <see cref="NamespaceBuilder.Struct(string)"/>.
+/// </summary>
 public class StructBuilder : TypeBuilder<StructBuilder>
 {
     internal StructBuilder(NamespaceBuilder @namespace, string name) : base(@namespace, name)
     {
     }
 
+    /// <summary>Whether the struct is <c>readonly</c>.</summary>
     public bool IsReadonly { get; set; }
 
+    /// <summary>Whether the struct is <c>partial</c>.</summary>
     public bool IsPartial { get; set; }
 
     #region FluentMethods
 
+    /// <summary>Marks the struct <c>readonly</c>.</summary>
     public StructBuilder Readonly()
     {
         IsReadonly = true;
         return this;
     }
 
+    /// <summary>Marks the struct <c>partial</c>.</summary>
     public StructBuilder Partial()
     {
         IsPartial = true;
@@ -29,7 +36,7 @@ public class StructBuilder : TypeBuilder<StructBuilder>
 
     #endregion
 
-    protected override TypeDeclarationSyntax BuildTypeDeclaration()
+    private protected override TypeDeclarationSyntax BuildTypeDeclaration()
     {
         var declaration = ApplyGenerics(StructDeclaration(Name)
             .WithAttributeLists(BuildAttributeLists())

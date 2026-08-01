@@ -23,18 +23,32 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
         Namespace = @namespace;
     }
 
+    /// <summary>The namespace this type is declared in.</summary>
     public NamespaceBuilder Namespace { get; }
 
+    /// <summary>
+    /// Whether to emit a file-scoped namespace (<c>namespace N;</c>). True by default;
+    /// see <c>BlockScopedNamespace()</c> for the braced form.
+    /// </summary>
     public bool IsFileScopedNamespace { get; set; } = true;
 
+    /// <summary>The type's accessibility. Public by default.</summary>
     public AccessModifier AccessModifier { get; set; } = AccessModifier.Public;
 
     /// <summary>Builds this kind's declaration node (class, enum, record, ...).</summary>
-    protected abstract MemberDeclarationSyntax BuildDeclaration();
+    private protected abstract MemberDeclarationSyntax BuildDeclaration();
 
+    /// <summary>
+    /// Builds the whole file as a Roslyn syntax tree — the namespace declaration wrapping
+    /// this type. The escape hatch for anything the fluent API cannot express.
+    /// </summary>
     public CompilationUnitSyntax BuildCompilationUnit()
         => Namespace.CompilationUnitFor(BuildDeclaration(), IsFileScopedNamespace);
 
+    /// <summary>
+    /// The generated source as a UTF-8 <see cref="SourceText"/>, ready to hand to
+    /// <c>context.AddSource(...)</c> from a source generator.
+    /// </summary>
     public SourceText ToSourceText()
         => SourceText.From(ToString(), Encoding.UTF8);
 

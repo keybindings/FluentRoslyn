@@ -8,18 +8,30 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// Builds a property declaration of type <typeparamref name="T"/>. Obtained from
+/// <c>DefineProperty&lt;T&gt;</c> on a type builder. Supports auto-properties,
+/// expression bodies, and statement-bodied accessors.
+/// </summary>
+/// <typeparam name="T">The property's type.</typeparam>
 public class PropertyBuilder<T> : PropertyBuilder
 {
     private readonly TypeNameBuilder _typeName = TypeNameBuilder.New<T>();
 
+    /// <summary>
+    /// Creates a standalone property builder. Prefer <c>DefineProperty&lt;T&gt;</c> on a
+    /// type builder, which also attaches the property to that type.
+    /// </summary>
     public PropertyBuilder(string name, AccessModifier accessModifier) : base(name, accessModifier)
     {
     }
 
     #region FluentMethods
 
+    /// <summary>Marks the property <c>static</c>.</summary>
     public PropertyBuilder<T> Static() => this.With(() => IsStatic = true);
 
+    /// <summary>Sets the property's accessibility. Public by default.</summary>
     public PropertyBuilder<T> WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonIgnore")</c>.</summary>
@@ -249,6 +261,10 @@ public class PropertyBuilder<T> : PropertyBuilder
     }
 }
 
+/// <summary>
+/// The non-generic base of <see cref="PropertyBuilder{T}"/>, carrying the state that
+/// does not depend on the property's type.
+/// </summary>
 public abstract class PropertyBuilder(string name, AccessModifier accessModifier)
     : NamedBuilder(name, Identifiers.Validate), IAccessModifier, IMemberSyntaxBuilder
 {
@@ -266,21 +282,34 @@ public abstract class PropertyBuilder(string name, AccessModifier accessModifier
         [AccessModifier.Private] = [],
     };
 
+    /// <summary>Whether the property is <c>static</c>.</summary>
     public bool IsStatic { get; set; }
 
+    /// <summary>
+    /// Whether the property declares a getter. True by default; an auto-property must
+    /// have one.
+    /// </summary>
     public bool HasGet { get; set; } = true;
 
+    /// <summary>Whether the property declares a setter. True by default.</summary>
     public bool HasSet { get; set; } = true;
 
-    // When true, the setter is emitted as `init` rather than `set`.
+    /// <summary>When true, the setter is emitted as <c>init</c> rather than <c>set</c>.</summary>
     public bool SetterIsInit { get; set; }
 
-    // A more restrictive access modifier on the setter (e.g. `private set`), or null
-    // to inherit the property's own modifier.
+    /// <summary>
+    /// A more restrictive access modifier on the setter (e.g. <c>private set</c>), or
+    /// null to inherit the property's own. Must be strictly more restrictive.
+    /// </summary>
     public AccessModifier? SetterAccessModifier { get; set; }
 
+    /// <summary>
+    /// Whether the property is an auto-property (<c>{ get; set; }</c>). Set to false
+    /// automatically when an expression or statement body is supplied.
+    /// </summary>
     public bool IsAutoProperty { get; set; } = true;
 
+    /// <summary>The property's accessibility. Public by default.</summary>
     public AccessModifier AccessModifier { get; set; } = accessModifier;
 
     internal List<AttributeSyntax> Attributes { get; } = [];

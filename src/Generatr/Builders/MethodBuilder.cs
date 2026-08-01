@@ -9,6 +9,9 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// Builds a method declaration. Obtained from <c>DefineMethod</c> on a type builder.
+/// </summary>
 public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 {
     private TypeSyntax _returnType;
@@ -30,8 +33,10 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         _returnsVoid = returnsVoid;
     }
 
+    /// <summary>Whether the method is <c>static</c>.</summary>
     public bool IsStatic { get; set; }
 
+    /// <summary>Whether the method is <c>partial</c>.</summary>
     public bool IsPartial { get; set; }
 
     /// <summary>The inheritance modifier — virtual, abstract, override, or sealed override.</summary>
@@ -39,6 +44,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     internal bool IsAbstract => Inheritance == Inheritance.Abstract;
 
+    /// <summary>The method's accessibility.</summary>
     public AccessModifier AccessModifier { get; set; }
 
     /// <summary>A void method: <c>void Name(...) { }</c>. Add parameters with <see cref="WithParameter{T}"/>.</summary>
@@ -51,6 +57,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
     #region FluentMethods
 
+    /// <summary>Marks the method <c>static</c>.</summary>
     public MethodBuilder Static() => this.With(() => IsStatic = true);
 
     /// <summary>Marks the method <c>partial</c> (e.g. a source generator implementing a partial method).</summary>
@@ -71,8 +78,10 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// <summary>Marks the method <c>sealed override</c>.</summary>
     public MethodBuilder SealedOverride() => this.With(() => Inheritance = Inheritance.SealedOverride);
 
+    /// <summary>Sets the method's accessibility.</summary>
     public MethodBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
     public MethodBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
 
     /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>

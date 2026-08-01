@@ -5,9 +5,9 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- Ship the XML doc file so documented members get IntelliSense. CS1591 (missing
-         doc) stays suppressed until the public-API doc pass — see docs/ROADMAP.md #4. -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- The public API is fully documented; keep it that way by failing the build on a
+         missing XML comment rather than letting it slide. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup Label="Package">

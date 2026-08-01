@@ -9,6 +9,10 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// Builds a constructor declaration. Obtained from <c>DefineConstructor</c> on a type
+/// builder; its name always matches the declaring type.
+/// </summary>
 public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 {
     private readonly List<IParameter> _params = [];
@@ -22,8 +26,10 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
         AccessModifier = accessModifier;
     }
 
+    /// <summary>Whether this is a static constructor.</summary>
     public bool IsStatic { get; set; }
 
+    /// <summary>The constructor's accessibility. Ignored for a static constructor.</summary>
     public AccessModifier AccessModifier { get; set; }
 
     #region FluentMethods
@@ -34,8 +40,10 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     /// </summary>
     public ConstructorBuilder Static() => this.With(() => IsStatic = true);
 
+    /// <summary>Sets the constructor's accessibility.</summary>
     public ConstructorBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
+    /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
     public ConstructorBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonConstructor")</c>.</summary>

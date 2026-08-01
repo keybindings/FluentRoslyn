@@ -9,6 +9,11 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Generatr.Builders;
 
+/// <summary>
+/// A type reference, resolved from a CLR <see cref="Type"/>. Handles arrays, nested
+/// types, generics (including open definitions), and the built-in keyword shorthands
+/// (<c>int</c> rather than <c>System.Int32</c>). Names are emitted fully qualified.
+/// </summary>
 public class TypeNameBuilder : NamedBuilder
 {
     private readonly NamespaceBuilder _namespaceBuilder;
@@ -36,9 +41,11 @@ public class TypeNameBuilder : NamedBuilder
         _unboundArity = unboundArity;
     }
 
+    /// <summary>Creates a type reference for <typeparamref name="T"/>.</summary>
     public static TypeNameBuilder New<T>()
         => New(typeof(T));
 
+    /// <summary>Creates a type reference for the given runtime type.</summary>
     public static TypeNameBuilder New(Type type)
     {
         if (type == null) throw new ArgumentNullException(nameof(type));
