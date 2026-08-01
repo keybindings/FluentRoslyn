@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          # 8.0 runs the example app; 10.0 builds and runs the unit tests.
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore Generatr.sln
+
+      - name: Build
+        run: dotnet build Generatr.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/Generatr.UnitTests -c Release --no-build --verbosity normal
+
+      # The example generator builds its output entirely through the fluent API, so
+      # running it proves the generated source actually compiles and behaves — the
+      # end-to-end check that unit tests on their own cannot give.
+      - name: Run example generator end-to-end
+        run: |
+          output=$(dotnet run --project examples/Generatr.Example.App -c Release --no-build)
+          echo "$output"
+          expected="Generator says: Hi from 'Generated Code'"
+          if [ "$output" != "$expected" ]; then
+            echo "::error::Example app output did not match."
+            echo "expected: $expected"
+            echo "actual:   $output"
+            exit 1
+          fi
+
+      - name: Pack
+        run: dotnet pack src/Generatr/Generatr.csproj -c Release --no-build -o artifacts
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg
+          if-no-files-found: error
