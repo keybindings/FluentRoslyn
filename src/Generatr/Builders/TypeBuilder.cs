@@ -290,6 +290,25 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     }
 
     /// <summary>
+    /// Sets the indentation string, e.g. <c>"\t"</c>. Four spaces by default.
+    /// </summary>
+    public TSelf WithIndentation(string indentation)
+    {
+        SetFormatting(f => f.WithIndentation(indentation));
+        return (TSelf)this;
+    }
+
+    /// <summary>
+    /// Sets the line endings, e.g. <c>"\r\n"</c>. <c>"\n"</c> by default, which keeps
+    /// output byte-identical across operating systems.
+    /// </summary>
+    public TSelf WithLineEndings(string lineEndings)
+    {
+        SetFormatting(f => f.WithLineEndings(lineEndings));
+        return (TSelf)this;
+    }
+
+    /// <summary>
     /// Shortens generated type references and imports the namespaces they need, so
     /// <c>System.Collections.Generic.List&lt;int&gt;</c> becomes <c>List&lt;int&gt;</c>
     /// under a <c>using System.Collections.Generic;</c>. A name offered by two different

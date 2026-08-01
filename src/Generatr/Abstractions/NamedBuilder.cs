@@ -1,4 +1,5 @@
 ﻿using System;
+using Generatr.Builders;
 using Microsoft.CodeAnalysis;
 
 namespace Generatr.Abstractions;
@@ -27,16 +28,19 @@ public abstract class NamedBuilder : INamedBuilder
     internal abstract SyntaxNode BuildSyntax();
 
     /// <summary>
-    /// Line ending used for all emitted source. Pinned rather than taken from
-    /// <see cref="Environment.NewLine"/> so generator output is byte-identical
-    /// across operating systems.
+    /// Layout for this builder's output. Fixed at the library default here; the
+    /// top-level type builders let it be overridden. Pinned rather than taken from
+    /// <see cref="Environment.NewLine"/> so output is byte-identical across operating
+    /// systems.
     /// </summary>
-    internal const string Eol = "\n";
+    private protected virtual SourceFormatting Formatting => SourceFormatting.Default;
 
     /// <summary>
-    /// The generated C# source: 4-space indentation and <c>\n</c> line endings,
-    /// regardless of host operating system.
+    /// The generated C# source. Four-space indentation and <c>\n</c> line endings unless
+    /// the builder's formatting has been overridden.
     /// </summary>
     public override string ToString()
-        => BuildSyntax().NormalizeWhitespace(eol: Eol).ToFullString();
+        => BuildSyntax()
+            .NormalizeWhitespace(Formatting.Indentation, Formatting.LineEndings)
+            .ToFullString();
 }

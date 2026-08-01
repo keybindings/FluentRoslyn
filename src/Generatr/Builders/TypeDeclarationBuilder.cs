@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Generatr.Abstractions;
@@ -19,6 +20,7 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     private readonly List<AttributeListSyntax> _attributes = [];
     private readonly DocComment _docs = new();
     private readonly TypeImports _imports = new();
+    private SourceFormatting _formatting = SourceFormatting.Default;
 
     private protected TypeDeclarationBuilder(
         NamespaceBuilder @namespace,
@@ -110,6 +112,11 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
 
     private protected void AddSummary(string text)
         => _docs.SetSummary(text);
+
+    private protected override SourceFormatting Formatting => _formatting;
+
+    private protected void SetFormatting(Func<SourceFormatting, SourceFormatting> configure)
+        => _formatting = configure(_formatting);
 
     private protected void AddUsing(string namespaceName)
         => _imports.Add(namespaceName);

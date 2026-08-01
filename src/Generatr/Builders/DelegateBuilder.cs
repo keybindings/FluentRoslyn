@@ -41,6 +41,12 @@ public class DelegateBuilder : TypeDeclarationBuilder
     /// <summary>Adds a using directive, e.g. <c>WithUsing("System.Linq")</c>.</summary>
     public DelegateBuilder WithUsing(string namespaceName) => this.With(() => AddUsing(namespaceName));
 
+    /// <summary>Sets the indentation string, e.g. a tab. Four spaces by default.</summary>
+    public DelegateBuilder WithIndentation(string indentation) => this.With(() => SetFormatting(f => f.WithIndentation(indentation)));
+
+    /// <summary>Sets the line endings, e.g. CRLF. LF by default, which keeps output byte-identical across operating systems.</summary>
+    public DelegateBuilder WithLineEndings(string lineEndings) => this.With(() => SetFormatting(f => f.WithLineEndings(lineEndings)));
+
     /// <summary>Shortens generated type references and imports the namespaces they need.</summary>
     public DelegateBuilder SimplifyTypeNames() => this.With(() => EnableTypeNameSimplification());
 
