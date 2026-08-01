@@ -21,7 +21,7 @@ them, not speculatively).
 | 7 | **Nested types** (type inside a type) | Feature | Med | Med | Real generator need (builders, DTOs). Requires letting `TypeBuilder` hold child types. |
 | 8 | **`required` members** (C# 11) | Feature | Low | Low | One modifier on field/property. |
 | 9 | **Record inheritance** (`: Base(args)`) | Feature | Low | Med | Positional-record base with base-args; noted deferred during review. |
-| 10 | **Emit `///` doc comments on generated members** | Feature | Low | Med | Distinct from #4 — this generates docs *into* the output. |
+| ~~10~~ | ~~**Emit `///` doc comments on generated members**~~ | Feature | Med | Med | **Done** (2026-08-01). `WithSummary` everywhere, plus `WithParameterDoc`/`WithReturnsDoc` on methods and constructors. Emitted as plain comment trivia so `NormalizeWhitespace` cannot reformat the XML attributes; text is XML-escaped. |
 | 11 | **Events / delegates** | Feature | Low | Med each | No current builders; niche for most generators. |
 | 12 | **Attribute target specifiers** (`[return:]`, `[field:]`) | Feature | Low | Low | The attribute probe strips them today. |
 | 13 | **Configurable formatting** (indent/eol) | Polish | Low | Med | Currently hardcoded 4-space/LF (deliberate — see decisions below). Options only if someone asks. |
@@ -32,11 +32,11 @@ them, not speculatively).
   API docs, CI is green, and the inheritance modifiers are in. The one remaining
   step to actual availability is publishing to nuget.org (needs an API key and a
   decision on whether 0.1.0 goes out as a preview).
-- **#6 is done** — the most conspicuous remaining hole, since generated service
-  and client code is async constantly.
+- **#6 and #10 are done** — async methods and doc comments on generated output.
 - **Everything else is demand-driven.** Add these when a real generator needs
-  them, not speculatively. Of what is left, #7 (nested types) and #10 (emitting
-  `///` docs onto generated members) are the most likely to be wanted first.
+  them, not speculatively. Of what is left, **#7 (nested types)** is the most
+  likely to be wanted first; **#5 (usings)** is the largest and would most
+  change how output reads.
 - **#5 and below** are real but demand-driven. #5 (usings) is the one large
   feature that would most change how the output *feels*, if non-qualified names
   ever become desirable.
