@@ -18,7 +18,7 @@ them, not speculatively).
 | ~~4~~ | ~~**XML doc comments on the public API**~~ | Ship | Med | Med | **Done** (2026-08-01). Full coverage, enforced by `WarningsAsErrors;CS1591`. The pass also tightened members that were public but externally unreachable. |
 | 5 | **Using-directive management** | Feature | Med | High | Output is fully qualified today (`System.Console`). Real payoff, but needs import collection + dedup + collision handling — a genuine subsystem. |
 | ~~6~~ | ~~**`async` methods**~~ | Feature | Med | Low | **Done** (2026-08-01). `Async()` on MethodBuilder. Return-type guard rejects only non-awaitable built-ins, so custom awaitables pass without an allowlist. |
-| 7 | **Nested types** (type inside a type) | Feature | Med | Med | Real generator need (builders, DTOs). Requires letting `TypeBuilder` hold child types. |
+| ~~7~~ | ~~**Nested types** (type inside a type)~~ | Feature | Med | Med | **Done** (2026-08-01). All five kinds nestable in a class or struct, any depth. Nested types qualify through their declaring type (`Ns.Outer.Inner`) and emit standalone as a bare declaration. |
 | 8 | **`required` members** (C# 11) | Feature | Low | Low | One modifier on field/property. |
 | 9 | **Record inheritance** (`: Base(args)`) | Feature | Low | Med | Positional-record base with base-args; noted deferred during review. |
 | ~~10~~ | ~~**Emit `///` doc comments on generated members**~~ | Feature | Med | Med | **Done** (2026-08-01). `WithSummary` everywhere, plus `WithParameterDoc`/`WithReturnsDoc` on methods and constructors. Emitted as plain comment trivia so `NormalizeWhitespace` cannot reformat the XML attributes; text is XML-escaped. |
@@ -32,11 +32,11 @@ them, not speculatively).
   API docs, CI is green, and the inheritance modifiers are in. The one remaining
   step to actual availability is publishing to nuget.org (needs an API key and a
   decision on whether 0.1.0 goes out as a preview).
-- **#6 and #10 are done** — async methods and doc comments on generated output.
+- **#6, #7 and #10 are done** — async methods, nested types, and doc comments on
+  generated output.
 - **Everything else is demand-driven.** Add these when a real generator needs
-  them, not speculatively. Of what is left, **#7 (nested types)** is the most
-  likely to be wanted first; **#5 (usings)** is the largest and would most
-  change how output reads.
+  them, not speculatively. **#5 (usings)** is the largest remaining item and the
+  one that would most change how output reads; the rest are small and narrow.
 - **#5 and below** are real but demand-driven. #5 (usings) is the one large
   feature that would most change how the output *feels*, if non-qualified names
   ever become desirable.
