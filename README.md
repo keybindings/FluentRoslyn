@@ -297,9 +297,27 @@ public Owner(string label)
 ```
 
 Shadowed members are `this.`-qualified in every position — receivers and
-arguments alike. Two honest limits, both stated by the API rather than papered
-over: the receiver's type is the author's assertion, and static calls are not
-modelled yet.
+arguments alike.
+
+`AsCallableOn` goes one further and types the receiver, so pointing a handle at
+the wrong object is also a compile error:
+
+```csharp
+widget.DefineMethod("SetLabel").WithParameter<string>("label", out _)
+    .AsCallableOn<WidgetPh, string>(out var setLabel);
+
+owner.DefineConstructor(AccessModifier.Public)
+    .WithParameter<string>("label", out var labelParam)
+    .Call(current, setLabel, labelParam);   // current must be an IReference<WidgetPh>
+```
+
+No registry pairs the two: a placeholder's emitted name and the declaring type's
+qualified name are the same string, because that is what both become in the
+generated source. The plain `AsCallable` family remains for receivers with no
+placeholder — a type from a shared library, say.
+
+One limit stated rather than papered over: static calls are not modelled, and
+`AsCallable` says so instead of emitting instance syntax on a static method.
 
 ### Using directives
 

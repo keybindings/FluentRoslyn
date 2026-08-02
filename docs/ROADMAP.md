@@ -28,7 +28,8 @@ them, not speculatively).
 | ~~14~~ | ~~**Typed references + `Assign`**~~ | Feature | High | Med | **Done** (2026-08-02). `IReference<T>`; `PropertyBuilder<T>`/`FieldBuilder<T>` are references directly, parameters yield one via `WithParameter<T>(name, out …)` so chaining survives. `Assign` type-matches both sides at generator compile time, and qualifies with `this.` when a parameter shadows the member — otherwise `name = name;` would silently self-assign. |
 | ~~15~~ | ~~**Builder references**~~ | Feature | Med | Low | **Done** (2026-08-02). A type being generated is referenced by its builder — `Returns(order)`, `WithParameter(order, "o")`, `WithInterface(iface)`, `Extends(iface)` — so the name is spelled once and only definable types can be referenced. Nested types qualify through their declaring chain. Referencing a *generic* type builder throws at emission (order-proof), since the reference cannot say what the type arguments are. |
 | ~~16~~ | ~~**`[EmitsAs]` placeholders**~~ | Feature | High | Low | **Done** (2026-08-02). A stand-in type in the generator's own assembly maps to the emitted name, lighting up the whole `<T>` surface — including `IReference<T>`/`Assign` — for generated types. One hook in `TypeNameBuilder` covers every position; arrays/generics of placeholders compose; generic placeholders are rejected rather than guessed at. |
-| ~~17~~ | ~~**Typed call handles**~~ | Feature | High | Med | **Done** (2026-08-02). `AsCallable(out IMethod<T1…>)` validates the asserted signature against the declared parameters (by emitted name, so CLR, placeholder, and builder-reference parameters validate uniformly) and freezes the signature; `Call(target, handle, args…)` type-checks arguments in the generator. Shadow qualification covers every reference position — including `Assign`'s value side, previously a gap. Receivers are asserted, not checked; static calls not modelled yet. |
+| ~~17~~ | ~~**Typed call handles**~~ | Feature | High | Med | **Done** (2026-08-02). `AsCallable(out IMethod<T1…>)` validates the asserted signature against the declared parameters (by emitted name, so CLR, placeholder, and builder-reference parameters validate uniformly) and freezes the signature; `Call(target, handle, args…)` type-checks arguments in the generator. Shadow qualification covers every reference position — including `Assign`'s value side, previously a gap. Static calls not modelled yet. |
+| ~~18~~ | ~~**Receiver-typed handles**~~ | Feature | Med | Low | **Done** (2026-08-02). `AsCallableOn<TDeclaring, …>` yields `IMethodOn<TDeclaring, …>`, so `Call` rejects a receiver of the wrong type at compile time. Pairing needs no registry: a placeholder's emitted name and the declaring type's qualified name are the same string. Separate interface family because `AsCallable<TDeclaring>` and `AsCallable<T1>` share a signature — the cost is that a wrong receiver reports "cannot convert `IMethodOn<X>` to `IMethod`" rather than naming the mismatch. |
 
 ## Reading of the table
 
@@ -89,10 +90,46 @@ Types the generator itself emits: covered by #15–#17. The consumer's own types
 knowable only at generator run time via `ISymbol` — no compile-time story
 exists or can.
 
-- **Receiver typing for `Call`.** The receiver is currently the author's
-  assertion. Pairing a type builder with its `[EmitsAs]` placeholder would let
-  handles carry a declaring type, making `Call(target, handle, …)` reject a
-  receiver of the wrong generated type at compile time.
+- **`ClassFrom<T>` — the placeholder as the definition.** The largest of these,
+  and the one the others lead toward. Today a placeholder *shadows* a builder
+  definition: both state the shape, and nothing enforces agreement beyond the
+  guards in #16–#18. Inverting that makes the placeholder the single source of
+  truth — declare the shape as real C# in the generator project, and derive the
+  builder from it by reflection at generation time:
+
+  ```csharp
+  [EmitsAs("MyApp.Models.Widget")]
+  internal abstract class WidgetPh
+  {
+      public abstract string Label { get; set; }
+      public abstract void SetLabel(string label);
+  }
+
+  var widget = ns.ClassFrom<WidgetPh>();
+  widget.Implement(nameof(WidgetPh.SetLabel), m => m.Assign(label, labelParam));
+  ```
+
+  Signatures then cannot drift, because emission is derived from the thing that
+  declares them — and `class DerivedPh : WidgetPh` becomes literally
+  compile-checked inheritance, with the C# compiler doing the verifying rather
+  than the library. Reflection over the generator's own assembly is plain
+  netstandard2.0, so nothing exotic is required.
+
+  Scope honestly: get-only and init properties, base types and interfaces,
+  static and generic members, the `Implement`-by-name story and what happens
+  when a declared member is never implemented. Bigger than #14–#18 combined.
+
+  **The direction that does *not* work**, recorded so it is not re-derived:
+  giving placeholders members generated *from* the fluent definition. The
+  definition runs when the generator runs; the placeholder compiles before
+  that. Only static extraction from literal builder chains could bridge it, and
+  that goes blind the moment definitions become data-driven — which is the
+  reason generators exist. The dependency has to point placeholder → builder,
+  never the reverse.
+- **Static calls.** `AsCallable` refuses a static method rather than emitting
+  instance syntax. Modelling them needs a type-level receiver
+  (`Type.Method(args)`) rather than a reference, which is a different shape
+  from everything in #17–#18.
 - **Compile-checked templates.** A meta-generator that runs on generator
   projects: the author writes real C# — compiled, type-checked, refactorable —
   and the meta-generator lifts it into the emission calls that reproduce it,
