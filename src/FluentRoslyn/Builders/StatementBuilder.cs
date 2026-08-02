@@ -61,6 +61,13 @@ public abstract class StatementBuilder : NamedBuilder
     private protected void AddReturn(IReference? value)
         => Statements.Add(SyntaxReferences.Return(value, Parameters, IsStaticContext, StatementContext));
 
+    private protected void AddLiteralAssignment(IReference target, object? literal)
+        => Statements.Add(SyntaxReferences.AssignmentOfLiteral(
+            target, literal, Parameters, IsStaticContext, StatementContext));
+
+    private protected void AddLiteralReturn(object? literal)
+        => Statements.Add(SyntaxReferences.ReturnLiteral(literal));
+
     private protected void ReplaceStatements(string[] statements)
     {
         Statements.Clear();
@@ -125,6 +132,24 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     public TSelf Assign<TValue>(IReference<TValue> target, IReference<TValue> value)
     {
         AddAssignment(target, value);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends an assignment from a constant, e.g. <c>Count = 0;</c> or
+    /// <c>Name = null;</c>. The literal's type must match the target's, so
+    /// <c>AssignLiteral(intProperty, "text")</c> is a compile error. Covers the
+    /// primitives with a natural C# literal form; anything else needs a raw statement.
+    /// </summary>
+    /// <remarks>
+    /// Named apart from <see cref="Assign{TValue}"/> rather than overloading it: for a
+    /// reference type, a value convertible to both <c>IReference&lt;T&gt;</c> and
+    /// <c>T</c> — <c>null</c> most obviously — makes the two indistinguishable, and the
+    /// call site fails with an ambiguity error that explains nothing about the intent.
+    /// </remarks>
+    public TSelf AssignLiteral<TValue>(IReference<TValue> target, TValue literal)
+    {
+        AddLiteralAssignment(target, literal);
         return Self;
     }
 

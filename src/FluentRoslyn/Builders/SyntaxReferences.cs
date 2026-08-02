@@ -62,6 +62,30 @@ internal static class SyntaxReferences
     }
 
     /// <summary>
+    /// Builds <c>target = literal;</c>. The literal's type was matched to the target's by
+    /// the compiler at the call site; what remains here is converting it to syntax.
+    /// </summary>
+    internal static StatementSyntax AssignmentOfLiteral(
+        IReference target,
+        object? literal,
+        IReadOnlyCollection<IParameter> parameters,
+        bool inStaticContext,
+        string context)
+    {
+        if (target is null) throw new ArgumentNullException(nameof(target));
+
+        return ExpressionStatement(
+            AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                Expression(target, parameters, inStaticContext, context),
+                SyntaxLiterals.Expression(literal)));
+    }
+
+    /// <summary>Builds <c>return literal;</c>.</summary>
+    internal static StatementSyntax ReturnLiteral(object? literal)
+        => ReturnStatement(SyntaxLiterals.Expression(literal));
+
+    /// <summary>
     /// Builds <c>return value;</c>, or <c>return;</c> when <paramref name="value"/> is
     /// null. The value goes through the same shadow qualification as every other
     /// reference position.

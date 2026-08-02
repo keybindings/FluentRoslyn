@@ -538,4 +538,16 @@ public class MethodBuilder<TReturn> : MethodBuilderBase<MethodBuilder<TReturn>>
         AddReturn(value ?? throw new ArgumentNullException(nameof(value)));
         return this;
     }
+
+    /// <summary>
+    /// Appends <c>return literal;</c> for a constant of the method's return type, e.g.
+    /// <c>DefineMethod&lt;bool&gt;("IsValid").ReturnLiteral(true)</c>. Named apart from
+    /// <see cref="Return(IReference{TReturn})"/> because a value that is itself a
+    /// reference type would make the two overloads ambiguous.
+    /// </summary>
+    public MethodBuilder<TReturn> ReturnLiteral(TReturn literal)
+    {
+        AddLiteralReturn(literal);
+        return this;
+    }
 }

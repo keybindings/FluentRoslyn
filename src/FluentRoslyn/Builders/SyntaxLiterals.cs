@@ -32,7 +32,10 @@ internal static class SyntaxLiterals
             byte or sbyte or short or ushort =>
                 LiteralExpression(SyntaxKind.NumericLiteralExpression,
                     Literal(Convert.ToInt32(value, CultureInfo.InvariantCulture))),
+            // Reachable from initializers and from statements, so the advice names both
+            // escape hatches rather than assuming which path got here.
             _ => throw new NotSupportedException(
-                $"No literal form for '{value.GetType()}'. Use WithInitializerExpression to supply a raw expression.")
+                $"No literal form for '{value.GetType()}'. Supply it as raw text instead — " +
+                "WithInitializerExpression for an initializer, AddStatement for a statement.")
         };
 }

@@ -101,22 +101,25 @@ ctor.Assign(nameProp, "unnamed");
 ctor.Assign(refProp, Value.Null<WidgetPh>());
 ```
 
-**Verified (2026-08-02).** Overloading `Assign` with a literal variant is safe:
+**Corrected (2026-08-02, during implementation).** An earlier note here claimed
+overloading `Assign` with a literal variant was safe, based on a probe of
+inference cases only:
 
-- `Assign<T>(IReference<T>, IReference<T>)` and `Assign<T>(IReference<T>, T)`
-  coexist; each call binds to the intended overload with no ambiguity.
-- A genuine mismatch — `Assign(intRef, stringRef)` — reports **CS0411 naming the
-  reference overload**, i.e. the good diagnostic, *not* the misleading conversion
-  error that forced `Call`/`CallOn` apart. The cases differ because here both
-  candidates fail inference, whereas there the untyped candidate survived and
-  then blamed the wrong argument.
+- `Assign<T>(IReference<T>, IReference<T>)` and `Assign<T>(IReference<T>, T)` do
+  coexist for ordinary calls, and a mismatch reports the good `CS0411`.
+- **But** an explicit type argument with `null` — `Assign<string>(target, null)` —
+  fits *both* overloads and fails with `CS0121` ambiguity. That is legitimate
+  usage; an existing test used exactly that shape and broke on it.
 
-So this can be an overload rather than a separate name. That conclusion is
-empirical — re-verify if the signatures change.
+The probe was incomplete, not the reasoning. The library's own lesson applies
+again: **use a distinct name, `AssignLiteral`.** Same conclusion as `CallOn` and
+for the same underlying reason — two overloads whose type parameters bind
+differently produce diagnostics that describe the wrong thing.
 
-**`null` needs a carrier.** `Assign(prop, null)` cannot infer `T`. A
-`Value.Null<T>()` factory returning something the literal overload accepts is the
-minimal answer.
+**`null` then needs no carrier.** With a distinct name there is no competing
+overload, so `AssignLiteral(prop, null)` infers `T` from the target: it converts
+for a reference type and is correctly rejected for a value type. The
+`Value.Null<T>()` factory this section previously proposed is unnecessary.
 
 **Also verified:** `public static implicit operator Value<T>(T literal)` — a
 conversion from a bare type parameter — is legal C#, should a `Value<T>` wrapper
