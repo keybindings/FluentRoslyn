@@ -26,6 +26,9 @@ them, not speculatively).
 | ~~12~~ | ~~**Attribute target specifiers** (`[return:]`, `[field:]`)~~ | Feature | Low | Low | **Done** (2026-08-01). Targets split off before parsing; an unrecognised one is rejected rather than silently dropped, and named arguments are not mistaken for targets. |
 | ~~13~~ | ~~**Configurable formatting** (indent/eol)~~ | Polish | Low | Med | **Done** (2026-08-01). `WithIndentation`/`WithLineEndings`, strictly opt-in — the 4-space/LF default is unchanged, so byte-identical cross-OS output is still what you get for free. |
 | ~~14~~ | ~~**Typed references + `Assign`**~~ | Feature | High | Med | **Done** (2026-08-02). `IReference<T>`; `PropertyBuilder<T>`/`FieldBuilder<T>` are references directly, parameters yield one via `WithParameter<T>(name, out …)` so chaining survives. `Assign` type-matches both sides at generator compile time, and qualifies with `this.` when a parameter shadows the member — otherwise `name = name;` would silently self-assign. |
+| ~~15~~ | ~~**Builder references**~~ | Feature | Med | Low | **Done** (2026-08-02). A type being generated is referenced by its builder — `Returns(order)`, `WithParameter(order, "o")`, `WithInterface(iface)`, `Extends(iface)` — so the name is spelled once and only definable types can be referenced. Nested types qualify through their declaring chain. Referencing a *generic* type builder throws at emission (order-proof), since the reference cannot say what the type arguments are. |
+| ~~16~~ | ~~**`[EmitsAs]` placeholders**~~ | Feature | High | Low | **Done** (2026-08-02). A stand-in type in the generator's own assembly maps to the emitted name, lighting up the whole `<T>` surface — including `IReference<T>`/`Assign` — for generated types. One hook in `TypeNameBuilder` covers every position; arrays/generics of placeholders compose; generic placeholders are rejected rather than guessed at. |
+| ~~17~~ | ~~**Typed call handles**~~ | Feature | High | Med | **Done** (2026-08-02). `AsCallable(out IMethod<T1…>)` validates the asserted signature against the declared parameters (by emitted name, so CLR, placeholder, and builder-reference parameters validate uniformly) and freezes the signature; `Call(target, handle, args…)` type-checks arguments in the generator. Shadow qualification covers every reference position — including `Assign`'s value side, previously a gap. Receivers are asserted, not checked; static calls not modelled yet. |
 
 ## Reading of the table
 
@@ -80,17 +83,27 @@ These look like omissions but are choices:
 
 ## Future direction (sketched, not committed)
 
+The reference story splits by where the referenced type lives. Types in a
+shared library both sides reference: fully typed today via the `<T>` overloads.
+Types the generator itself emits: covered by #15–#17. The consumer's own types:
+knowable only at generator run time via `ISymbol` — no compile-time story
+exists or can.
+
+- **Receiver typing for `Call`.** The receiver is currently the author's
+  assertion. Pairing a type builder with its `[EmitsAs]` placeholder would let
+  handles carry a declaring type, making `Call(target, handle, …)` reject a
+  receiver of the wrong generated type at compile time.
 - **Compile-checked templates.** A meta-generator that runs on generator
   projects: the author writes real C# — compiled, type-checked, refactorable —
   and the meta-generator lifts it into the emission calls that reproduce it,
   with marked holes for the varying parts. Legal because a generator project is
-  an ordinary library at its own build time (generators cannot see each other's
-  output *within* one compilation, but running *on* a generator's own build is
-  fine). The hard ceiling: the consumer's types exist only when the generator
-  runs, so template holes stay unchecked at the seams — "type safe, almost" is
-  the honest maximum. This is the library's existing thesis (move generator
-  errors to generator-compile time) with a bigger hammer; build it when a real
-  generator's needs demand it, per the rule above.
+  an ordinary library at its own build time — verified empirically with a
+  three-level chain (meta-generator → generator → app), all netstandard2.0
+  where required: the ns2.0 rule constrains what a generator *is*, not what it
+  runs *on*. The hard ceiling: the consumer's types exist only when the
+  generator runs, so template holes stay unchecked at the seams — "type safe,
+  almost" is the honest maximum. Build it when a real generator's needs demand
+  it, per the rule above.
 
 ## Known constraints
 

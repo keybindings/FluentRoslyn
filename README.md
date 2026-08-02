@@ -240,6 +240,67 @@ C# generic constraints can't express "implicitly convertible to", and a looser
 rule would let the mismatch it exists to catch slip through. Use `AddStatement`
 for those.
 
+### Referencing generated types
+
+A generated type has no CLR type, so `<T>` cannot name it. Two complements close
+the gap. A **builder reference** passes the type's builder where a type name
+goes, so the name is spelled once and only a type actually being built can be
+referenced:
+
+```csharp
+var order = NamespaceBuilder.Get("MyApp.Models").Class("Order");
+
+var svc = NamespaceBuilder.Get("MyApp.Services").Class("OrderService");
+svc.DefineMethod("Save").WithParameter(order, "order");
+```
+
+An **`[EmitsAs]` placeholder** is a stand-in type declared in the generator's
+own assembly; wherever it appears as a type argument, the *emitted* name is
+written instead. That lights up the entire typed surface — including
+`IReference<T>` and `Assign` — for generated types:
+
+```csharp
+[EmitsAs("MyApp.Models.Order")]
+internal sealed class OrderPh;
+
+var current = owner.DefineProperty<OrderPh>("Current");  // emits MyApp.Models.Order
+```
+
+The placeholder never ships; it exists so the C# compiler holds the definition
+and every reference to the same name.
+
+### Typed calls
+
+Raw statements can also misspell a *method* — `AddStatement("x.SetLabl(n);")`
+parses fine. `AsCallable` hands back a handle whose asserted signature is
+validated against the declared parameters (a handle that exists matches its
+method, and the signature freezes afterwards); `Call` then type-checks the
+arguments in your generator:
+
+```csharp
+var widget = NamespaceBuilder.Get("MyApp.Models").Class("Widget");
+widget.DefineMethod("SetLabel").WithParameter<string>("label", out _)
+    .AsCallable<string>(out var setLabel);
+
+var owner = NamespaceBuilder.Get("MyApp").Class("Owner");
+var current = owner.DefineProperty<OrderPh>("Current");
+owner.DefineConstructor(AccessModifier.Public)
+    .WithParameter<string>("label", out var labelParam)
+    .Call(current, setLabel, labelParam);
+```
+
+```csharp
+public Owner(string label)
+{
+    Current.SetLabel(label);
+}
+```
+
+Shadowed members are `this.`-qualified in every position — receivers and
+arguments alike. Two honest limits, both stated by the API rather than papered
+over: the receiver's type is the author's assertion, and static calls are not
+modelled yet.
+
 ### Using directives
 
 Type references are fully qualified by default, which is always correct.
