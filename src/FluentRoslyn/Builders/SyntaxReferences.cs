@@ -61,6 +61,61 @@ internal static class SyntaxReferences
                     Argument(Expression(a, parameters, inStaticContext, context)))))));
     }
 
+    /// <summary>Builds <c>target op= value;</c> from two references of the same type.</summary>
+    internal static StatementSyntax CompoundAssignment<T>(
+        IReference<T> target,
+        SyntaxKind kind,
+        IReference<T> value,
+        IReadOnlyCollection<IParameter> parameters,
+        bool inStaticContext,
+        string context)
+    {
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        if (value is null) throw new ArgumentNullException(nameof(value));
+
+        return ExpressionStatement(
+            AssignmentExpression(
+                kind,
+                Expression(target, parameters, inStaticContext, context),
+                Expression(value, parameters, inStaticContext, context)));
+    }
+
+    /// <summary>Builds <c>target op= literal;</c>.</summary>
+    internal static StatementSyntax CompoundAssignmentOfLiteral(
+        IReference target,
+        SyntaxKind kind,
+        object? literal,
+        IReadOnlyCollection<IParameter> parameters,
+        bool inStaticContext,
+        string context)
+    {
+        if (target is null) throw new ArgumentNullException(nameof(target));
+
+        return ExpressionStatement(
+            AssignmentExpression(
+                kind,
+                Expression(target, parameters, inStaticContext, context),
+                SyntaxLiterals.Expression(literal)));
+    }
+
+    /// <summary>Maps an operator to its assignment syntax kind.</summary>
+    internal static SyntaxKind KindOf(AssignmentOperator op)
+        => op switch
+        {
+            AssignmentOperator.Add => SyntaxKind.AddAssignmentExpression,
+            AssignmentOperator.Subtract => SyntaxKind.SubtractAssignmentExpression,
+            AssignmentOperator.Multiply => SyntaxKind.MultiplyAssignmentExpression,
+            AssignmentOperator.Divide => SyntaxKind.DivideAssignmentExpression,
+            AssignmentOperator.Modulo => SyntaxKind.ModuloAssignmentExpression,
+            AssignmentOperator.And => SyntaxKind.AndAssignmentExpression,
+            AssignmentOperator.Or => SyntaxKind.OrAssignmentExpression,
+            AssignmentOperator.ExclusiveOr => SyntaxKind.ExclusiveOrAssignmentExpression,
+            AssignmentOperator.LeftShift => SyntaxKind.LeftShiftAssignmentExpression,
+            AssignmentOperator.RightShift => SyntaxKind.RightShiftAssignmentExpression,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(op), op, "Not a compound assignment operator.")
+        };
+
     /// <summary>
     /// Builds <c>target = literal;</c>. The literal's type was matched to the target's by
     /// the compiler at the call site; what remains here is converting it to syntax.

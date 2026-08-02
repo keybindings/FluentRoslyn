@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using FluentRoslyn.Abstractions;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace FluentRoslyn.Builders;
@@ -70,6 +71,15 @@ public abstract class StatementBuilder : NamedBuilder
 
     private protected void AddNullGuard(IReference value)
         => Statements.Add(SyntaxReferences.ThrowIfNull(value, Parameters, IsStaticContext, StatementContext));
+
+    private protected void AddCompoundAssignment<TValue>(
+        IReference<TValue> target, SyntaxKind kind, IReference<TValue> value)
+        => Statements.Add(SyntaxReferences.CompoundAssignment(
+            target, kind, value, Parameters, IsStaticContext, StatementContext));
+
+    private protected void AddCompoundLiteralAssignment(IReference target, SyntaxKind kind, object? literal)
+        => Statements.Add(SyntaxReferences.CompoundAssignmentOfLiteral(
+            target, kind, literal, Parameters, IsStaticContext, StatementContext));
 
     private protected void ReplaceStatements(string[] statements)
     {
@@ -145,7 +155,8 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     /// primitives with a natural C# literal form; anything else needs a raw statement.
     /// </summary>
     /// <remarks>
-    /// Named apart from <see cref="Assign{TValue}"/> rather than overloading it: for a
+    /// Named apart from <see cref="Assign{TValue}(IReference{TValue}, IReference{TValue})"/>
+    /// rather than overloading it: for a
     /// reference type, a value convertible to both <c>IReference&lt;T&gt;</c> and
     /// <c>T</c> — <c>null</c> most obviously — makes the two indistinguishable, and the
     /// call site fails with an ambiguity error that explains nothing about the intent.
@@ -153,6 +164,46 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     public TSelf AssignLiteral<TValue>(IReference<TValue> target, TValue literal)
     {
         AddLiteralAssignment(target, literal);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a compound assignment, e.g. <c>Count += delta;</c>. Both sides are
+    /// references of the same type, as with simple assignment.
+    /// </summary>
+    public TSelf Assign<TValue>(IReference<TValue> target, AssignmentOperator op, IReference<TValue> value)
+    {
+        AddCompoundAssignment(target, SyntaxReferences.KindOf(op), value);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a compound assignment from a constant, e.g. <c>Count += 1;</c>.
+    /// </summary>
+    public TSelf AssignLiteral<TValue>(IReference<TValue> target, AssignmentOperator op, TValue literal)
+    {
+        AddCompoundLiteralAssignment(target, SyntaxReferences.KindOf(op), literal);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a null-coalescing assignment: <c>target ??= value;</c>. Separate from the
+    /// other operators because it needs a target that can be null, which the shared
+    /// signature cannot state.
+    /// </summary>
+    public TSelf AssignIfNull<TValue>(IReference<TValue> target, IReference<TValue> value) where TValue : class
+    {
+        AddCompoundAssignment(target, SyntaxKind.CoalesceAssignmentExpression, value);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a null-coalescing assignment from a constant, e.g.
+    /// <c>Name ??= "unnamed";</c>.
+    /// </summary>
+    public TSelf AssignIfNullLiteral<TValue>(IReference<TValue> target, TValue literal) where TValue : class
+    {
+        AddCompoundLiteralAssignment(target, SyntaxKind.CoalesceAssignmentExpression, literal);
         return Self;
     }
 

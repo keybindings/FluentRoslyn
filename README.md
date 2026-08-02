@@ -311,6 +311,15 @@ calc.DefineMethod<int>("Total").Return(total);        // returning a string fiel
 calc.DefineMethod<bool>("IsEmpty").ReturnLiteral(true);
 ```
 
+Compound assignment takes an operator, and `??=` has its own pair since it needs
+a target that can be null:
+
+```csharp
+run.Assign(total, AssignmentOperator.Add, delta)   // _total += delta;
+   .AssignLiteral(count, AssignmentOperator.Subtract, 1)
+   .AssignIfNullLiteral(name, "unnamed");          // Name ??= "unnamed";
+```
+
 Constants use `AssignLiteral` / `ReturnLiteral`, and a null guard emits the
 classic form — deliberately not `ArgumentNullException.ThrowIfNull`, which is
 .NET 6+, because the generated code compiles in the *consumer's* framework:
