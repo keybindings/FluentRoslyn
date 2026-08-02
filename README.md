@@ -20,13 +20,14 @@ missing commas, bad spacing — are structurally impossible.
 
 ```csharp
 var user = NamespaceBuilder.Get("MyApp.Models").Class("User");
-user.DefineProperty<int>("Id").GetOnly();
-user.DefineProperty<string>("Name");
+var id   = user.DefineProperty<int>("Id").GetOnly();
+var name = user.DefineProperty<string>("Name");
+
 user.DefineConstructor(AccessModifier.Public)
-    .WithParameter<int>("id")
-    .WithParameter<string>("name")
-    .AddStatement("Id = id;")
-    .AddStatement("Name = name;");
+    .WithParameter<int>("id",      out var idParam)
+    .WithParameter<string>("name", out var nameParam)
+    .Assign(id, idParam)
+    .Assign(name, nameParam);
 
 var code = user.ToString();
 ```
@@ -198,37 +199,41 @@ access modifiers.
 
 ### Typed references
 
-`AddStatement("Name = name;")` is raw text — nothing checks that `Name` exists or
-that the two sides have the same type. Assignment is common enough in a generated
-constructor to be worth checking, so it has a typed form.
-
-Property and field builders *are* references; a parameter hands one back through
-an `out` argument, which keeps the fluent chain intact:
-
-```csharp
-var user = NamespaceBuilder.Get("MyApp.Models").Class("User");
-var id   = user.DefineProperty<int>("Id").GetOnly();
-var name = user.DefineProperty<string>("Name");
-
-user.DefineConstructor(AccessModifier.Public)
-    .WithParameter<int>("id",      out var idParam)
-    .WithParameter<string>("name", out var nameParam)
-    .Assign(id, idParam)
-    .Assign(name, nameParam);
-```
-
-```csharp
-public User(int id, string name)
-{
-    Id = id;
-    Name = name;
-}
-```
+The opening example's `Assign` calls are the typed alternative to
+`AddStatement("Id = id;")` — raw text that nothing checks. Property and field
+builders *are* references; a parameter hands one back through an `out` argument,
+which keeps the fluent chain intact.
 
 `Assign` takes two `IReference<T>` sharing one `T`, so `Assign(name, idParam)` is
 a compile error in *your* generator rather than generated code that won't build.
-When a parameter shadows the member it targets, the member is qualified
-automatically — you get `this.value = value;` instead of a silent self-assignment.
+And when a parameter shadows the member it targets, the member is qualified
+automatically:
+
+```csharp
+var shadow = NamespaceBuilder.Get("MyApp").Class("Shadow");
+var value = shadow.DefineProperty<string>("value");
+
+shadow.DefineConstructor(AccessModifier.Public)
+    .WithParameter<string>("value", out var valueParam)
+    .Assign(value, valueParam);
+```
+
+```csharp
+namespace MyApp;
+public class Shadow
+{
+    public Shadow(string value)
+    {
+        this.value = value;
+    }
+
+    public string value { get; set; }
+}
+```
+
+Without the qualifier that statement would be `value = value;` — legal C# that
+silently assigns the parameter to itself, which is exactly the class of bug this
+library exists to rule out.
 
 `T` is invariant, so widening (`object` ← `string`, `long` ← `int`) is rejected:
 C# generic constraints can't express "implicitly convertible to", and a looser
@@ -292,8 +297,8 @@ private void Execute(SourceProductionContext context, ...)
 ```
 
 A complete, runnable example lives in [`examples/`](examples/) — a generator
-that implements a partial method entirely through the fluent API, plus the app
-that consumes it.
+that emits a partial method and a constructor-assigned class (via typed
+references) entirely through the fluent API, plus the app that consumes them.
 
 ## What's next
 

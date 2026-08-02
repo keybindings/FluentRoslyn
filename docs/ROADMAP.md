@@ -78,6 +78,20 @@ These look like omissions but are choices:
   to catch. Widening (`object` ← `string`, `long` ← `int`) falls back to
   `AddStatement`.
 
+## Future direction (sketched, not committed)
+
+- **Compile-checked templates.** A meta-generator that runs on generator
+  projects: the author writes real C# — compiled, type-checked, refactorable —
+  and the meta-generator lifts it into the emission calls that reproduce it,
+  with marked holes for the varying parts. Legal because a generator project is
+  an ordinary library at its own build time (generators cannot see each other's
+  output *within* one compilation, but running *on* a generator's own build is
+  fine). The hard ceiling: the consumer's types exist only when the generator
+  runs, so template holes stay unchecked at the seams — "type safe, almost" is
+  the honest maximum. This is the library's existing thesis (move generator
+  errors to generator-compile time) with a bigger hammer; build it when a real
+  generator's needs demand it, per the rule above.
+
 ## Known constraints
 
 - Targets `netstandard2.0` so the library is referenceable from source
