@@ -10,14 +10,32 @@
     <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
   </PropertyGroup>
 
+  <PropertyGroup Label="Debugging">
+    <!-- Source Link: a consumer stepping into this package lands on the real source
+         on GitHub instead of decompiled IL. Built into the SDK since 8.0, so it needs
+         properties rather than a PackageReference. The .snupkg carries the symbols. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>portable</DebugType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Without this the assembly embeds local absolute paths, so two machines building
+         the same commit produce different bytes — a poor look for a library whose own
+         output is deliberately byte-identical across operating systems. Set only in CI,
+         because it also rewrites paths in a way that hinders local debugging. -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
   <PropertyGroup Label="Package">
     <!-- This library was originally called Generatr, but that bare id is already taken
          on nuget.org by an unrelated database scaffolder (ids are case-insensitive).
          FluentRoslyn is also what someone searching for this library actually types,
          so the assembly, namespaces, repo, and package all use it. -->
     <PackageId>FluentRoslyn</PackageId>
-    <Version>0.1.0-preview.1</Version>
+    <Version>0.1.0-preview.2</Version>
     <Authors>Cameron Lambert</Authors>
+    <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
     <PackageTags>roslyn;source-generator;codegen;code-generation;syntaxfactory;fluent;csharp</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -29,7 +47,9 @@
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>First preview.
+    <PackageReleaseNotes>Adds Source Link and a symbol package, so stepping into this library in a debugger lands on the real source rather than decompiled IL. Builds from CI are now deterministic. No API changes from 0.1.0-preview.1.
+
+First preview.
 
 Type declarations: classes, structs, records, enums, interfaces, and delegates, nestable to any depth; fields, constructors, properties, methods, and events; generics with constraints, attributes (including target specifiers), base types and interfaces, async, required members, and XML doc comments.
 
