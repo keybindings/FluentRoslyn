@@ -46,6 +46,59 @@ overload reaches it.
 (`WithGetterBody` / `WithSetterBody`) take strings only. Nothing conceptual blocks
 accessors — the helpers were never routed there.
 
+## Why the bar is compile-time, not generation-time
+
+Several decisions in this document reject a design that would check something when
+the generator *runs* in favour of one the compiler checks when the generator is
+*built* — distinct method names over an `object` parameter with runtime
+inspection, most of all. The obvious objection is that the difference hardly
+matters: a generator runs during a compilation, so a generation-time exception is
+still a build-time error. **It is not, and the gap is worse than it looks.**
+
+**Measured (2026-08-02).** The example generator was made to throw, and the
+consumer project was rebuilt:
+
+```
+Build succeeded.
+CSC : warning CS8785: Generator 'HelloSourceGenerator' failed to generate source.
+      Exception was of type 'InvalidOperationException' ...
+=== EXIT CODE: 0 ===
+```
+
+The app then ran and printed **nothing** — expected
+`Generator says: Hi from 'Generated Code'`. No error, exit code 0 throughout.
+Roslyn catches generator exceptions and reports **CS8785 as a warning**; the build
+succeeds and the output is silently wrong. Here the partial method simply had no
+implementation, so the call was elided.
+
+So the real axis is not *compile-time versus runtime*. It is **stops the build
+versus a warning nobody reads** — and the second is worse than an ordinary runtime
+failure, because it does not announce itself.
+
+Three asymmetries survive, in descending order of how much they should influence a
+design choice:
+
+1. **Coverage.** Type checking covers every path, including ones never taken. A
+   generation-time check fires only when that line executes. Generators are
+   data-driven — they loop over discovered types — so a fault behind
+   `if (hasAttribute)` may not surface until some consumer, months later, happens
+   to have that attribute.
+2. **Severity.** Type error stops the build; a throw is a warning, as measured
+   above.
+3. **Whose build.** A type error fails in the *generator author's* compile. A
+   throw fails in the *consumer's* — someone who did not write the fault, cannot
+   fix it, and whose only symptom is missing code.
+
+**In fairness to the objection:** the gap is narrower than "compile-time versus
+runtime" implies, and narrower still for a generator author who exercises the
+generator in their own test suite, where the throw would be caught. The library
+cannot assume that discipline, and the type check costs the author nothing.
+
+This is the same argument the README's "Why" section makes for the library
+existing at all — the CS8785-as-warning failure mode is precisely what makes
+`SyntaxGenerator`-in-a-generator so dangerous. It applies just as much to this
+library's own API.
+
 ## #19 Shared statement surface (prerequisite)
 
 **Problem.** `MethodBuilder` and `ConstructorBuilder` already duplicate the whole

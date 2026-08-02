@@ -150,9 +150,14 @@ exists or can.
   projects: the author writes real C# — compiled, type-checked, refactorable —
   and the meta-generator lifts it into the emission calls that reproduce it,
   with marked holes for the varying parts. Legal because a generator project is
-  an ordinary library at its own build time — verified empirically with a
+  an ordinary library at its own build time — verified empirically twice with a
   three-level chain (meta-generator → generator → app), all netstandard2.0
-  where required: the ns2.0 rule constrains what a generator *is*, not what it
+  where required. The second run closed the remaining doubt: the meta-generator
+  used `RegisterSourceOutput` (the normal generation pass, not the special
+  post-initialization hook) and *read the generator project's own syntax trees*,
+  discovering a class name and embedding it in code the generator then consumed.
+  So a generator can genuinely analyse a generator, not merely emit blind at a
+  privileged moment. The ns2.0 rule constrains what a generator *is*, not what it
   runs *on*. The hard ceiling: the consumer's types exist only when the
   generator runs, so template holes stay unchecked at the seams — "type safe,
   almost" is the honest maximum. Build it when a real generator's needs demand
