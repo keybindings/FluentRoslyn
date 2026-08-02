@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using FluentRoslyn.Abstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -118,6 +119,11 @@ public class TypeNameBuilder : NamedBuilder
                 arrayRank: type.GetArrayRank());
         }
 
+        // A placeholder resolves to its declared emitted name, not to reflection: the
+        // CLR type only exists so references to a generated type can be compile-checked.
+        if (TryUsePlaceholderName(type, out var placeholder))
+            return placeholder;
+
         if (TryUseShorthand(type, out var shortName, out var kind))
         {
             return new TypeNameBuilder(shortName, NamespaceBuilder.None, kind);
@@ -186,6 +192,48 @@ public class TypeNameBuilder : NamedBuilder
 
     private static int InheritedArgumentCount(Type declaringType)
         => declaringType.IsGenericType ? declaringType.GetGenericArguments().Length : 0;
+
+    private static bool TryUsePlaceholderName(Type type, out TypeNameBuilder placeholder)
+    {
+        placeholder = null!;
+
+        if (type.GetCustomAttribute<EmitsAsAttribute>() is not { } emitsAs)
+            return false;
+
+        // A generic placeholder has no way to say what its emitted arity or argument
+        // names are, so it cannot be mapped faithfully.
+        if (type.IsGenericType)
+            throw new InvalidOperationException(
+                $"Placeholder '{type.Name}' is generic, which [EmitsAs] does not support. " +
+                "Use a non-generic placeholder per constructed type, or the raw-string overloads.");
+
+        placeholder = ForEmittedName(emitsAs.FullTypeName, $"[EmitsAs] on '{type.Name}'");
+        return true;
+    }
+
+    // Splits "Ns.Sub.Name" into a validated namespace and simple name. Shared by the
+    // placeholder path and builder references, so both reject the same malformed input.
+    internal static TypeNameBuilder ForEmittedName(string fullTypeName, string context)
+    {
+        if (string.IsNullOrWhiteSpace(fullTypeName))
+            throw new ArgumentException($"{context} names an empty type.", nameof(fullTypeName));
+
+        if (fullTypeName.IndexOfAny(['<', '>', '`', '+', '[', ']']) >= 0)
+            throw new ArgumentException(
+                $"{context} names '{fullTypeName}', which is not a plain namespace-qualified " +
+                "identifier. Generics, arrays, and nesting markers are not supported here.",
+                nameof(fullTypeName));
+
+        var lastDot = fullTypeName.LastIndexOf('.');
+        var simpleName = lastDot < 0 ? fullTypeName : fullTypeName.Substring(lastDot + 1);
+        Identifiers.Validate(simpleName);
+
+        var @namespace = lastDot < 0
+            ? NamespaceBuilder.None
+            : NamespaceBuilder.Get(fullTypeName.Substring(0, lastDot));
+
+        return new TypeNameBuilder(simpleName, @namespace);
+    }
 
     private static bool TryUseShorthand(Type type, out string shortName, out SyntaxKind kind)
     {
