@@ -29,7 +29,7 @@ them, not speculatively).
 | ~~15~~ | ~~**Builder references**~~ | Feature | Med | Low | **Done** (2026-08-02). A type being generated is referenced by its builder — `Returns(order)`, `WithParameter(order, "o")`, `WithInterface(iface)`, `Extends(iface)` — so the name is spelled once and only definable types can be referenced. Nested types qualify through their declaring chain. Referencing a *generic* type builder throws at emission (order-proof), since the reference cannot say what the type arguments are. |
 | ~~16~~ | ~~**`[EmitsAs]` placeholders**~~ | Feature | High | Low | **Done** (2026-08-02). A stand-in type in the generator's own assembly maps to the emitted name, lighting up the whole `<T>` surface — including `IReference<T>`/`Assign` — for generated types. One hook in `TypeNameBuilder` covers every position; arrays/generics of placeholders compose; generic placeholders are rejected rather than guessed at. |
 | ~~17~~ | ~~**Typed call handles**~~ | Feature | High | Med | **Done** (2026-08-02). `AsCallable(out IMethod<T1…>)` validates the asserted signature against the declared parameters (by emitted name, so CLR, placeholder, and builder-reference parameters validate uniformly) and freezes the signature; `Call(target, handle, args…)` type-checks arguments in the generator. Shadow qualification covers every reference position — including `Assign`'s value side, previously a gap. Static calls not modelled yet. |
-| ~~18~~ | ~~**Receiver-typed handles**~~ | Feature | Med | Low | **Done** (2026-08-02). `AsCallableOn<TDeclaring, …>` yields `IMethodOn<TDeclaring, …>`, so `Call` rejects a receiver of the wrong type at compile time. Pairing needs no registry: a placeholder's emitted name and the declaring type's qualified name are the same string. Separate interface family because `AsCallable<TDeclaring>` and `AsCallable<T1>` share a signature — the cost is that a wrong receiver reports "cannot convert `IMethodOn<X>` to `IMethod`" rather than naming the mismatch. |
+| ~~18~~ | ~~**Receiver-typed handles**~~ | Feature | Med | Low | **Done** (2026-08-02). `AsCallableOn<TDeclaring, …>` yields `IMethodOn<TDeclaring, …>`, and `CallOn` rejects a receiver of the wrong type at compile time. Pairing needs no registry: a placeholder's emitted name and the declaring type's qualified name are the same string. Separate interface *and* method family — see the diagnostics note below. |
 
 ## Reading of the table
 
@@ -55,6 +55,16 @@ them, not speculatively).
 ## Deliberate decisions (not gaps)
 
 These look like omissions but are choices:
+
+- **`CallOn` is named apart from `Call`** rather than overloading it. Sharing one
+  name made a mismatched receiver report as *"cannot convert `IMethodOn<T>` to
+  `IMethod`"*: C# drops a candidate whose type inference fails before it can
+  produce a diagnostic, so the receiver-typed overload (where `TDeclaring` gets
+  conflicting bounds from the target and the handle) vanished silently, and the
+  surviving untyped overload blamed the handle instead of the disagreement.
+  Distinct names leave one candidate, so the error is `CS0411` naming
+  `CallOn<TDeclaring>` — the same diagnostic a mismatched `Assign` gives. The
+  extra name buys an error that points at the actual problem.
 
 - **Fully-qualified type names by default.** Correct without any collision
   analysis. `SimplifyTypeNames()` (#5) opts into shortened names plus imports;

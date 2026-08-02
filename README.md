@@ -300,7 +300,7 @@ Shadowed members are `this.`-qualified in every position — receivers and
 arguments alike.
 
 `AsCallableOn` goes one further and types the receiver, so pointing a handle at
-the wrong object is also a compile error:
+the wrong object is also a compile error. Its calls go through `CallOn`:
 
 ```csharp
 widget.DefineMethod("SetLabel").WithParameter<string>("label", out _)
@@ -308,8 +308,17 @@ widget.DefineMethod("SetLabel").WithParameter<string>("label", out _)
 
 owner.DefineConstructor(AccessModifier.Public)
     .WithParameter<string>("label", out var labelParam)
-    .Call(current, setLabel, labelParam);   // current must be an IReference<WidgetPh>
+    .CallOn(current, setLabel, labelParam);   // current must be an IReference<WidgetPh>
 ```
+
+The separate name is deliberate. Sharing `Call` between the two families made a
+mismatched receiver report as *"cannot convert `IMethodOn<T>` to `IMethod`"* —
+the receiver-typed overload fails type inference and is dropped from the
+candidate list before it can complain, so the error came from the untyped
+overload that survived, blaming the handle rather than the disagreement. With
+distinct names there is one candidate, and you get `CS0411: the type arguments
+for method 'CallOn' cannot be inferred` — the same diagnostic a mismatched
+`Assign` gives.
 
 No registry pairs the two: a placeholder's emitted name and the declaring type's
 qualified name are the same string, because that is what both become in the

@@ -77,23 +77,26 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     /// <summary>
     /// Appends a call statement whose receiver is checked: the target must be a
     /// reference to <typeparamref name="TDeclaring"/>, the type declaring the method.
+    /// Named apart from <see cref="Call{TTarget}"/> so a receiver/handle disagreement
+    /// reports as a failed inference on this method rather than as a conversion error
+    /// against the untyped overload, which is the surviving candidate but not the cause.
     /// </summary>
-    public ConstructorBuilder Call<TDeclaring>(IReference<TDeclaring> target, IMethodOn<TDeclaring> method)
+    public ConstructorBuilder CallOn<TDeclaring>(IReference<TDeclaring> target, IMethodOn<TDeclaring> method)
         => AddCall(target, method);
 
     /// <summary>Appends a receiver-checked call with one argument.</summary>
-    public ConstructorBuilder Call<TDeclaring, T1>(
+    public ConstructorBuilder CallOn<TDeclaring, T1>(
         IReference<TDeclaring> target, IMethodOn<TDeclaring, T1> method, IReference<T1> argument1)
         => AddCall(target, method, argument1);
 
     /// <summary>Appends a receiver-checked call with two arguments.</summary>
-    public ConstructorBuilder Call<TDeclaring, T1, T2>(
+    public ConstructorBuilder CallOn<TDeclaring, T1, T2>(
         IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2> method,
         IReference<T1> argument1, IReference<T2> argument2)
         => AddCall(target, method, argument1, argument2);
 
     /// <summary>Appends a receiver-checked call with three arguments.</summary>
-    public ConstructorBuilder Call<TDeclaring, T1, T2, T3>(
+    public ConstructorBuilder CallOn<TDeclaring, T1, T2, T3>(
         IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2, T3> method,
         IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
         => AddCall(target, method, argument1, argument2, argument3);

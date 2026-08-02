@@ -12,7 +12,7 @@ internal sealed class OtherPlaceholder;
 
 /// <summary>
 /// Covers receiver-typed call handles. The receiver check itself is a compile-time
-/// property — <c>Call(otherRef, gadgetHandle)</c> does not compile, so it cannot be
+/// property — <c>CallOn(otherRef, gadgetHandle)</c> does not compile, so it cannot be
 /// asserted here; what these tests pin is the pairing rule that makes it possible, and
 /// the emission.
 /// </summary>
@@ -31,8 +31,8 @@ public class ReceiverTypedCallTests
         var current = owner.DefineProperty<GadgetPlaceholder>("Current");
         owner.DefineConstructor(AccessModifier.Public)
             .WithParameter<string>("label", out var labelParam)
-            .Call(current, reset)
-            .Call(current, setLabel, labelParam);
+            .CallOn(current, reset)
+            .CallOn(current, setLabel, labelParam);
 
         owner.ToString().Should().Contain("Current.Reset();")
             .And.Contain("Current.SetLabel(label);");
@@ -51,7 +51,7 @@ public class ReceiverTypedCallTests
         owner.DefineMethod("Nudge")
             .WithParameter<int>("dx", out var dx)
             .WithParameter<int>("dy", out var dy)
-            .Call(current, move, dx, dy);
+            .CallOn(current, move, dx, dy);
 
         owner.ToString().Should().Contain("Current.Move(dx, dy);");
     }
@@ -65,7 +65,7 @@ public class ReceiverTypedCallTests
         var shadow = NamespaceBuilder.Get("MyApp").Class("Shadow");
         var member = shadow.DefineProperty<GadgetPlaceholder>("gadget");
         shadow.DefineMethod("Bump").WithParameter<string>("gadget", out _)
-            .Call(member, reset);
+            .CallOn(member, reset);
 
         shadow.ToString().Should().Contain("this.gadget.Reset();");
     }
