@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="300" viewBox="0 0 1280 300">
+  <!-- README header strip. Same glyph and lockup as the social card, recut wide and
+       short so it doesn't push the README's content below the fold. Rounded corners
+       with transparency outside, so it sits cleanly on GitHub's light and dark
+       themes alike. -->
+  <rect width="1280" height="300" rx="32" fill="#1E2A47"/>
+  <g transform="translate(142.8,-16.4) scale(2.6)" fill="#3DD9B3">
+    <rect x="56" y="24" width="16" height="80"/>
+    <rect x="22" y="24" width="36" height="13"/>
+    <rect x="24" y="56" width="34" height="13"/>
+    <path fill-rule="evenodd" d="M70 24 L86 24 A20 20 0 0 1 106 44 L106 49 A20 20 0 0 1 86 69 L70 69 Z M72 37 L86 37 A7 7 0 0 1 93 44 L93 49 A7 7 0 0 1 86 56 L72 56 Z"/>
+    <path d="M74 62 L88 62 L106 104 L92 104 Z"/>
+  </g>
+  <text x="470" y="179" font-family="Segoe UI, Arial, sans-serif" font-size="84" font-weight="700" fill="#EDF1F7">FluentRoslyn</text>
+  <text x="473" y="235" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="400" fill="#3DD9B3">Readable source generators.</text>
+</svg>

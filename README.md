@@ -1,12 +1,14 @@
-# FluentRoslyn
+<!-- The banner replaces the h1: GitHub already prints the repo name above the
+     README, and nuget.org prints the package name above it. Absolute URL on
+     purpose - this README is packed into the nupkg, and nuget.org renders it
+     standalone, where a repo-relative path cannot resolve.
+     raw.githubusercontent.com is on nuget.org's trusted image domain list. -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/keybindings/FluentRoslyn/main/assets/readme-banner.png" alt="FluentRoslyn — readable source generators" width="820" />
+</p>
 
 [![CI](https://github.com/keybindings/FluentRoslyn/actions/workflows/ci.yml/badge.svg)](https://github.com/keybindings/FluentRoslyn/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-<!-- Absolute URL on purpose: this README is packed into the nupkg, and nuget.org
-     renders it standalone, where a repo-relative path cannot resolve.
-     raw.githubusercontent.com is on nuget.org's trusted image domain list. -->
-<img src="https://raw.githubusercontent.com/keybindings/FluentRoslyn/main/assets/icon.png" alt="" width="112" align="right" />
 
 A fluent C# API for generating C# source code — a readable facade over Roslyn's
 `SyntaxFactory`.
