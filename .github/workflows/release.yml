@@ -97,18 +97,15 @@ jobs:
         with:
           user: keybindings
 
+      # Pushes the symbol package too. The *.nupkg glob does not match *.snupkg, but it
+      # does not need to: the NuGet client looks for an adjacent .snupkg and pushes it
+      # to the symbol endpoint on its own. An earlier version of this workflow added a
+      # separate snupkg step and it failed with 409 Conflict, because the symbols were
+      # already there. Verified in the run log: two PUTs, /api/v2/package/ then
+      # /api/v2/symbolpackage/, both Created.
       - name: Push to nuget.org
         run: >
           dotnet nuget push artifacts/*.nupkg
-          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
-          --source https://api.nuget.org/v3/index.json
-
-      # Pushed separately: the *.nupkg glob does not match *.snupkg, so symbols would
-      # be silently skipped otherwise. Without them Source Link has nothing to resolve
-      # against and a consumer stepping in still sees decompiled IL.
-      - name: Push symbols to nuget.org
-        run: >
-          dotnet nuget push artifacts/*.snupkg
           --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
 
