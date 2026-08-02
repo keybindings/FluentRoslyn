@@ -1,0 +1,111 @@
+name: Release
+
+# Publishes to nuget.org via Trusted Publishing: the job exchanges a GitHub OIDC
+# token for a temporary nuget.org API key valid for one hour, so no long-lived
+# secret exists anywhere. The matching policy on nuget.org is keyed to this
+# repository and this workflow's FILE NAME — renaming this file breaks publishing
+# until the policy is updated to match.
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  publish:
+    name: Pack & publish
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write   # required for GitHub to issue the OIDC token
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          # 8.0 runs the example app; 10.0 builds and runs the unit tests.
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore FluentRoslyn.sln
+
+      - name: Build
+        run: dotnet build FluentRoslyn.sln -c Release --no-restore
+
+      # A published version is immutable, so everything CI checks is re-checked
+      # here rather than trusting that main was green when the tag was cut.
+      - name: Test
+        run: dotnet test tests/FluentRoslyn.UnitTests -c Release --no-build --verbosity normal
+
+      - name: Run example generator end-to-end
+        run: |
+          output=$(dotnet run --project examples/FluentRoslyn.Example.App -c Release --no-build)
+          echo "$output"
+          expected="Generator says: Hi from 'Generated Code'"
+          if [ "$output" != "$expected" ]; then
+            echo "::error::Example app output did not match."
+            exit 1
+          fi
+
+      - name: Pack
+        run: dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts
+
+      # Guards against tagging one version and shipping another, which cannot be
+      # undone once pushed. Skipped for manual runs, which have no tag to compare.
+      - name: Verify package version matches the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          file=$(ls artifacts/*.nupkg)
+          packed=$(basename "$file" .nupkg)
+          packed="${packed#FluentRoslyn.}"
+          echo "tag=$tag packed=$packed"
+          if [ "$tag" != "$packed" ]; then
+            echo "::error::Tag '$tag' does not match packaged version '$packed'."
+            exit 1
+          fi
+
+      # Roslyn is referenced with PrivateAssets=all so it never flows to
+      # consumers. That is the package's central promise, so it is asserted here
+      # rather than assumed.
+      - name: Verify no dependencies leak to consumers
+        run: |
+          unzip -p artifacts/*.nupkg FluentRoslyn.nuspec > nuspec.xml
+          echo "--- packaged contents ---"
+          unzip -l artifacts/*.nupkg
+          if grep -q '<dependency ' nuspec.xml; then
+            echo "::error::Package declares dependencies; they must not flow to consumers."
+            grep '<dependency ' nuspec.xml
+            exit 1
+          fi
+          echo "Dependency groups are empty, as expected."
+
+      # Exchanges the OIDC token for a short-lived API key. The username is the
+      # nuget.org profile name, which is public on every package page, so it is
+      # written here rather than kept as a secret.
+      - name: NuGet login (OIDC to temporary API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: keybindings
+
+      - name: Push to nuget.org
+        run: >
+          dotnet nuget push artifacts/*.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+
+      - name: Upload published package
+        uses: actions/upload-artifact@v7
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg
+          if-no-files-found: error

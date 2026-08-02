@@ -8,7 +8,7 @@
 </p>
 
 [![CI](https://github.com/keybindings/FluentRoslyn/actions/workflows/ci.yml/badge.svg)](https://github.com/keybindings/FluentRoslyn/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/keybindings/FluentRoslyn/blob/main/LICENSE)
 
 A fluent C# API for generating C# source code — a readable facade over Roslyn's
 `SyntaxFactory`.
@@ -442,14 +442,16 @@ private void Execute(SourceProductionContext context, ...)
 }
 ```
 
-A complete, runnable example lives in [`examples/`](examples/) — a generator
+A complete, runnable example lives in
+[`examples/`](https://github.com/keybindings/FluentRoslyn/tree/main/examples) — a generator
 that emits a partial method and a constructor-assigned class (via typed
 references) entirely through the fluent API, plus the app that consumes them.
 
 ## What's next
 
 Feature-complete for common generator scenarios; the remaining work is
-packaging and long-tail language features. See [`docs/ROADMAP.md`](docs/ROADMAP.md)
+packaging and long-tail language features. See
+[`docs/ROADMAP.md`](https://github.com/keybindings/FluentRoslyn/blob/main/docs/ROADMAP.md)
 for the prioritised list, plus the deliberate design decisions behind things
 that look like gaps (fully-qualified names, fixed formatting, raw-string
 escape hatches).
