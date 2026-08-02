@@ -92,6 +92,17 @@ These look like omissions but are choices:
   to catch. Widening (`object` ← `string`, `long` ← `int`) falls back to
   `AddStatement`.
 
+## Planned (designed, not built)
+
+- **#19–#23 — the rest of statement support.** Two statement kinds are typed
+  (assignment, calls); return, guards, literals-as-values, and accessor bodies
+  are not. Designed in [`DESIGN-statements.md`](DESIGN-statements.md): a shared
+  statement surface first (the API is currently duplicated across method and
+  constructor builders), then `Return`, literal values, accessor bodies, and
+  null guards. That document also records where the line sits — none of #19–#23
+  needs an expression grammar, and the first item that would is called out
+  separately so it is not crossed by accident.
+
 ## Future direction (sketched, not committed)
 
 The reference story splits by where the referenced type lives. Types in a
