@@ -38,6 +38,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// <summary>Whether the method is <c>static</c>.</summary>
     public bool IsStatic { get; set; }
 
+    /// <summary>
+    /// The type this method is declared on, set when the type builder takes it. Null
+    /// only for a method that was never attached to a type.
+    /// </summary>
+    internal TypeDeclarationBuilder? DeclaringType { get; set; }
+
     /// <summary>Whether the method is <c>partial</c>.</summary>
     public bool IsPartial { get; set; }
 
@@ -219,9 +225,77 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         return this;
     }
 
+    /// <summary>
+    /// Hands back a handle to this parameterless method that also carries its declaring
+    /// type, so a call through it checks the receiver. <typeparamref name="TDeclaring"/>
+    /// must name the declaring type — its <c>[EmitsAs]</c> placeholder when that type is
+    /// being generated.
+    /// </summary>
+    public MethodBuilder AsCallableOn<TDeclaring>(out IMethodOn<TDeclaring> method)
+    {
+        ValidateReceiver(typeof(TDeclaring));
+        ValidateHandle();
+        method = new MethodHandleOn0<TDeclaring>(Name);
+        return this;
+    }
+
+    /// <summary>
+    /// Hands back a receiver-typed handle to this one-parameter method. A call through
+    /// it checks both the receiver and the argument.
+    /// </summary>
+    public MethodBuilder AsCallableOn<TDeclaring, T1>(out IMethodOn<TDeclaring, T1> method)
+    {
+        ValidateReceiver(typeof(TDeclaring));
+        ValidateHandle(typeof(T1));
+        method = new MethodHandleOn1<TDeclaring, T1>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a receiver-typed handle to this two-parameter method.</summary>
+    public MethodBuilder AsCallableOn<TDeclaring, T1, T2>(out IMethodOn<TDeclaring, T1, T2> method)
+    {
+        ValidateReceiver(typeof(TDeclaring));
+        ValidateHandle(typeof(T1), typeof(T2));
+        method = new MethodHandleOn2<TDeclaring, T1, T2>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a receiver-typed handle to this three-parameter method.</summary>
+    public MethodBuilder AsCallableOn<TDeclaring, T1, T2, T3>(out IMethodOn<TDeclaring, T1, T2, T3> method)
+    {
+        ValidateReceiver(typeof(TDeclaring));
+        ValidateHandle(typeof(T1), typeof(T2), typeof(T3));
+        method = new MethodHandleOn3<TDeclaring, T1, T2, T3>(Name);
+        return this;
+    }
+
     /// <summary>Appends a call statement: <c>target.Method();</c>.</summary>
     public MethodBuilder Call<TTarget>(IReference<TTarget> target, IMethod method)
         => AddCall(target, method);
+
+    /// <summary>
+    /// Appends a call statement whose receiver is checked: the target must be a
+    /// reference to <typeparamref name="TDeclaring"/>, the type declaring the method.
+    /// </summary>
+    public MethodBuilder Call<TDeclaring>(IReference<TDeclaring> target, IMethodOn<TDeclaring> method)
+        => AddCall(target, method);
+
+    /// <summary>Appends a receiver-checked call with one argument.</summary>
+    public MethodBuilder Call<TDeclaring, T1>(
+        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1> method, IReference<T1> argument1)
+        => AddCall(target, method, argument1);
+
+    /// <summary>Appends a receiver-checked call with two arguments.</summary>
+    public MethodBuilder Call<TDeclaring, T1, T2>(
+        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2> method,
+        IReference<T1> argument1, IReference<T2> argument2)
+        => AddCall(target, method, argument1, argument2);
+
+    /// <summary>Appends a receiver-checked call with three arguments.</summary>
+    public MethodBuilder Call<TDeclaring, T1, T2, T3>(
+        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2, T3> method,
+        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
+        => AddCall(target, method, argument1, argument2, argument3);
 
     /// <summary>
     /// Appends a call statement: <c>target.Method(argument1);</c>. The argument
@@ -270,6 +344,26 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         }
 
         _handleIssued = true;
+    }
+
+    // The pairing that makes receiver checking work: the placeholder's emitted name and
+    // the declaring type's qualified name have to be the same string, since that is what
+    // both will be in the generated source.
+    private void ValidateReceiver(Type declaringType)
+    {
+        if (DeclaringType is null)
+            throw new InvalidOperationException(
+                $"Method '{Name}' is not attached to a type, so it has no receiver to check. " +
+                "Define it with DefineMethod on a type builder.");
+
+        var asserted = TypeNameBuilder.New(declaringType).ToString();
+        var declared = DeclaringType.BuildTypeSyntax().ToString();
+
+        if (!string.Equals(asserted, declared, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"Method '{Name}' is declared on '{declared}', but the handle asserts '{asserted}'. " +
+                "The type argument must name the declaring type — its [EmitsAs] placeholder when " +
+                "that type is being generated.");
     }
 
     private void GuardParametersMutable()

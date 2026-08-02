@@ -120,6 +120,9 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 
     private MethodBuilder AddMethod(MethodBuilder method)
     {
+        // The method learns its declaring type here so a callable handle can carry it,
+        // which is what lets a call check its receiver.
+        method.DeclaringType = this;
         _methods.Add(method);
         return method;
     }

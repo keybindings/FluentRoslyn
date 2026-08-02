@@ -54,3 +54,31 @@ internal sealed class MethodHandle3<T1, T2, T3> : MethodHandle, IMethod<T1, T2, 
     {
     }
 }
+
+internal sealed class MethodHandleOn0<TDeclaring> : MethodHandle, IMethodOn<TDeclaring>
+{
+    internal MethodHandleOn0(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class MethodHandleOn1<TDeclaring, T1> : MethodHandle, IMethodOn<TDeclaring, T1>
+{
+    internal MethodHandleOn1(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class MethodHandleOn2<TDeclaring, T1, T2> : MethodHandle, IMethodOn<TDeclaring, T1, T2>
+{
+    internal MethodHandleOn2(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class MethodHandleOn3<TDeclaring, T1, T2, T3> : MethodHandle, IMethodOn<TDeclaring, T1, T2, T3>
+{
+    internal MethodHandleOn3(string methodName) : base(methodName)
+    {
+    }
+}
