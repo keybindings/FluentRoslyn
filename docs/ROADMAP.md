@@ -98,6 +98,17 @@ These look like omissions but are choices:
   to catch. Widening (`object` ← `string`, `long` ← `int`) falls back to
   `AddStatement`.
 
+- **`SourceFile` — a file-level builder.** A top-level type currently *is* a file,
+  so two types cannot share one, and 27 public methods describing file concerns
+  (usings, simplification, namespace style, formatting) are duplicated across six
+  type builders. Designed in [`DESIGN-source-files.md`](DESIGN-source-files.md).
+  The correctness-critical half turns out to be done already: `TypeNameSimplifier`
+  operates on the whole compilation unit and derives shadowing from every
+  declaration in it, so joint ambiguity analysis across several types needs no
+  changes — it has simply never been handed more than one type. This would be the
+  first breaking change since publishing, which is an argument for doing it while
+  the version still says preview.
+
 ## Future direction (sketched, not committed)
 
 The reference story splits by where the referenced type lives. Types in a
