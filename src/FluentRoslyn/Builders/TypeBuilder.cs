@@ -31,6 +31,8 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     {
     }
 
+    internal override bool HasTypeParameters => _generics.Any;
+
     #region Members
 
     /// <summary>Declares a field of type <typeparamref name="T"/>, private by default.</summary>
@@ -334,6 +336,16 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     public TSelf WithInterface<TInterface>()
     {
         AddInterface(TypeNameBuilder.New<TInterface>().BuildTypeSyntax());
+        return (TSelf)this;
+    }
+
+    /// <summary>
+    /// Adds an implemented interface that is being generated alongside — the interface's
+    /// builder is the reference, so the name is spelled once.
+    /// </summary>
+    public TSelf WithInterface(InterfaceBuilder @interface)
+    {
+        AddInterface(TypeNameBuilder.For(@interface).BuildTypeSyntax());
         return (TSelf)this;
     }
 

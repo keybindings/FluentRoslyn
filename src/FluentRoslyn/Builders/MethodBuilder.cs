@@ -151,6 +151,25 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     });
 
     /// <summary>
+    /// Sets the return type to a type being generated alongside — the type's builder is
+    /// the reference, so the name is spelled once. Requires a body.
+    /// </summary>
+    public MethodBuilder Returns(TypeDeclarationBuilder type) => this.With(() =>
+    {
+        _returnType = TypeNameBuilder.For(type).BuildTypeSyntax();
+        _returnsVoid = false;
+    });
+
+    /// <summary>
+    /// Appends a parameter whose type is being generated alongside — the type's builder
+    /// is the reference, so the name is spelled once. For a typed handle to the
+    /// parameter, give the generated type an <c>[EmitsAs]</c> placeholder and use
+    /// <see cref="WithParameter{T}(string, out IReference{T})"/> instead.
+    /// </summary>
+    public MethodBuilder WithParameter(TypeDeclarationBuilder type, string name)
+        => this.With(() => _params.Add(Parameter.Of(type, name)));
+
+    /// <summary>
     /// Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>,
     /// <c>WithConstraint("T", "IComparable&lt;T&gt;")</c>, or <c>WithConstraint("T", "new()")</c>.
     /// Call once per constraint; C# order is class/struct first, new() last.

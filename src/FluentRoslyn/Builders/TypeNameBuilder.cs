@@ -21,6 +21,7 @@ public class TypeNameBuilder : NamedBuilder
     private readonly SyntaxKind? _predefinedKind;
     private readonly TypeNameBuilder? _declaringType;
     private readonly TypeNameBuilder? _elementType;
+    private readonly TypeDeclarationBuilder? _builderTarget;
     private readonly int _arrayRank;
     private readonly int _unboundArity;
     private readonly List<TypeNameBuilder> _genericTypes = [];
@@ -41,6 +42,20 @@ public class TypeNameBuilder : NamedBuilder
         _arrayRank = arrayRank;
         _unboundArity = unboundArity;
     }
+
+    private TypeNameBuilder(TypeDeclarationBuilder builderTarget) : base(builderTarget.Name, NameValidation)
+    {
+        _namespaceBuilder = NamespaceBuilder.None;
+        _builderTarget = builderTarget;
+    }
+
+    /// <summary>
+    /// Creates a type reference to a type being built alongside — the definition and
+    /// every reference share one name. Resolution is lazy, so the guard against
+    /// referencing a generic type builder holds regardless of call order.
+    /// </summary>
+    internal static TypeNameBuilder For(TypeDeclarationBuilder target)
+        => new(target ?? throw new ArgumentNullException(nameof(target)));
 
     /// <summary>Creates a type reference for <typeparamref name="T"/>.</summary>
     public static TypeNameBuilder New<T>()
@@ -63,6 +78,18 @@ public class TypeNameBuilder : NamedBuilder
 
     internal TypeSyntax BuildTypeSyntax()
     {
+        if (_builderTarget is not null)
+        {
+            // Emitting `Repository` where `Repository<T>` is declared would be broken
+            // source, and this builder has no way to say what the arguments should be.
+            if (_builderTarget.HasTypeParameters)
+                throw new InvalidOperationException(
+                    $"Type '{_builderTarget.Name}' declares type parameters, so a builder reference " +
+                    "cannot name it. Spell the constructed type with the raw-string overload instead.");
+
+            return _builderTarget.BuildTypeSyntax();
+        }
+
         if (_elementType is not null)
             return ArrayType(_elementType.BuildTypeSyntax())
                 .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(

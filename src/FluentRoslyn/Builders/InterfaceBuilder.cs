@@ -26,6 +26,8 @@ public class InterfaceBuilder : TypeDeclarationBuilder
     {
     }
 
+    internal override bool HasTypeParameters => _generics.Any;
+
     #region FluentMethods
 
     /// <summary>Sets the interface's accessibility. Public by default.</summary>
@@ -59,6 +61,13 @@ public class InterfaceBuilder : TypeDeclarationBuilder
     /// <summary>Extends a base interface from a type, e.g. <c>Extends&lt;IDisposable&gt;()</c>.</summary>
     public InterfaceBuilder Extends<TInterface>()
         => this.With(() => _baseInterfaces.Add(TypeNameBuilder.New<TInterface>().BuildTypeSyntax()));
+
+    /// <summary>
+    /// Extends a base interface that is being generated alongside — the interface's
+    /// builder is the reference, so the name is spelled once.
+    /// </summary>
+    public InterfaceBuilder Extends(InterfaceBuilder baseInterface)
+        => this.With(() => _baseInterfaces.Add(TypeNameBuilder.For(baseInterface).BuildTypeSyntax()));
 
     /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>IName&lt;T&gt;</c>.</summary>
     public InterfaceBuilder WithTypeParameter(string name)

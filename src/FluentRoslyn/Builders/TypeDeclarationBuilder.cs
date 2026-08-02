@@ -44,6 +44,12 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     public bool IsNested => DeclaringType is not null;
 
     /// <summary>
+    /// Whether this type declares generic type parameters. A generic type builder
+    /// cannot be used as a type reference — the reference would need type arguments.
+    /// </summary>
+    internal virtual bool HasTypeParameters => false;
+
+    /// <summary>
     /// Whether to emit a file-scoped namespace (<c>namespace N;</c>). True by default;
     /// see <c>BlockScopedNamespace()</c> for the braced form.
     /// </summary>

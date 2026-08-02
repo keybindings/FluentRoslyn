@@ -19,3 +19,24 @@ internal class Parameter<T> : NamedBuilder, IParameter
         => SyntaxFactory.Parameter(SyntaxFactory.Identifier(Name))
             .WithType(TypeName.BuildTypeSyntax());
 }
+
+/// <summary>
+/// A parameter whose type is a builder reference rather than a CLR type — for
+/// parameters of types being generated alongside.
+/// </summary>
+internal class Parameter : NamedBuilder, IParameter
+{
+    private Parameter(TypeNameBuilder typeName, string name) : base(name, Identifiers.Validate)
+    {
+        TypeName = typeName;
+    }
+
+    internal static IParameter Of(TypeDeclarationBuilder type, string name)
+        => new Parameter(TypeNameBuilder.For(type), name);
+
+    public TypeNameBuilder TypeName { get; }
+
+    internal override SyntaxNode BuildSyntax()
+        => SyntaxFactory.Parameter(SyntaxFactory.Identifier(Name))
+            .WithType(TypeName.BuildTypeSyntax());
+}

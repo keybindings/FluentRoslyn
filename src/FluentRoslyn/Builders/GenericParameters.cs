@@ -14,6 +14,9 @@ internal sealed class GenericParameters
     private readonly List<string> _typeParameters = [];
     private readonly Dictionary<string, List<string>> _constraints = [];
 
+    /// <summary>Whether any type parameters have been declared.</summary>
+    internal bool Any => _typeParameters.Count > 0;
+
     internal void AddTypeParameter(string name)
         => _typeParameters.Add(name ?? throw new ArgumentNullException(nameof(name)));
 

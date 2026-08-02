@@ -70,6 +70,15 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
         => this.With(() => _statements.Add(
             SyntaxReferences.Assignment(target, value, _params, IsStatic, $"Constructor for '{Name}'")));
 
+    /// <summary>
+    /// Appends a parameter whose type is being generated alongside — the type's builder
+    /// is the reference, so the name is spelled once. For a typed handle to the
+    /// parameter, give the generated type an <c>[EmitsAs]</c> placeholder and use
+    /// <see cref="WithParameter{T}(string, out IReference{T})"/> instead.
+    /// </summary>
+    public ConstructorBuilder WithParameter(TypeDeclarationBuilder type, string name)
+        => this.With(() => _params.Add(Parameter.Of(type, name)));
+
     /// <summary>Documents the constructor with an XML <c>&lt;summary&gt;</c>.</summary>
     public ConstructorBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
 

@@ -15,6 +15,8 @@ public class DelegateBuilder : TypeDeclarationBuilder
 {
     private readonly List<IParameter> _params = [];
     private readonly GenericParameters _generics = new();
+
+    internal override bool HasTypeParameters => _generics.Any;
     private TypeSyntax _returnType;
 
     internal DelegateBuilder(
