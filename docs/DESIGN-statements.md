@@ -1,9 +1,20 @@
 # Statement support — design
 
-Status as of 2026-08-02. Covers the remaining statement work: what is left, how each
-piece should look, and where the line is. Written after an audit of the current
-surface; the roadmap records *what* shipped, this records *why the rest should take
-the shape proposed here*.
+**Status: #19–#23 are built and shipped (2026-08-02).** This document is kept as the
+record of *why* they took the shape they did, and of the two decisions and one
+correction made along the way. The roadmap records what shipped; this records the
+reasoning. Sections below are unchanged from the design except where marked.
+
+**Settled during implementation:**
+
+- **#20** took option (b), `MethodBuilder<TReturn>`, so `Return` is checked by the
+  compiler rather than at generation time.
+- **#22** took the lambda-configured scope.
+- **#21's** overload plan was **wrong and is corrected in place** — see that
+  section. It shipped as `AssignLiteral`, a distinct name.
+
+The line described at the end still stands: none of what shipped needs an
+expression grammar.
 
 ## Where we are
 

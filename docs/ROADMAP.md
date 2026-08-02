@@ -29,6 +29,11 @@ them, not speculatively).
 | ~~15~~ | ~~**Builder references**~~ | Feature | Med | Low | **Done** (2026-08-02). A type being generated is referenced by its builder — `Returns(order)`, `WithParameter(order, "o")`, `WithInterface(iface)`, `Extends(iface)` — so the name is spelled once and only definable types can be referenced. Nested types qualify through their declaring chain. Referencing a *generic* type builder throws at emission (order-proof), since the reference cannot say what the type arguments are. |
 | ~~16~~ | ~~**`[EmitsAs]` placeholders**~~ | Feature | High | Low | **Done** (2026-08-02). A stand-in type in the generator's own assembly maps to the emitted name, lighting up the whole `<T>` surface — including `IReference<T>`/`Assign` — for generated types. One hook in `TypeNameBuilder` covers every position; arrays/generics of placeholders compose; generic placeholders are rejected rather than guessed at. |
 | ~~17~~ | ~~**Typed call handles**~~ | Feature | High | Med | **Done** (2026-08-02). `AsCallable(out IMethod<T1…>)` validates the asserted signature against the declared parameters (by emitted name, so CLR, placeholder, and builder-reference parameters validate uniformly) and freezes the signature; `Call(target, handle, args…)` type-checks arguments in the generator. Shadow qualification covers every reference position — including `Assign`'s value side, previously a gap. Static calls not modelled yet. |
+| ~~19~~ | ~~**Shared statement surface**~~ | Refactor | High | Med | **Done** (2026-08-02). The statement API was duplicated across the method and constructor builders. `StatementBuilder` now holds parameters, statements, and the emission logic once; `StatementBuilder<TSelf>` adds the fluent layer, CRTP-style like `TypeBuilder<TSelf>`. Shadowing and validation exist in exactly one place. Behaviour-preserving: 421 tests passed before and after, unchanged. |
+| ~~20~~ | ~~**Typed `Return`**~~ | Feature | High | Med | **Done** (2026-08-02). `MethodBuilder` splits into `MethodBuilderBase<TSelf>` plus void and `MethodBuilder<TReturn>` kinds, so `Return(IReference<TReturn>)` is checked by the compiler. `DefineMethod<T>` now returns the typed builder. `Returns(string)` and bare `Return()` stay on the void kind — a raw return type cannot be checked, and a bare return in a method that owes a value does not compile. |
+| ~~21~~ | ~~**Literal values**~~ | Feature | High | Low | **Done** (2026-08-02). `AssignLiteral` / `ReturnLiteral` reach the existing `SyntaxLiterals` machinery. Named apart from `Assign` rather than overloaded — see the diagnostics note below. |
+| ~~22~~ | ~~**Typed accessor bodies**~~ | Feature | Med | Med | **Done** (2026-08-02). `WithGetter(g => g.Return(field))` / `WithSetter(s => s.Assign(field, s.Value))`. The setter's `value` is a typed `IReference<T>`, and it sits in the scope's parameter list, so a member named `value` qualifies with `this.` instead of self-assigning. |
+| ~~23~~ | ~~**Null guards**~~ | Feature | Med | Low | **Done** (2026-08-02). `ThrowIfNull(reference)` emits the classic `if`/`throw`, not `ArgumentNullException.ThrowIfNull` — the consumer's target framework is unknown to the generator and the helper is .NET 6+. Constrained to reference types; the exception type routes through `TypeNameBuilder`, so it shortens under `SimplifyTypeNames`. |
 | ~~18~~ | ~~**Receiver-typed handles**~~ | Feature | Med | Low | **Done** (2026-08-02). `AsCallableOn<TDeclaring, …>` yields `IMethodOn<TDeclaring, …>`, and `CallOn` rejects a receiver of the wrong type at compile time. Pairing needs no registry: a placeholder's emitted name and the declaring type's qualified name are the same string. Separate interface *and* method family — see the diagnostics note below. |
 
 ## Reading of the table
@@ -91,17 +96,6 @@ These look like omissions but are choices:
   compile by inferring a common base — the exact bug the type parameter exists
   to catch. Widening (`object` ← `string`, `long` ← `int`) falls back to
   `AddStatement`.
-
-## Planned (designed, not built)
-
-- **#19–#23 — the rest of statement support.** Two statement kinds are typed
-  (assignment, calls); return, guards, literals-as-values, and accessor bodies
-  are not. Designed in [`DESIGN-statements.md`](DESIGN-statements.md): a shared
-  statement surface first (the API is currently duplicated across method and
-  constructor builders), then `Return`, literal values, accessor bodies, and
-  null guards. That document also records where the line sits — none of #19–#23
-  needs an expression grammar, and the first item that would is called out
-  separately so it is not crossed by accident.
 
 ## Future direction (sketched, not committed)
 

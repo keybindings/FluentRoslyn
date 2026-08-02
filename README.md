@@ -296,8 +296,57 @@ public Owner(string label)
 }
 ```
 
-Shadowed members are `this.`-qualified in every position — receivers and
-arguments alike.
+Shadowed members are `this.`-qualified in every position — receivers, arguments,
+assignment targets and values, returns, and guards.
+
+### Returns, literals and guards
+
+A value-returning method carries its return type, so `Return` is checked:
+
+```csharp
+var calc = NamespaceBuilder.Get("MyApp").Class("Calc");
+var total = calc.DefineField<int>("_total");
+
+calc.DefineMethod<int>("Total").Return(total);        // returning a string field: compile error
+calc.DefineMethod<bool>("IsEmpty").ReturnLiteral(true);
+```
+
+Constants use `AssignLiteral` / `ReturnLiteral`, and a null guard emits the
+classic form — deliberately not `ArgumentNullException.ThrowIfNull`, which is
+.NET 6+, because the generated code compiles in the *consumer's* framework:
+
+```csharp
+user.DefineConstructor(AccessModifier.Public)
+    .WithParameter<string>("name", out var nameParam)
+    .ThrowIfNull(nameParam)
+    .Assign(name, nameParam)
+    .AssignLiteral(count, 0);
+```
+
+```csharp
+public User(string name)
+{
+    if (name is null)
+        throw new System.ArgumentNullException(nameof(name));
+    Name = name;
+    Count = 0;
+}
+```
+
+### Property accessors
+
+Accessors take the same statement API through a scope. A getter gets a `Return`
+typed to the property; a setter gets the incoming `value` as a typed reference:
+
+```csharp
+var backing = widget.DefineField<string>("_name");
+widget.DefineProperty<string>("Name")
+    .WithGetter(g => g.Return(backing))
+    .WithSetter(s => s.ThrowIfNull(s.Value).Assign(backing, s.Value));
+```
+
+`value` sits in the setter's scope as a real name, so a member also called
+`value` qualifies to `this.value` rather than emitting `value = value;`.
 
 `AsCallableOn` goes one further and types the receiver, so pointing a handle at
 the wrong object is also a compile error. Its calls go through `CallOn`:

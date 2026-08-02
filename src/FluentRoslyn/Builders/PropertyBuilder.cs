@@ -138,6 +138,41 @@ public class PropertyBuilder<T> : PropertyBuilder, IReference<T>, IReferenceInfo
             SetterStatements = ParseStatements(statements);
         });
 
+    /// <summary>
+    /// Gives the getter a typed statement body:
+    /// <c>WithGetter(g =&gt; g.Return(backingField))</c>. The scope carries the same
+    /// statement API as a method body, plus a <c>Return</c> typed to this property.
+    /// </summary>
+    public PropertyBuilder<T> WithGetter(Action<GetterBody<T>> body)
+        => this.With(() =>
+        {
+            if (body is null) throw new ArgumentNullException(nameof(body));
+
+            var scope = new GetterBody<T>(Name);
+            body(scope);
+
+            IsAutoProperty = false;
+            GetterStatements = scope.BuiltStatements;
+        });
+
+    /// <summary>
+    /// Gives the setter a typed statement body:
+    /// <c>WithSetter(s =&gt; s.Assign(backingField, s.Value))</c>. The incoming value is
+    /// <c>s.Value</c>, typed to this property.
+    /// </summary>
+    public PropertyBuilder<T> WithSetter(Action<SetterBody<T>> body)
+        => this.With(() =>
+        {
+            if (body is null) throw new ArgumentNullException(nameof(body));
+
+            var scope = new SetterBody<T>(Name);
+            body(scope);
+
+            IsAutoProperty = false;
+            HasSet = true;
+            SetterStatements = scope.BuiltStatements;
+        });
+
     #endregion
 
     internal override PropertyDeclarationSyntax BuildProperty()
