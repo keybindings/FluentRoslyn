@@ -11,12 +11,11 @@ namespace FluentRoslyn.Builders;
 
 /// <summary>
 /// Builds a constructor declaration. Obtained from <c>DefineConstructor</c> on a type
-/// builder; its name always matches the declaring type.
+/// builder; its name always matches the declaring type. Parameters and statements come
+/// from <see cref="StatementBuilder{TSelf}"/>.
 /// </summary>
-public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
+public class ConstructorBuilder : StatementBuilder<ConstructorBuilder>, IAccessModifier, IMemberSyntaxBuilder
 {
-    private readonly List<IParameter> _params = [];
-    private readonly List<StatementSyntax> _statements = [];
     private readonly List<AttributeListSyntax> _attributes = [];
     private readonly DocComment _docs = new();
     private ExpressionSyntax? _expressionBody;
@@ -33,6 +32,10 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     /// <summary>The constructor's accessibility. Ignored for a static constructor.</summary>
     public AccessModifier AccessModifier { get; set; }
 
+    private protected override string StatementContext => $"Constructor for '{Name}'";
+
+    private protected override bool IsStaticContext => IsStatic;
+
     #region FluentMethods
 
     /// <summary>
@@ -43,95 +46,6 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
 
     /// <summary>Sets the constructor's accessibility.</summary>
     public ConstructorBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
-
-    /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
-    public ConstructorBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
-
-    /// <summary>
-    /// Appends a parameter of type <typeparamref name="T"/> and hands back a typed
-    /// reference to it, for use with <see cref="Assign{TValue}"/>. Returns the builder,
-    /// so the fluent chain is unbroken:
-    /// <c>.WithParameter&lt;int&gt;("id", out var id)</c>.
-    /// </summary>
-    public ConstructorBuilder WithParameter<T>(string name, out IReference<T> reference)
-    {
-        var parameter = Parameter<T>.New(name);
-        _params.Add(parameter);
-        reference = new ParameterReference<T>(parameter.Name);
-        return this;
-    }
-
-    /// <summary>
-    /// Appends an assignment statement, e.g. <c>Name = name;</c>. Both sides are
-    /// references of the same type, so assigning the wrong one is a compile error in the
-    /// generator rather than broken generated source.
-    /// </summary>
-    public ConstructorBuilder Assign<TValue>(IReference<TValue> target, IReference<TValue> value)
-        => this.With(() => _statements.Add(
-            SyntaxReferences.Assignment(target, value, _params, IsStatic, $"Constructor for '{Name}'")));
-
-    /// <summary>Appends a call statement: <c>target.Method();</c>.</summary>
-    public ConstructorBuilder Call<TTarget>(IReference<TTarget> target, IMethod method)
-        => AddCall(target, method);
-
-    /// <summary>
-    /// Appends a call statement whose receiver is checked: the target must be a
-    /// reference to <typeparamref name="TDeclaring"/>, the type declaring the method.
-    /// Named apart from <see cref="Call{TTarget}"/> so a receiver/handle disagreement
-    /// reports as a failed inference on this method rather than as a conversion error
-    /// against the untyped overload, which is the surviving candidate but not the cause.
-    /// </summary>
-    public ConstructorBuilder CallOn<TDeclaring>(IReference<TDeclaring> target, IMethodOn<TDeclaring> method)
-        => AddCall(target, method);
-
-    /// <summary>Appends a receiver-checked call with one argument.</summary>
-    public ConstructorBuilder CallOn<TDeclaring, T1>(
-        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1> method, IReference<T1> argument1)
-        => AddCall(target, method, argument1);
-
-    /// <summary>Appends a receiver-checked call with two arguments.</summary>
-    public ConstructorBuilder CallOn<TDeclaring, T1, T2>(
-        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2> method,
-        IReference<T1> argument1, IReference<T2> argument2)
-        => AddCall(target, method, argument1, argument2);
-
-    /// <summary>Appends a receiver-checked call with three arguments.</summary>
-    public ConstructorBuilder CallOn<TDeclaring, T1, T2, T3>(
-        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2, T3> method,
-        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
-        => AddCall(target, method, argument1, argument2, argument3);
-
-    /// <summary>
-    /// Appends a call statement: <c>target.Method(argument1);</c>. The argument
-    /// reference's type must match the handle's — a mismatch is a compile error in the
-    /// generator rather than broken generated source.
-    /// </summary>
-    public ConstructorBuilder Call<TTarget, T1>(IReference<TTarget> target, IMethod<T1> method, IReference<T1> argument1)
-        => AddCall(target, method, argument1);
-
-    /// <summary>Appends a two-argument call statement.</summary>
-    public ConstructorBuilder Call<TTarget, T1, T2>(
-        IReference<TTarget> target, IMethod<T1, T2> method, IReference<T1> argument1, IReference<T2> argument2)
-        => AddCall(target, method, argument1, argument2);
-
-    /// <summary>Appends a three-argument call statement.</summary>
-    public ConstructorBuilder Call<TTarget, T1, T2, T3>(
-        IReference<TTarget> target, IMethod<T1, T2, T3> method,
-        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
-        => AddCall(target, method, argument1, argument2, argument3);
-
-    private ConstructorBuilder AddCall(IReference target, object method, params IReference[] arguments)
-        => this.With(() => _statements.Add(
-            SyntaxReferences.Invocation(target, method, arguments, _params, IsStatic, $"Constructor for '{Name}'")));
-
-    /// <summary>
-    /// Appends a parameter whose type is being generated alongside — the type's builder
-    /// is the reference, so the name is spelled once. For a typed handle to the
-    /// parameter, give the generated type an <c>[EmitsAs]</c> placeholder and use
-    /// <see cref="WithParameter{T}(string, out IReference{T})"/> instead.
-    /// </summary>
-    public ConstructorBuilder WithParameter(TypeDeclarationBuilder type, string name)
-        => this.With(() => _params.Add(Parameter.Of(type, name)));
 
     /// <summary>Documents the constructor with an XML <c>&lt;summary&gt;</c>.</summary>
     public ConstructorBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
@@ -155,19 +69,6 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     public ConstructorBuilder AsExpressionBody(string expression)
         => this.With(() => _expressionBody = SyntaxParse.Expression(expression));
 
-    /// <summary>Appends a complete statement to the constructor body.</summary>
-    public ConstructorBuilder AddStatement(string statement)
-        => this.With(() => _statements.Add(SyntaxBodies.Statement(statement)));
-
-    /// <summary>Replaces the constructor body with the given statements.</summary>
-    public ConstructorBuilder WithBody(params string[] statements)
-        => this.With(() =>
-        {
-            _statements.Clear();
-            foreach (var statement in statements ?? throw new ArgumentNullException(nameof(statements)))
-                _statements.Add(SyntaxBodies.Statement(statement));
-        });
-
     #endregion
 
     internal ConstructorDeclarationSyntax BuildConstructor()
@@ -180,11 +81,11 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
     {
         var ctor = ConstructorDeclaration(Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
-            .WithParameterList(SyntaxParameters.List(_params));
+            .WithParameterList(SyntaxParameters.List(Parameters));
 
         if (IsStatic)
         {
-            if (_params.Count > 0)
+            if (Parameters.Count > 0)
                 throw new InvalidOperationException($"Static constructor for '{Name}' cannot have parameters.");
             if (_initializer is not null)
                 throw new InvalidOperationException($"Static constructor for '{Name}' cannot chain to base or this.");
@@ -200,7 +101,7 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
 
         if (_expressionBody is not null)
         {
-            if (_statements.Count > 0)
+            if (Statements.Count > 0)
                 throw new InvalidOperationException(
                     $"Constructor for '{Name}' cannot have both an expression body and statements.");
 
@@ -209,7 +110,7 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
         }
 
-        return ctor.WithBody(Block(_statements));
+        return ctor.WithBody(Block(Statements));
     }
 
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildConstructor();

@@ -22,7 +22,9 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     private readonly List<ConstructorBuilder> _constructors = [];
     private readonly List<EventBuilder> _events = [];
     private readonly List<PropertyBuilder> _properties = [];
-    private readonly List<MethodBuilder> _methods = [];
+    // Methods of differing return types are different classes, so the list is typed by
+    // what a declaring type actually needs from them.
+    private readonly List<IMethodMember> _methods = [];
     private readonly List<TypeDeclarationBuilder> _nestedTypes = [];
     private readonly List<TypeSyntax> _interfaces = [];
     private readonly GenericParameters _generics = new();
@@ -105,20 +107,21 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 
     /// <summary>
     /// Declares a public method returning <typeparamref name="TReturn"/>. A
-    /// value-returning method needs a body — see <c>AsExpressionBody</c> or
-    /// <c>AddStatement</c>.
+    /// value-returning method needs a body — see <c>Return</c>,
+    /// <c>AsExpressionBody</c>, or <c>AddStatement</c>.
     /// </summary>
-    public MethodBuilder DefineMethod<TReturn>(string name)
+    public MethodBuilder<TReturn> DefineMethod<TReturn>(string name)
         => DefineMethod<TReturn>(name, AccessModifier.Public);
 
     /// <summary>
     /// Declares a method returning <typeparamref name="TReturn"/>. A value-returning
-    /// method needs a body — see <c>AsExpressionBody</c> or <c>AddStatement</c>.
+    /// method needs a body — see <c>Return</c>, <c>AsExpressionBody</c>, or
+    /// <c>AddStatement</c>.
     /// </summary>
-    public MethodBuilder DefineMethod<TReturn>(string name, AccessModifier accessModifier)
-        => AddMethod(MethodBuilder.Returning(name, accessModifier, TypeNameBuilder.New<TReturn>()));
+    public MethodBuilder<TReturn> DefineMethod<TReturn>(string name, AccessModifier accessModifier)
+        => AddMethod(MethodBuilder<TReturn>.Returning(name, accessModifier));
 
-    private MethodBuilder AddMethod(MethodBuilder method)
+    private TMethod AddMethod<TMethod>(TMethod method) where TMethod : IMethodMember
     {
         // The method learns its declaring type here so a callable handle can carry it,
         // which is what lets a call check its receiver.
@@ -235,7 +238,7 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     // AccessabilityLevel runs Public = 0 through Private = 5, so ascending gives
     // least protected first.
     private static void AddMemberGroup<TMember>(List<MemberDeclarationSyntax> members, IEnumerable<TMember> group)
-        where TMember : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
+        where TMember : INamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         => members.AddRange(group
             .OrderBy(x => x.AccessModifier.AccessabilityLevel)
             .ThenBy(x => x.Name, StringComparer.Ordinal)

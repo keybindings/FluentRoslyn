@@ -61,6 +61,20 @@ internal static class SyntaxReferences
                     Argument(Expression(a, parameters, inStaticContext, context)))))));
     }
 
+    /// <summary>
+    /// Builds <c>return value;</c>, or <c>return;</c> when <paramref name="value"/> is
+    /// null. The value goes through the same shadow qualification as every other
+    /// reference position.
+    /// </summary>
+    internal static StatementSyntax Return(
+        IReference? value,
+        IReadOnlyCollection<IParameter> parameters,
+        bool inStaticContext,
+        string context)
+        => value is null
+            ? ReturnStatement()
+            : ReturnStatement(Expression(value, parameters, inStaticContext, context));
+
     // A parameter sharing a member's name shadows it, so a bare identifier would bind
     // the parameter -- source that compiles and is silently wrong, which is exactly what
     // this library exists to make impossible. `this.` is the only way to reach the

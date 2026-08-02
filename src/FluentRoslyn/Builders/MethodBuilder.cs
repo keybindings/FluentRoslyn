@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using FluentRoslyn.Abstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -10,29 +9,43 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 namespace FluentRoslyn.Builders;
 
 /// <summary>
-/// Builds a method declaration. Obtained from <c>DefineMethod</c> on a type builder.
+/// What a type builder needs from a method regardless of its return type, so methods of
+/// differing return types can share one member list.
 /// </summary>
-public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
+internal interface IMethodMember : INamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 {
-    private TypeSyntax _returnType;
-    private bool _returnsVoid;
-    private readonly List<IParameter> _params = [];
-    private readonly List<StatementSyntax> _statements = [];
+    bool IsAbstract { get; }
+
+    TypeDeclarationBuilder? DeclaringType { get; set; }
+}
+
+/// <summary>
+/// Everything common to method builders: modifiers, generics, docs, bodies, callable
+/// handles, and emission. <typeparamref name="TSelf"/> is the concrete kind, so fluent
+/// methods return the void or value-returning builder as appropriate.
+/// </summary>
+/// <typeparam name="TSelf">The concrete method builder type.</typeparam>
+public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMethodMember
+    where TSelf : MethodBuilderBase<TSelf>
+{
     private readonly List<AttributeListSyntax> _attributes = [];
     private readonly GenericParameters _generics = new();
     private readonly DocComment _docs = new();
     private ExpressionSyntax? _expressionBody;
     private bool _handleIssued;
 
-    private MethodBuilder(
+    private protected TypeSyntax ReturnType;
+    private protected bool ReturnsVoid;
+
+    private protected MethodBuilderBase(
         string name,
         AccessModifier accessModifier,
         TypeSyntax returnType,
         bool returnsVoid) : base(name, Identifiers.Validate)
     {
         AccessModifier = accessModifier;
-        _returnType = returnType;
-        _returnsVoid = returnsVoid;
+        ReturnType = returnType;
+        ReturnsVoid = returnsVoid;
     }
 
     /// <summary>Whether the method is <c>static</c>.</summary>
@@ -43,6 +56,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// only for a method that was never attached to a type.
     /// </summary>
     internal TypeDeclarationBuilder? DeclaringType { get; set; }
+
+    TypeDeclarationBuilder? IMethodMember.DeclaringType
+    {
+        get => DeclaringType;
+        set => DeclaringType = value;
+    }
 
     /// <summary>Whether the method is <c>partial</c>.</summary>
     public bool IsPartial { get; set; }
@@ -56,145 +75,160 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// <summary>The inheritance modifier — virtual, abstract, override, or sealed override.</summary>
     public Inheritance Inheritance { get; set; }
 
-    internal bool IsAbstract => Inheritance == Inheritance.Abstract;
+    /// <summary>Whether the method is <c>abstract</c>, which means it declares no body.</summary>
+    public bool IsAbstract => Inheritance == Inheritance.Abstract;
 
     /// <summary>The method's accessibility.</summary>
     public AccessModifier AccessModifier { get; set; }
 
-    /// <summary>A void method: <c>void Name(...) { }</c>. Add parameters with <see cref="WithParameter{T}(string)"/>.</summary>
-    internal static MethodBuilder Action(string name, AccessModifier accessModifier)
-        => new(name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)), returnsVoid: true);
+    private protected override string StatementContext => $"Method '{Name}'";
 
-    /// <summary>A method returning <paramref name="returnType"/>; requires a body.</summary>
-    internal static MethodBuilder Returning(string name, AccessModifier accessModifier, TypeNameBuilder returnType)
-        => new(name, accessModifier, returnType.BuildTypeSyntax(), returnsVoid: false);
+    private protected override bool IsStaticContext => IsStatic;
+
+    private protected override void OnParametersMutating()
+    {
+        if (_handleIssued)
+            throw new InvalidOperationException(
+                $"Method '{Name}' has issued a callable handle; parameters cannot change after that. " +
+                "Declare all parameters first and take the handle last.");
+    }
 
     #region FluentMethods
 
     /// <summary>Marks the method <c>static</c>.</summary>
-    public MethodBuilder Static() => this.With(() => IsStatic = true);
+    public TSelf Static()
+    {
+        IsStatic = true;
+        return Self;
+    }
 
     /// <summary>Marks the method <c>partial</c> (e.g. a source generator implementing a partial method).</summary>
-    public MethodBuilder Partial() => this.With(() => IsPartial = true);
+    public TSelf Partial()
+    {
+        IsPartial = true;
+        return Self;
+    }
 
     /// <summary>
     /// Marks the method <c>async</c>. Pair it with an awaitable return type, e.g.
     /// <c>DefineMethod&lt;Task&gt;("SaveAsync").Async()</c>.
     /// </summary>
-    public MethodBuilder Async() => this.With(() => IsAsync = true);
+    public TSelf Async()
+    {
+        IsAsync = true;
+        return Self;
+    }
 
     /// <summary>Marks the method <c>virtual</c>.</summary>
-    public MethodBuilder Virtual() => this.With(() => Inheritance = Inheritance.Virtual);
+    public TSelf Virtual()
+    {
+        Inheritance = Inheritance.Virtual;
+        return Self;
+    }
 
     /// <summary>
     /// Marks the method <c>abstract</c>: it emits no body, and the declaring type must
     /// itself be abstract.
     /// </summary>
-    public MethodBuilder Abstract() => this.With(() => Inheritance = Inheritance.Abstract);
-
-    /// <summary>Marks the method <c>override</c>.</summary>
-    public MethodBuilder Override() => this.With(() => Inheritance = Inheritance.Override);
-
-    /// <summary>Marks the method <c>sealed override</c>.</summary>
-    public MethodBuilder SealedOverride() => this.With(() => Inheritance = Inheritance.SealedOverride);
-
-    /// <summary>Sets the method's accessibility.</summary>
-    public MethodBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
-
-    /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
-    public MethodBuilder WithParameter<T>(string name) => this.With(() =>
+    public TSelf Abstract()
     {
-        GuardParametersMutable();
-        _params.Add(Parameter<T>.New(name));
-    });
-
-    /// <summary>
-    /// Appends a parameter of type <typeparamref name="T"/> and hands back a typed
-    /// reference to it, for use with <see cref="Assign{TValue}"/>. Returns the builder,
-    /// so the fluent chain is unbroken:
-    /// <c>.WithParameter&lt;int&gt;("id", out var id)</c>.
-    /// </summary>
-    public MethodBuilder WithParameter<T>(string name, out IReference<T> reference)
-    {
-        GuardParametersMutable();
-        var parameter = Parameter<T>.New(name);
-        _params.Add(parameter);
-        reference = new ParameterReference<T>(parameter.Name);
-        return this;
+        Inheritance = Inheritance.Abstract;
+        return Self;
     }
 
-    /// <summary>
-    /// Appends an assignment statement, e.g. <c>Name = name;</c>. Both sides are
-    /// references of the same type, so assigning the wrong one is a compile error in the
-    /// generator rather than broken generated source.
-    /// </summary>
-    public MethodBuilder Assign<TValue>(IReference<TValue> target, IReference<TValue> value)
-        => this.With(() => _statements.Add(
-            SyntaxReferences.Assignment(target, value, _params, IsStatic, $"Method '{Name}'")));
+    /// <summary>Marks the method <c>override</c>.</summary>
+    public TSelf Override()
+    {
+        Inheritance = Inheritance.Override;
+        return Self;
+    }
+
+    /// <summary>Marks the method <c>sealed override</c>.</summary>
+    public TSelf SealedOverride()
+    {
+        Inheritance = Inheritance.SealedOverride;
+        return Self;
+    }
+
+    /// <summary>Sets the method's accessibility.</summary>
+    public TSelf WithAccessModifier(AccessModifier accessModifier)
+    {
+        AccessModifier = accessModifier;
+        return Self;
+    }
 
     /// <summary>
     /// Documents the method with an XML <c>&lt;summary&gt;</c>. Newlines become separate
     /// comment lines, and XML markup characters are escaped.
     /// </summary>
-    public MethodBuilder WithSummary(string text) => this.With(() => _docs.SetSummary(text));
+    public TSelf WithSummary(string text)
+    {
+        _docs.SetSummary(text);
+        return Self;
+    }
 
     /// <summary>
     /// Documents a parameter: <c>&lt;param name="..."&gt;</c>. The name must match a
-    /// parameter added with <see cref="WithParameter{T}(string)"/>.
+    /// parameter added with <see cref="StatementBuilder{TSelf}.WithParameter{T}(string)"/>.
     /// </summary>
-    public MethodBuilder WithParameterDoc(string parameterName, string text)
-        => this.With(() => _docs.AddParameter(parameterName, text));
+    public TSelf WithParameterDoc(string parameterName, string text)
+    {
+        _docs.AddParameter(parameterName, text);
+        return Self;
+    }
 
     /// <summary>Documents the return value: <c>&lt;returns&gt;</c>.</summary>
-    public MethodBuilder WithReturnsDoc(string text) => this.With(() => _docs.SetReturns(text));
+    public TSelf WithReturnsDoc(string text)
+    {
+        _docs.SetReturns(text);
+        return Self;
+    }
 
     /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>
-    public MethodBuilder WithTypeParameter(string name) => this.With(() => _generics.AddTypeParameter(name));
-
-    /// <summary>
-    /// Sets the return type from a raw type name, e.g. <c>Returns("T")</c> or
-    /// <c>Returns("List&lt;T&gt;")</c> — for returning a generic type parameter that is
-    /// not a CLR type. Requires a body.
-    /// </summary>
-    public MethodBuilder Returns(string typeName) => this.With(() =>
+    public TSelf WithTypeParameter(string name)
     {
-        _returnType = SyntaxParse.TypeName(typeName);
-        _returnsVoid = false;
-    });
+        _generics.AddTypeParameter(name);
+        return Self;
+    }
 
     /// <summary>
-    /// Sets the return type to a type being generated alongside — the type's builder is
-    /// the reference, so the name is spelled once. Requires a body.
+    /// Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>,
+    /// <c>WithConstraint("T", "IComparable&lt;T&gt;")</c>, or <c>WithConstraint("T", "new()")</c>.
+    /// Call once per constraint; C# order is class/struct first, new() last.
     /// </summary>
-    public MethodBuilder Returns(TypeDeclarationBuilder type) => this.With(() =>
+    public TSelf WithConstraint(string typeParameter, string constraint)
     {
-        _returnType = TypeNameBuilder.For(type).BuildTypeSyntax();
-        _returnsVoid = false;
-    });
+        _generics.AddConstraint(typeParameter, constraint);
+        return Self;
+    }
+
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
+    public TSelf WithAttribute(string attribute)
+    {
+        _attributes.Add(SyntaxAttributes.AttributeList(attribute));
+        return Self;
+    }
 
     /// <summary>
-    /// Appends a parameter whose type is being generated alongside — the type's builder
-    /// is the reference, so the name is spelled once. For a typed handle to the
-    /// parameter, give the generated type an <c>[EmitsAs]</c> placeholder and use
-    /// <see cref="WithParameter{T}(string, out IReference{T})"/> instead.
+    /// Gives the method an expression body: <c>Name(...) =&gt; expression;</c>. Valid for
+    /// both void and value-returning methods.
     /// </summary>
-    public MethodBuilder WithParameter(TypeDeclarationBuilder type, string name)
-        => this.With(() =>
-        {
-            GuardParametersMutable();
-            _params.Add(Parameter.Of(type, name));
-        });
+    public TSelf AsExpressionBody(string expression)
+    {
+        _expressionBody = SyntaxParse.Expression(expression);
+        return Self;
+    }
 
     /// <summary>
     /// Hands back a typed handle to this parameterless method, for emitting
     /// type-checked calls with <c>Call</c>. Take the handle after the parameters are
     /// declared — the signature freezes once a handle exists.
     /// </summary>
-    public MethodBuilder AsCallable(out IMethod method)
+    public TSelf AsCallable(out IMethod method)
     {
         ValidateHandle();
         method = new MethodHandle0(Name);
-        return this;
+        return Self;
     }
 
     /// <summary>
@@ -202,27 +236,27 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// validated against the declared parameter, so a handle that exists is a handle
     /// that matches — and a call through it type-checks in the generator.
     /// </summary>
-    public MethodBuilder AsCallable<T1>(out IMethod<T1> method)
+    public TSelf AsCallable<T1>(out IMethod<T1> method)
     {
         ValidateHandle(typeof(T1));
         method = new MethodHandle1<T1>(Name);
-        return this;
+        return Self;
     }
 
     /// <summary>Hands back a typed handle to this two-parameter method.</summary>
-    public MethodBuilder AsCallable<T1, T2>(out IMethod<T1, T2> method)
+    public TSelf AsCallable<T1, T2>(out IMethod<T1, T2> method)
     {
         ValidateHandle(typeof(T1), typeof(T2));
         method = new MethodHandle2<T1, T2>(Name);
-        return this;
+        return Self;
     }
 
     /// <summary>Hands back a typed handle to this three-parameter method.</summary>
-    public MethodBuilder AsCallable<T1, T2, T3>(out IMethod<T1, T2, T3> method)
+    public TSelf AsCallable<T1, T2, T3>(out IMethod<T1, T2, T3> method)
     {
         ValidateHandle(typeof(T1), typeof(T2), typeof(T3));
         method = new MethodHandle3<T1, T2, T3>(Name);
-        return this;
+        return Self;
     }
 
     /// <summary>
@@ -231,97 +265,45 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// must name the declaring type — its <c>[EmitsAs]</c> placeholder when that type is
     /// being generated.
     /// </summary>
-    public MethodBuilder AsCallableOn<TDeclaring>(out IMethodOn<TDeclaring> method)
+    public TSelf AsCallableOn<TDeclaring>(out IMethodOn<TDeclaring> method)
     {
         ValidateReceiver(typeof(TDeclaring));
         ValidateHandle();
         method = new MethodHandleOn0<TDeclaring>(Name);
-        return this;
+        return Self;
     }
 
     /// <summary>
     /// Hands back a receiver-typed handle to this one-parameter method. A call through
     /// it checks both the receiver and the argument.
     /// </summary>
-    public MethodBuilder AsCallableOn<TDeclaring, T1>(out IMethodOn<TDeclaring, T1> method)
+    public TSelf AsCallableOn<TDeclaring, T1>(out IMethodOn<TDeclaring, T1> method)
     {
         ValidateReceiver(typeof(TDeclaring));
         ValidateHandle(typeof(T1));
         method = new MethodHandleOn1<TDeclaring, T1>(Name);
-        return this;
+        return Self;
     }
 
     /// <summary>Hands back a receiver-typed handle to this two-parameter method.</summary>
-    public MethodBuilder AsCallableOn<TDeclaring, T1, T2>(out IMethodOn<TDeclaring, T1, T2> method)
+    public TSelf AsCallableOn<TDeclaring, T1, T2>(out IMethodOn<TDeclaring, T1, T2> method)
     {
         ValidateReceiver(typeof(TDeclaring));
         ValidateHandle(typeof(T1), typeof(T2));
         method = new MethodHandleOn2<TDeclaring, T1, T2>(Name);
-        return this;
+        return Self;
     }
 
     /// <summary>Hands back a receiver-typed handle to this three-parameter method.</summary>
-    public MethodBuilder AsCallableOn<TDeclaring, T1, T2, T3>(out IMethodOn<TDeclaring, T1, T2, T3> method)
+    public TSelf AsCallableOn<TDeclaring, T1, T2, T3>(out IMethodOn<TDeclaring, T1, T2, T3> method)
     {
         ValidateReceiver(typeof(TDeclaring));
         ValidateHandle(typeof(T1), typeof(T2), typeof(T3));
         method = new MethodHandleOn3<TDeclaring, T1, T2, T3>(Name);
-        return this;
+        return Self;
     }
 
-    /// <summary>Appends a call statement: <c>target.Method();</c>.</summary>
-    public MethodBuilder Call<TTarget>(IReference<TTarget> target, IMethod method)
-        => AddCall(target, method);
-
-    /// <summary>
-    /// Appends a call statement whose receiver is checked: the target must be a
-    /// reference to <typeparamref name="TDeclaring"/>, the type declaring the method.
-    /// Named apart from <see cref="Call{TTarget}"/> so a receiver/handle disagreement
-    /// reports as a failed inference on this method rather than as a conversion error
-    /// against the untyped overload, which is the surviving candidate but not the cause.
-    /// </summary>
-    public MethodBuilder CallOn<TDeclaring>(IReference<TDeclaring> target, IMethodOn<TDeclaring> method)
-        => AddCall(target, method);
-
-    /// <summary>Appends a receiver-checked call with one argument.</summary>
-    public MethodBuilder CallOn<TDeclaring, T1>(
-        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1> method, IReference<T1> argument1)
-        => AddCall(target, method, argument1);
-
-    /// <summary>Appends a receiver-checked call with two arguments.</summary>
-    public MethodBuilder CallOn<TDeclaring, T1, T2>(
-        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2> method,
-        IReference<T1> argument1, IReference<T2> argument2)
-        => AddCall(target, method, argument1, argument2);
-
-    /// <summary>Appends a receiver-checked call with three arguments.</summary>
-    public MethodBuilder CallOn<TDeclaring, T1, T2, T3>(
-        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2, T3> method,
-        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
-        => AddCall(target, method, argument1, argument2, argument3);
-
-    /// <summary>
-    /// Appends a call statement: <c>target.Method(argument1);</c>. The argument
-    /// reference's type must match the handle's — a mismatch is a compile error in the
-    /// generator rather than broken generated source.
-    /// </summary>
-    public MethodBuilder Call<TTarget, T1>(IReference<TTarget> target, IMethod<T1> method, IReference<T1> argument1)
-        => AddCall(target, method, argument1);
-
-    /// <summary>Appends a two-argument call statement.</summary>
-    public MethodBuilder Call<TTarget, T1, T2>(
-        IReference<TTarget> target, IMethod<T1, T2> method, IReference<T1> argument1, IReference<T2> argument2)
-        => AddCall(target, method, argument1, argument2);
-
-    /// <summary>Appends a three-argument call statement.</summary>
-    public MethodBuilder Call<TTarget, T1, T2, T3>(
-        IReference<TTarget> target, IMethod<T1, T2, T3> method,
-        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
-        => AddCall(target, method, argument1, argument2, argument3);
-
-    private MethodBuilder AddCall(IReference target, object method, params IReference[] arguments)
-        => this.With(() => _statements.Add(
-            SyntaxReferences.Invocation(target, method, arguments, _params, IsStatic, $"Method '{Name}'")));
+    #endregion
 
     // A handle asserts the signature; validating here means a handle that exists is one
     // that matches, and freezing the parameters afterwards keeps it that way.
@@ -331,18 +313,18 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
             throw new InvalidOperationException(
                 $"Method '{Name}' is static; static calls are not modelled yet. Emit the call with AddStatement.");
 
-        if (_params.Count != argumentTypes.Length)
+        if (Parameters.Count != argumentTypes.Length)
             throw new InvalidOperationException(
-                $"Method '{Name}' declares {_params.Count} parameter(s) but the handle asserts {argumentTypes.Length}.");
+                $"Method '{Name}' declares {Parameters.Count} parameter(s) but the handle asserts {argumentTypes.Length}.");
 
         for (var i = 0; i < argumentTypes.Length; i++)
         {
             var asserted = TypeNameBuilder.New(argumentTypes[i]).ToString();
-            var declared = _params[i].TypeName.ToString();
+            var declared = Parameters[i].TypeName.ToString();
 
             if (!string.Equals(asserted, declared, StringComparison.Ordinal))
                 throw new InvalidOperationException(
-                    $"Method '{Name}' parameter {i + 1} ('{_params[i].Name}') is '{declared}', " +
+                    $"Method '{Name}' parameter {i + 1} ('{Parameters[i].Name}') is '{declared}', " +
                     $"but the handle asserts '{asserted}'.");
         }
 
@@ -369,50 +351,6 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
                 "that type is being generated.");
     }
 
-    private void GuardParametersMutable()
-    {
-        if (_handleIssued)
-            throw new InvalidOperationException(
-                $"Method '{Name}' has issued a callable handle; parameters cannot change after that. " +
-                "Declare all parameters first and take the handle last.");
-    }
-
-    /// <summary>
-    /// Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>,
-    /// <c>WithConstraint("T", "IComparable&lt;T&gt;")</c>, or <c>WithConstraint("T", "new()")</c>.
-    /// Call once per constraint; C# order is class/struct first, new() last.
-    /// </summary>
-    public MethodBuilder WithConstraint(string typeParameter, string constraint)
-        => this.With(() => _generics.AddConstraint(typeParameter, constraint));
-
-    /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
-    public MethodBuilder WithAttribute(string attribute) => this.With(() => _attributes.Add(SyntaxAttributes.AttributeList(attribute)));
-
-    /// <summary>
-    /// Gives the method an expression body: <c>Name(...) =&gt; expression;</c>. Valid for
-    /// both void and value-returning methods.
-    /// </summary>
-    public MethodBuilder AsExpressionBody(string expression)
-        => this.With(() => _expressionBody = SyntaxParse.Expression(expression));
-
-    /// <summary>
-    /// Appends a complete statement to the method body, e.g. <c>"return a + b;"</c>.
-    /// A value-returning method's body must return on all paths.
-    /// </summary>
-    public MethodBuilder AddStatement(string statement)
-        => this.With(() => _statements.Add(SyntaxBodies.Statement(statement)));
-
-    /// <summary>Replaces the method body with the given statements.</summary>
-    public MethodBuilder WithBody(params string[] statements)
-        => this.With(() =>
-        {
-            _statements.Clear();
-            foreach (var statement in statements ?? throw new ArgumentNullException(nameof(statements)))
-                _statements.Add(SyntaxBodies.Statement(statement));
-        });
-
-    #endregion
-
     internal MethodDeclarationSyntax BuildMethod()
     {
         var method = BuildMethodCore();
@@ -431,11 +369,11 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
                 $"Method '{Name}' became static after issuing a callable handle; " +
                 "calls through the handle would emit instance syntax.");
 
-        var method = MethodDeclaration(_returnType, Identifier(Name))
+        var method = MethodDeclaration(ReturnType, Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))
             .WithModifiers(SyntaxFormatting.Modifiers(
                 AccessModifier, IsStatic, isPartial: IsPartial, inheritance: Inheritance, isAsync: IsAsync))
-            .WithParameterList(SyntaxParameters.List(_params));
+            .WithParameterList(SyntaxParameters.List(Parameters));
 
         method = _generics.ApplyTo(method, $"Method '{Name}'");
 
@@ -445,7 +383,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
         if (_expressionBody is not null)
         {
-            if (_statements.Count > 0)
+            if (Statements.Count > 0)
                 throw new InvalidOperationException(
                     $"Method '{Name}' cannot have both an expression body and statements.");
 
@@ -456,12 +394,12 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 
         // A statement block covers both void and value-returning methods; the caller is
         // responsible for returning on all paths when non-void.
-        if (_statements.Count > 0)
-            return method.WithBody(Block(_statements));
+        if (Statements.Count > 0)
+            return method.WithBody(Block(Statements));
 
         // A non-void method with no body would emit `int Foo() { }`, which does not
         // compile: it needs either an expression body or statements.
-        if (!_returnsVoid)
+        if (!ReturnsVoid)
             throw new InvalidOperationException(
                 $"Method '{Name}' returns non-void and needs a body. Use AsExpressionBody or AddStatement/WithBody.");
 
@@ -487,7 +425,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
             throw new InvalidOperationException(
                 $"Method '{Name}' cannot be both partial and {Describe(Inheritance)}.");
 
-        if (IsAbstract && (_expressionBody is not null || _statements.Count > 0))
+        if (IsAbstract && (_expressionBody is not null || Statements.Count > 0))
             throw new InvalidOperationException($"Abstract method '{Name}' cannot have a body.");
     }
 
@@ -502,7 +440,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
         // Only the clearly-wrong cases are rejected: a built-in type other than void can
         // never be awaitable. Named types pass, so Task, ValueTask, IAsyncEnumerable and
         // any custom awaitable are all accepted without an allowlist to fall behind.
-        if (_returnType is PredefinedTypeSyntax predefined
+        if (ReturnType is PredefinedTypeSyntax predefined
             && !predefined.Keyword.IsKind(SyntaxKind.VoidKeyword))
         {
             throw new InvalidOperationException(
@@ -516,4 +454,88 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     MemberDeclarationSyntax IMemberSyntaxBuilder.BuildMember() => BuildMethod();
 
     internal override SyntaxNode BuildSyntax() => BuildMethod();
+}
+
+/// <summary>
+/// Builds a method with no declared return type of its own — <c>void</c>, or a raw type
+/// name set with <see cref="Returns(string)"/>. Obtained from <c>DefineMethod</c> on a
+/// type builder.
+/// </summary>
+public class MethodBuilder : MethodBuilderBase<MethodBuilder>
+{
+    private MethodBuilder(string name, AccessModifier accessModifier, TypeSyntax returnType, bool returnsVoid)
+        : base(name, accessModifier, returnType, returnsVoid)
+    {
+    }
+
+    /// <summary>A void method: <c>void Name(...) { }</c>.</summary>
+    internal static MethodBuilder Action(string name, AccessModifier accessModifier)
+        => new(name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)), returnsVoid: true);
+
+    /// <summary>
+    /// Sets the return type from a raw type name, e.g. <c>Returns("T")</c> or
+    /// <c>Returns("List&lt;T&gt;")</c> — for returning a generic type parameter that is
+    /// not a CLR type. Requires a body. Since the type is a string, <c>Return</c> cannot
+    /// be checked against it; use <c>AddStatement</c> for the return.
+    /// </summary>
+    public MethodBuilder Returns(string typeName)
+    {
+        ReturnType = SyntaxParse.TypeName(typeName);
+        ReturnsVoid = false;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the return type to a type being generated alongside — the type's builder is
+    /// the reference, so the name is spelled once. Requires a body.
+    /// </summary>
+    public MethodBuilder Returns(TypeDeclarationBuilder type)
+    {
+        ReturnType = TypeNameBuilder.For(type).BuildTypeSyntax();
+        ReturnsVoid = false;
+        return this;
+    }
+
+    /// <summary>
+    /// Appends a bare <c>return;</c>. Only valid on a void method — a method with a
+    /// return type must return a value.
+    /// </summary>
+    public MethodBuilder Return()
+    {
+        if (!ReturnsVoid)
+            throw new InvalidOperationException(
+                $"Method '{Name}' has a return type, so a bare 'return;' would not compile. " +
+                "Use DefineMethod<T> and Return(value), or AddStatement for a raw return type.");
+
+        AddReturn(null);
+        return this;
+    }
+}
+
+/// <summary>
+/// Builds a method returning <typeparamref name="TReturn"/>. Obtained from
+/// <c>DefineMethod&lt;TReturn&gt;</c> on a type builder. Carrying the return type as a
+/// type argument is what lets <see cref="Return"/> be checked by the compiler.
+/// </summary>
+/// <typeparam name="TReturn">The method's return type.</typeparam>
+public class MethodBuilder<TReturn> : MethodBuilderBase<MethodBuilder<TReturn>>
+{
+    private MethodBuilder(string name, AccessModifier accessModifier)
+        : base(name, accessModifier, TypeNameBuilder.New<TReturn>().BuildTypeSyntax(), returnsVoid: false)
+    {
+    }
+
+    internal static MethodBuilder<TReturn> Returning(string name, AccessModifier accessModifier)
+        => new(name, accessModifier);
+
+    /// <summary>
+    /// Appends <c>return value;</c>. The reference's type must be
+    /// <typeparamref name="TReturn"/>, so returning the wrong thing is a compile error in
+    /// the generator rather than generated source that does not build.
+    /// </summary>
+    public MethodBuilder<TReturn> Return(IReference<TReturn> value)
+    {
+        AddReturn(value ?? throw new ArgumentNullException(nameof(value)));
+        return this;
+    }
 }
