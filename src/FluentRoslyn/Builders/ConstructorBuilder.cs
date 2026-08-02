@@ -70,6 +70,33 @@ public class ConstructorBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBu
         => this.With(() => _statements.Add(
             SyntaxReferences.Assignment(target, value, _params, IsStatic, $"Constructor for '{Name}'")));
 
+    /// <summary>Appends a call statement: <c>target.Method();</c>.</summary>
+    public ConstructorBuilder Call<TTarget>(IReference<TTarget> target, IMethod method)
+        => AddCall(target, method);
+
+    /// <summary>
+    /// Appends a call statement: <c>target.Method(argument1);</c>. The argument
+    /// reference's type must match the handle's — a mismatch is a compile error in the
+    /// generator rather than broken generated source.
+    /// </summary>
+    public ConstructorBuilder Call<TTarget, T1>(IReference<TTarget> target, IMethod<T1> method, IReference<T1> argument1)
+        => AddCall(target, method, argument1);
+
+    /// <summary>Appends a two-argument call statement.</summary>
+    public ConstructorBuilder Call<TTarget, T1, T2>(
+        IReference<TTarget> target, IMethod<T1, T2> method, IReference<T1> argument1, IReference<T2> argument2)
+        => AddCall(target, method, argument1, argument2);
+
+    /// <summary>Appends a three-argument call statement.</summary>
+    public ConstructorBuilder Call<TTarget, T1, T2, T3>(
+        IReference<TTarget> target, IMethod<T1, T2, T3> method,
+        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
+        => AddCall(target, method, argument1, argument2, argument3);
+
+    private ConstructorBuilder AddCall(IReference target, object method, params IReference[] arguments)
+        => this.With(() => _statements.Add(
+            SyntaxReferences.Invocation(target, method, arguments, _params, IsStatic, $"Constructor for '{Name}'")));
+
     /// <summary>
     /// Appends a parameter whose type is being generated alongside — the type's builder
     /// is the reference, so the name is spelled once. For a typed handle to the

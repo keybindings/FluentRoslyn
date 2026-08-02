@@ -22,6 +22,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     private readonly GenericParameters _generics = new();
     private readonly DocComment _docs = new();
     private ExpressionSyntax? _expressionBody;
+    private bool _handleIssued;
 
     private MethodBuilder(
         string name,
@@ -95,7 +96,11 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     public MethodBuilder WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
 
     /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
-    public MethodBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));
+    public MethodBuilder WithParameter<T>(string name) => this.With(() =>
+    {
+        GuardParametersMutable();
+        _params.Add(Parameter<T>.New(name));
+    });
 
     /// <summary>
     /// Appends a parameter of type <typeparamref name="T"/> and hands back a typed
@@ -105,6 +110,7 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// </summary>
     public MethodBuilder WithParameter<T>(string name, out IReference<T> reference)
     {
+        GuardParametersMutable();
         var parameter = Parameter<T>.New(name);
         _params.Add(parameter);
         reference = new ParameterReference<T>(parameter.Name);
@@ -167,7 +173,112 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     /// <see cref="WithParameter{T}(string, out IReference{T})"/> instead.
     /// </summary>
     public MethodBuilder WithParameter(TypeDeclarationBuilder type, string name)
-        => this.With(() => _params.Add(Parameter.Of(type, name)));
+        => this.With(() =>
+        {
+            GuardParametersMutable();
+            _params.Add(Parameter.Of(type, name));
+        });
+
+    /// <summary>
+    /// Hands back a typed handle to this parameterless method, for emitting
+    /// type-checked calls with <c>Call</c>. Take the handle after the parameters are
+    /// declared — the signature freezes once a handle exists.
+    /// </summary>
+    public MethodBuilder AsCallable(out IMethod method)
+    {
+        ValidateHandle();
+        method = new MethodHandle0(Name);
+        return this;
+    }
+
+    /// <summary>
+    /// Hands back a typed handle to this one-parameter method. The type argument is
+    /// validated against the declared parameter, so a handle that exists is a handle
+    /// that matches — and a call through it type-checks in the generator.
+    /// </summary>
+    public MethodBuilder AsCallable<T1>(out IMethod<T1> method)
+    {
+        ValidateHandle(typeof(T1));
+        method = new MethodHandle1<T1>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a typed handle to this two-parameter method.</summary>
+    public MethodBuilder AsCallable<T1, T2>(out IMethod<T1, T2> method)
+    {
+        ValidateHandle(typeof(T1), typeof(T2));
+        method = new MethodHandle2<T1, T2>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a typed handle to this three-parameter method.</summary>
+    public MethodBuilder AsCallable<T1, T2, T3>(out IMethod<T1, T2, T3> method)
+    {
+        ValidateHandle(typeof(T1), typeof(T2), typeof(T3));
+        method = new MethodHandle3<T1, T2, T3>(Name);
+        return this;
+    }
+
+    /// <summary>Appends a call statement: <c>target.Method();</c>.</summary>
+    public MethodBuilder Call<TTarget>(IReference<TTarget> target, IMethod method)
+        => AddCall(target, method);
+
+    /// <summary>
+    /// Appends a call statement: <c>target.Method(argument1);</c>. The argument
+    /// reference's type must match the handle's — a mismatch is a compile error in the
+    /// generator rather than broken generated source.
+    /// </summary>
+    public MethodBuilder Call<TTarget, T1>(IReference<TTarget> target, IMethod<T1> method, IReference<T1> argument1)
+        => AddCall(target, method, argument1);
+
+    /// <summary>Appends a two-argument call statement.</summary>
+    public MethodBuilder Call<TTarget, T1, T2>(
+        IReference<TTarget> target, IMethod<T1, T2> method, IReference<T1> argument1, IReference<T2> argument2)
+        => AddCall(target, method, argument1, argument2);
+
+    /// <summary>Appends a three-argument call statement.</summary>
+    public MethodBuilder Call<TTarget, T1, T2, T3>(
+        IReference<TTarget> target, IMethod<T1, T2, T3> method,
+        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
+        => AddCall(target, method, argument1, argument2, argument3);
+
+    private MethodBuilder AddCall(IReference target, object method, params IReference[] arguments)
+        => this.With(() => _statements.Add(
+            SyntaxReferences.Invocation(target, method, arguments, _params, IsStatic, $"Method '{Name}'")));
+
+    // A handle asserts the signature; validating here means a handle that exists is one
+    // that matches, and freezing the parameters afterwards keeps it that way.
+    private void ValidateHandle(params Type[] argumentTypes)
+    {
+        if (IsStatic)
+            throw new InvalidOperationException(
+                $"Method '{Name}' is static; static calls are not modelled yet. Emit the call with AddStatement.");
+
+        if (_params.Count != argumentTypes.Length)
+            throw new InvalidOperationException(
+                $"Method '{Name}' declares {_params.Count} parameter(s) but the handle asserts {argumentTypes.Length}.");
+
+        for (var i = 0; i < argumentTypes.Length; i++)
+        {
+            var asserted = TypeNameBuilder.New(argumentTypes[i]).ToString();
+            var declared = _params[i].TypeName.ToString();
+
+            if (!string.Equals(asserted, declared, StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    $"Method '{Name}' parameter {i + 1} ('{_params[i].Name}') is '{declared}', " +
+                    $"but the handle asserts '{asserted}'.");
+        }
+
+        _handleIssued = true;
+    }
+
+    private void GuardParametersMutable()
+    {
+        if (_handleIssued)
+            throw new InvalidOperationException(
+                $"Method '{Name}' has issued a callable handle; parameters cannot change after that. " +
+                "Declare all parameters first and take the handle last.");
+    }
 
     /// <summary>
     /// Constrains a type parameter, e.g. <c>WithConstraint("T", "class")</c>,
@@ -215,6 +326,13 @@ public class MethodBuilder : NamedBuilder, IAccessModifier, IMemberSyntaxBuilder
     {
         ValidateInheritance();
         ValidateAsync();
+
+        // AsCallable rejects a static method up front, but IsStatic can be set after the
+        // handle exists; catching it here keeps the guard order-proof.
+        if (_handleIssued && IsStatic)
+            throw new InvalidOperationException(
+                $"Method '{Name}' became static after issuing a callable handle; " +
+                "calls through the handle would emit instance syntax.");
 
         var method = MethodDeclaration(_returnType, Identifier(Name))
             .WithAttributeLists(SyntaxAttributes.Lists(_attributes))

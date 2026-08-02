@@ -92,7 +92,7 @@ public class ReferenceAssignmentTests
             .Assign(count, countParam);
 
         assign.Should().Throw<InvalidOperationException>()
-            .WithMessage("*shadows the member being assigned*");
+            .WithMessage("*shadows the member being referenced*");
     }
 
     [TestMethod]
@@ -106,7 +106,7 @@ public class ReferenceAssignmentTests
             .Assign(total, totalParam);
 
         assign.Should().Throw<InvalidOperationException>()
-            .WithMessage("*shadows the member being assigned*");
+            .WithMessage("*shadows the member being referenced*");
     }
 
     // Assigning one parameter to another needs no qualification: neither shadows a member.

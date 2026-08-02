@@ -1,6 +1,17 @@
 namespace FluentRoslyn.Abstractions;
 
 /// <summary>
+/// A reference to a named construct that can appear in generated code, without its
+/// type. The base of <see cref="IReference{T}"/>; used where references of different
+/// types are handled together, e.g. a call's argument list.
+/// </summary>
+public interface IReference
+{
+    /// <summary>The identifier as it will be emitted.</summary>
+    string Name { get; }
+}
+
+/// <summary>
 /// A typed reference to a named construct that can appear in generated code — a
 /// property, a field, or a parameter.
 /// </summary>
@@ -12,8 +23,6 @@ namespace FluentRoslyn.Abstractions;
 /// <c>docs/ROADMAP.md</c> for why exact matching is the enforceable contract.
 /// </remarks>
 /// <typeparam name="T">The type of the referenced construct.</typeparam>
-public interface IReference<T>
+public interface IReference<T> : IReference
 {
-    /// <summary>The identifier as it will be emitted.</summary>
-    string Name { get; }
 }
