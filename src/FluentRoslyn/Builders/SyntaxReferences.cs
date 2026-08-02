@@ -86,6 +86,41 @@ internal static class SyntaxReferences
         => ReturnStatement(SyntaxLiterals.Expression(literal));
 
     /// <summary>
+    /// Builds <c>if (x is null) throw new ArgumentNullException(nameof(x));</c>.
+    /// </summary>
+    /// <remarks>
+    /// The classic form on purpose, not <c>ArgumentNullException.ThrowIfNull</c>: the
+    /// generated code compiles in the consumer's compilation, whose target framework the
+    /// generator cannot know, and the helper is .NET 6+. This form compiles everywhere,
+    /// including the netstandard2.0 consumers this library exists to serve. The
+    /// exception type goes through <see cref="TypeNameBuilder"/> so it is fully
+    /// qualified by default and shortens under <c>SimplifyTypeNames</c> like any other
+    /// reference.
+    /// </remarks>
+    internal static StatementSyntax ThrowIfNull(
+        IReference value,
+        IReadOnlyCollection<IParameter> parameters,
+        bool inStaticContext,
+        string context)
+    {
+        if (value is null) throw new ArgumentNullException(nameof(value));
+
+        var expression = Expression(value, parameters, inStaticContext, context);
+
+        var nameOf = InvocationExpression(
+            IdentifierName("nameof"),
+            ArgumentList(SingletonSeparatedList(Argument(expression))));
+
+        var throwStatement = ThrowStatement(
+            ObjectCreationExpression(TypeNameBuilder.New<ArgumentNullException>().BuildTypeSyntax())
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(nameOf)))));
+
+        return IfStatement(
+            IsPatternExpression(expression, ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression))),
+            throwStatement);
+    }
+
+    /// <summary>
     /// Builds <c>return value;</c>, or <c>return;</c> when <paramref name="value"/> is
     /// null. The value goes through the same shadow qualification as every other
     /// reference position.

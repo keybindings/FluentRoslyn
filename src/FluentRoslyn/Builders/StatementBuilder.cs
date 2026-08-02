@@ -68,6 +68,9 @@ public abstract class StatementBuilder : NamedBuilder
     private protected void AddLiteralReturn(object? literal)
         => Statements.Add(SyntaxReferences.ReturnLiteral(literal));
 
+    private protected void AddNullGuard(IReference value)
+        => Statements.Add(SyntaxReferences.ThrowIfNull(value, Parameters, IsStaticContext, StatementContext));
+
     private protected void ReplaceStatements(string[] statements)
     {
         Statements.Clear();
@@ -150,6 +153,17 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     public TSelf AssignLiteral<TValue>(IReference<TValue> target, TValue literal)
     {
         AddLiteralAssignment(target, literal);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a null guard: <c>if (x is null) throw new ArgumentNullException(nameof(x));</c>.
+    /// Constrained to reference types, since a null check on a non-nullable value type
+    /// is meaningless.
+    /// </summary>
+    public TSelf ThrowIfNull<TValue>(IReference<TValue> value) where TValue : class
+    {
+        AddNullGuard(value);
         return Self;
     }
 
