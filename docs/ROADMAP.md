@@ -66,23 +66,26 @@ them, not speculatively).
 ## Planned — pulled by a real generator
 
 Everything below came from **writing a generator, not from a feature list**, which is
-the standing rule working as intended. The generator attempted (2026-08-06) was a
-classic one: `[GenerateBuilder]` on a consumer's class, emitting a fluent builder from
-that class's constructor — one `With…` setter per parameter and a `Build()` that calls
-the constructor. It is the first example written against the **consumer's** types
-rather than a shape the generator invented, and it did not get far.
+the standing rule working as intended. The generator (2026-08-06) is a classic one:
+`[GenerateBuilder]` on a consumer's class, emitting a fluent builder from that class's
+constructor — one `With…` setter per parameter and a `Build()` that calls the
+constructor. It is the first example written against the **consumer's** types rather
+than a shape the generator invented, it now lives in
+`examples/FluentRoslyn.Example.Builders.*`, and CI runs it end-to-end.
 
 | # | Item | Category | Value | Effort | Notes |
 |---|------|----------|:---:|:---:|-------|
-| 29 | **Members typed by name** — `DefineField(typeName, name)`, `WithParameter(typeName, name)` | Feature | **High** | Low | **The blocker.** A generator driven by consumer symbols has an `ISymbol`, never a CLR `T`. `DefineField<T>` and `WithParameter<T>` are `<T>`-only, so a field or parameter of a consumer's type **cannot be declared at all** — the generator has to abandon the fluent API and hand-build syntax. Note the asymmetry that makes this an oversight rather than a decision: `Returns(string)` already exists and is documented as the escape hatch for exactly this case. Fields and parameters simply never got the same overload. |
-| 30 | **`this` as a reference** | Feature | Med | Low | A fluent setter ends `return this;`. `Returns(builder)` can state the *type*, but there is no `IReference` for `this`, so the return is raw text. Small and self-contained. |
-| 31 | **Constructing a consumer's type** | Feature | Med | Med | `Value.New` needs an `IConstructor<T>` from `AsConstructable`, which derives from a `ConstructorBuilder`. A consumer's constructor has no builder, so `Build()`'s `new Person(a, b)` is raw text. [`DESIGN-computed-values.md`](DESIGN-computed-values.md) named this limit and deferred the choice pending a real need; this is that need, and it argues for the reflected/symbol-derived handle it listed as option (b). |
+| ~~29~~ | ~~**Members typed by name** — `DefineField(name, typeName)`, `WithParameter(name, typeName)`~~ | Feature | High | Low | **Done** (2026-08-06). This was the blocker: a generator driven by consumer symbols holds an `ISymbol`, never a CLR `T`, and `DefineField<T>`/`WithParameter<T>` were `<T>`-only — so a field or parameter of a consumer's type could not be declared **at all**, and the generator had to abandon the fluent API. What made it an oversight rather than a decision is the asymmetry: `Returns(string)` and `DefineEvent(name, handlerTypeName)` were already the raw-name escape hatch for exactly this case. Fields and parameters never got the same overload. A raw-typed field is a `RawFieldBuilder`, deliberately **not** an `IReference<T>` — there is no `T` to check against, and saying so beats a phantom type that lies. Transposing the two string arguments is caught, because the name is validated as an identifier and a qualified type name is not one. |
+| 30 | **`this` as a reference** | Feature | Med | Low | A fluent setter ends `return this;`. `Returns(builder)` states the *type* fine, but there is no `IReference` for `this`, so the return is raw text. Small and self-contained; visible in the builders example. |
+| 31 | **Constructing a consumer's type** | Feature | Med | Med | `Value.New` needs an `IConstructor<T>` from `AsConstructable`, which derives from a `ConstructorBuilder`. A consumer's constructor has no builder, so `Build()`'s `new Order(a, b, c)` is raw text. [`DESIGN-computed-values.md`](DESIGN-computed-values.md) named this limit and deferred the choice pending a real need; this is that need, and it argues for the symbol-derived handle it listed as option (b). |
+| 32 | **Assignment between consumer-typed members** | Feature | Med | Med | Follows from #29 rather than being fixed by it. A raw-typed field and a raw-typed parameter have no shared `T`, so `Assign` cannot connect them and `_x = x;` stays text. A checked form would need a name-based equality rule ("these two were declared with the same type text") — weaker than the `<T>` contract, and worth doing only if it earns itself. |
 
-**The pattern across all three:** the typed surface is complete for types the generator
-*builds* and for types it can name as `<T>`, and absent for types it *discovers*. That
-is the third column of the reference story below — and while no *compile-time* story
-exists for consumer types, that is an argument for a well-marked raw seam, not for no
-API at all. #29 is the one that blocks; #30 and #31 are ergonomics on top of it.
+**The pattern across all four:** the typed surface is complete for types the generator
+*builds* and for types it can name as `<T>`, and thins out for types it *discovers*.
+That is the third column of the reference story below. No *compile-time* story exists
+for consumer types — but as #29 showed, that argues for a well-marked raw seam, not for
+no API at all. With #29 in, a symbol-driven generator builds every declaration through
+the fluent API and drops to text only inside bodies.
 
 ## Deliberate decisions (not gaps)
 

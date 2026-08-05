@@ -49,6 +49,36 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         return fb;
     }
 
+    /// <summary>
+    /// Declares a field whose type is named by text, private by default — for a type the
+    /// generator cannot name as <c>T</c>, above all one discovered from the consumer's
+    /// compilation as an <c>ISymbol</c>.
+    /// </summary>
+    /// <remarks>
+    /// The name comes first, matching <see cref="DefineEvent(string, string)"/> and
+    /// <c>Returns(string)</c>, the raw-name escape hatches this joins. Transposing the
+    /// two is caught: the name is validated as a C# identifier, which a qualified type
+    /// name is not. The result is a <see cref="RawFieldBuilder"/> rather than an
+    /// <c>IReference&lt;T&gt;</c>, because there is no <c>T</c> to check against.
+    /// </remarks>
+    /// <param name="name">The field's name.</param>
+    /// <param name="typeName">The field's type, as C# text. Parsed, so a malformed name is rejected.</param>
+    /// <returns>The field builder.</returns>
+    public RawFieldBuilder DefineField(string name, string typeName)
+        => DefineField(name, typeName, AccessModifier.Private);
+
+    /// <summary>Declares a field whose type is named by text.</summary>
+    /// <param name="name">The field's name.</param>
+    /// <param name="typeName">The field's type, as C# text.</param>
+    /// <param name="accessModifier">The field's accessibility.</param>
+    /// <returns>The field builder.</returns>
+    public RawFieldBuilder DefineField(string name, string typeName, AccessModifier accessModifier)
+    {
+        var fb = new RawFieldBuilder(name, typeName, accessModifier);
+        _fields.Add(fb);
+        return fb;
+    }
+
     /// <summary>Declares a public constructor. Add parameters with <c>WithParameter&lt;T&gt;</c>.</summary>
     public ConstructorBuilder DefineConstructor()
         => DefineConstructor(AccessModifier.Public);

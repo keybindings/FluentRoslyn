@@ -68,6 +68,21 @@ jobs:
             exit 1
           fi
 
+      # The symbol-driven case: the generator reads the app's own types as ISymbols and
+      # emits a fluent builder for each. Running it proves the raw-name overloads
+      # actually produce source that compiles and behaves.
+      - name: Run builders example end-to-end
+        run: |
+          output=$(dotnet run --project examples/FluentRoslyn.Example.Builders.App -c Release --no-build)
+          echo "$output"
+          expected="3 x for Ada to Bristol"
+          if [ "$output" != "$expected" ]; then
+            echo "::error::Builders example output did not match."
+            echo "expected: $expected"
+            echo "actual:   $output"
+            exit 1
+          fi
+
       - name: Pack
         run: |
           dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts

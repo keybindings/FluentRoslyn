@@ -34,6 +34,13 @@ internal class Parameter : NamedBuilder, IParameter
     internal static IParameter Of(TypeDeclarationBuilder type, string name)
         => new Parameter(TypeNameBuilder.For(type), name);
 
+    /// <summary>
+    /// A parameter whose type is named by text — for a type the generator cannot name as
+    /// <c>T</c>, such as one discovered from the consumer's compilation.
+    /// </summary>
+    internal static IParameter OfRawName(string name, string typeName)
+        => new Parameter(TypeNameBuilder.ForRawName(typeName), name);
+
     public TypeNameBuilder TypeName { get; }
 
     internal override SyntaxNode BuildSyntax()

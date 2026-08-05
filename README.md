@@ -288,6 +288,37 @@ nothing, so there is still no operator and no evaluation to model. One thing it
 cannot do: `ThrowIfNull` refuses an element access, because `nameof(items[0])` is
 not legal C# — so the guard would emit source the consumer's build rejects.
 
+### Referencing the consumer's types
+
+The typed surface above needs a `T`. A generator driven by the *consumer's* code has
+no `T` — it holds an `ISymbol` discovered when the generator runs. So fields and
+parameters can also be typed by name:
+
+```csharp
+var builder = SourceFile.InNamespace(ns).Class($"{type.Name}Builder");
+
+builder.DefineField("_shipTo", "global::MyApp.Address");
+
+builder.DefineMethod("WithShipTo")
+    .WithParameter("shipTo", "global::MyApp.Address")
+    .Returns(builder)
+    .AddStatement("_shipTo = shipTo;")
+    .AddStatement("return this;");
+```
+
+`DefineField(name, typeName)` hands back a `RawFieldBuilder`, which is deliberately
+**not** an `IReference<T>` — there is no `T` to check against, and a phantom type that
+lied would be worse than none. So `Assign` and friends can't reach these members, and
+bodies touching them use `AddStatement`. Everything structural is still built rather
+than concatenated: modifiers, attributes, docs, and the declaration itself.
+
+The two string arguments could be transposed, which no compiler can catch — so the
+name is validated as a C# identifier, and a qualified type name isn't one.
+
+A complete symbol-driven generator is in
+[`examples/`](https://github.com/keybindings/FluentRoslyn/tree/main/examples): it reads
+the consumer's constructors and emits a fluent builder for each marked type.
+
 ### Referencing generated types
 
 A generated type has no CLR type, so `<T>` cannot name it. Two complements close

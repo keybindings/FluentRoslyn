@@ -22,6 +22,7 @@ public class TypeNameBuilder : NamedBuilder
     private readonly TypeNameBuilder? _declaringType;
     private readonly TypeNameBuilder? _elementType;
     private readonly TypeDeclarationBuilder? _builderTarget;
+    private readonly TypeSyntax? _rawTypeSyntax;
     private readonly int _arrayRank;
     private readonly int _unboundArity;
     private readonly List<TypeNameBuilder> _genericTypes = [];
@@ -48,6 +49,30 @@ public class TypeNameBuilder : NamedBuilder
         _namespaceBuilder = NamespaceBuilder.None;
         _builderTarget = builderTarget;
     }
+
+    // A parsed type name goes through untouched: it is already whatever the caller
+    // meant, and the name-validation the other paths apply would reject the qualified
+    // and generic forms this exists to carry.
+    private TypeNameBuilder(TypeSyntax rawTypeSyntax) : base(rawTypeSyntax.ToString(), _ => { })
+    {
+        _namespaceBuilder = NamespaceBuilder.None;
+        _rawTypeSyntax = rawTypeSyntax;
+    }
+
+    /// <summary>
+    /// Creates a type reference from a raw type name — for a type the generator cannot
+    /// name as <c>T</c>, above all one discovered from the consumer's compilation as an
+    /// <c>ISymbol</c>. Parsed, so a malformed name is rejected rather than emitted.
+    /// </summary>
+    /// <remarks>
+    /// Unlike the <c>T</c> and builder-reference paths, the result is not annotated for
+    /// the simplifier: the text is taken as written, so a caller passing a fully
+    /// qualified name gets one. That matches <c>Returns(string)</c> and
+    /// <c>DefineEvent(name, handlerTypeName)</c>, the raw-name escape hatches that came
+    /// before it.
+    /// </remarks>
+    internal static TypeNameBuilder ForRawName(string typeName)
+        => new(SyntaxParse.TypeName(typeName));
 
     /// <summary>
     /// Creates a type reference to a type being built alongside — the definition and
@@ -78,6 +103,9 @@ public class TypeNameBuilder : NamedBuilder
 
     internal TypeSyntax BuildTypeSyntax()
     {
+        if (_rawTypeSyntax is not null)
+            return _rawTypeSyntax;
+
         if (_builderTarget is not null)
         {
             // Emitting `Repository` where `Repository<T>` is declared would be broken

@@ -138,6 +138,26 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     }
 
     /// <summary>
+    /// Appends a parameter whose type is named by text — for a type the generator cannot
+    /// name as a type argument, above all one discovered from the consumer's compilation
+    /// as an <c>ISymbol</c>.
+    /// </summary>
+    /// <remarks>
+    /// No <c>out IReference&lt;T&gt;</c> companion, deliberately: there is no
+    /// <c>T</c> for a reference to carry, so a body using this parameter goes through
+    /// <c>AddStatement</c>. Transposing the arguments is caught, since the name is
+    /// validated as a C# identifier and a qualified type name is not one.
+    /// </remarks>
+    /// <param name="name">The parameter's name.</param>
+    /// <param name="typeName">The parameter's type, as C# text. Parsed, so a malformed name is rejected.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf WithParameter(string name, string typeName)
+    {
+        AddParameter(Parameter.OfRawName(name, typeName));
+        return Self;
+    }
+
+    /// <summary>
     /// Appends an assignment statement, e.g. <c>Name = name;</c>. The value's type must
     /// be the target's, so assigning the wrong one is a compile error in the generator
     /// rather than broken generated source. The target names a location, so it stays a

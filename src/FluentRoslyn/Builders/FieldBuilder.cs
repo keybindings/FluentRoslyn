@@ -8,11 +8,66 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 namespace FluentRoslyn.Builders;
 
 /// <summary>
+/// The fluent surface shared by every field builder, whatever its type came from.
+/// <typeparamref name="TSelf"/> is the concrete kind, so chaining yields it — the same
+/// CRTP shape as <see cref="TypeBuilder{TSelf}"/> and <see cref="MethodBuilderBase{TSelf}"/>.
+/// </summary>
+/// <typeparam name="TSelf">The concrete field builder type.</typeparam>
+public abstract class FieldBuilderBase<TSelf>(
+    TypeNameBuilder typeName,
+    string name,
+    AccessModifier accessModifier)
+    : FieldBuilder(typeName, name, accessModifier)
+    where TSelf : FieldBuilderBase<TSelf>
+{
+    /// <summary>This builder as its concrete type, for fluent returns.</summary>
+    private protected TSelf Self => (TSelf)this;
+
+    #region FluentMethods
+
+    /// <summary>Marks the field <c>static</c>.</summary>
+    public TSelf Static() => Self.With(() => IsStatic = true);
+
+    /// <summary>Marks the field <c>readonly</c>.</summary>
+    public TSelf Readonly() => Self.With(() => IsReadonly = true);
+
+    /// <summary>Sets the field's accessibility. Private by default.</summary>
+    public TSelf WithAccessModifier(AccessModifier accessModifier) => Self.With(() => AccessModifier = accessModifier);
+
+    /// <summary>Documents the field with an XML <c>&lt;summary&gt;</c>.</summary>
+    public TSelf WithSummary(string text) => Self.With(() => Docs.SetSummary(text));
+
+    /// <summary>
+    /// Marks the field <c>required</c> (C# 11): callers must set it in an object
+    /// initializer. Cannot combine with <c>static</c> or <c>const</c>.
+    /// </summary>
+    public TSelf Required() => Self.With(() => IsRequired = true);
+
+    /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonProperty(\"name\")")</c>.</summary>
+    public TSelf WithAttribute(string attribute) => Self.With(() => Attributes.Add(SyntaxAttributes.AttributeList(attribute)));
+
+    /// <summary>
+    /// Marks the field <c>const</c>. A const field requires an initializer and cannot
+    /// also be static or readonly.
+    /// </summary>
+    public TSelf Const() => Self.With(() => IsConst = true);
+
+    /// <summary>
+    /// Sets a field initializer from a raw C# expression, e.g. <c>"new()"</c>. The
+    /// escape hatch for values a literal cannot express.
+    /// </summary>
+    public TSelf WithInitializerExpression(string expression)
+        => Self.With(() => Initializer = SyntaxParse.Expression(expression));
+
+    #endregion
+}
+
+/// <summary>
 /// Builds a field declaration of type <typeparamref name="T"/>. Obtained from
 /// <c>DefineField&lt;T&gt;</c> on a type builder.
 /// </summary>
 /// <typeparam name="T">The field's type.</typeparam>
-public class FieldBuilder<T> : FieldBuilder, IReference<T>, IReferenceInfo
+public class FieldBuilder<T> : FieldBuilderBase<FieldBuilder<T>>, IReference<T>, IReferenceInfo
 {
     internal FieldBuilder(string name, AccessModifier accessModifier) : base(TypeNameBuilder.New<T>(), name, accessModifier)
     {
@@ -22,54 +77,39 @@ public class FieldBuilder<T> : FieldBuilder, IReference<T>, IReferenceInfo
 
     bool IReferenceInfo.IsStaticMember => IsStatic;
 
-    #region FluentMethods
-
-    /// <summary>Marks the field <c>static</c>.</summary>
-    public FieldBuilder<T> Static() => this.With(() => IsStatic = true);
-
-    /// <summary>Marks the field <c>readonly</c>.</summary>
-    public FieldBuilder<T> Readonly() => this.With(() => IsReadonly = true);
-
-    /// <summary>Sets the field's accessibility. Private by default.</summary>
-    public FieldBuilder<T> WithAccessModifier(AccessModifier accessModifier) => this.With(() => AccessModifier = accessModifier);
-
-    /// <summary>Documents the field with an XML <c>&lt;summary&gt;</c>.</summary>
-    public FieldBuilder<T> WithSummary(string text) => this.With(() => Docs.SetSummary(text));
-
-    /// <summary>
-    /// Marks the field <c>required</c> (C# 11): callers must set it in an object
-    /// initializer. Cannot combine with <c>static</c> or <c>const</c>.
-    /// </summary>
-    public FieldBuilder<T> Required() => this.With(() => IsRequired = true);
-
-    /// <summary>Adds an attribute, e.g. <c>WithAttribute("JsonProperty(\"name\")")</c>.</summary>
-    public FieldBuilder<T> WithAttribute(string attribute) => this.With(() => Attributes.Add(SyntaxAttributes.AttributeList(attribute)));
-
-    /// <summary>
-    /// Marks the field <c>const</c>. A const field requires an initializer and cannot
-    /// also be static or readonly.
-    /// </summary>
-    public FieldBuilder<T> Const() => this.With(() => IsConst = true);
-
     /// <summary>
     /// Sets a field initializer: <c>= value;</c>. Supports the primitive types with a
-    /// literal form; use <see cref="WithInitializerExpression"/> for other expressions.
+    /// literal form; use <see cref="FieldBuilderBase{TSelf}.WithInitializerExpression"/>
+    /// for other expressions.
     /// </summary>
     public FieldBuilder<T> WithInitializer(T value) => this.With(() => Initializer = SyntaxLiterals.Expression(value));
-
-    /// <summary>
-    /// Sets a field initializer from a raw C# expression, e.g. <c>"new()"</c>. The
-    /// escape hatch for values a literal cannot express.
-    /// </summary>
-    public FieldBuilder<T> WithInitializerExpression(string expression)
-        => this.With(() => Initializer = SyntaxParse.Expression(expression));
-
-    #endregion
 }
 
 /// <summary>
-/// The non-generic base of <see cref="FieldBuilder{T}"/>, carrying the state that does
-/// not depend on the field's type.
+/// Builds a field whose type is named by text rather than by a type argument. Obtained
+/// from <c>DefineField(name, typeName)</c> on a type builder.
+/// </summary>
+/// <remarks>
+/// The escape hatch for a type the generator cannot name as <c>T</c> — above all the
+/// consumer's own types, which a generator only ever holds as an <c>ISymbol</c>
+/// discovered at generation time. The cost is stated rather than hidden: this is
+/// deliberately <em>not</em> an <see cref="IReference{T}"/>, because there is no
+/// <c>T</c> to check against, so <c>Assign</c>, <c>Return</c> and the rest of the typed
+/// surface cannot reach it. Bodies touching such a field go through
+/// <c>AddStatement</c>. Everything structural — the declaration, modifiers, attributes,
+/// docs — is still built rather than concatenated.
+/// </remarks>
+public sealed class RawFieldBuilder : FieldBuilderBase<RawFieldBuilder>
+{
+    internal RawFieldBuilder(string name, string typeName, AccessModifier accessModifier)
+        : base(TypeNameBuilder.ForRawName(typeName), name, accessModifier)
+    {
+    }
+}
+
+/// <summary>
+/// The non-generic base of the field builders, carrying the state that does not depend
+/// on how the field's type was supplied.
 /// </summary>
 public abstract class FieldBuilder(
     TypeNameBuilder typeName,
