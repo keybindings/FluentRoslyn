@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using FluentRoslyn.Abstractions;
 using Microsoft.CodeAnalysis;
@@ -25,10 +25,10 @@ public sealed class GetterBody<T> : StatementBuilder<GetterBody<T>>
     private protected override string StatementContext => $"Getter of '{_propertyName}'";
 
     /// <summary>
-    /// Appends <c>return value;</c>. The reference's type must be the property's, so
+    /// Appends <c>return value;</c>. The value's type must be the property's, so
     /// returning the wrong member is a compile error in the generator.
     /// </summary>
-    public GetterBody<T> Return(IReference<T> value)
+    public GetterBody<T> Return(IValue<T> value)
     {
         AddReturn(value ?? throw new ArgumentNullException(nameof(value)));
         return this;

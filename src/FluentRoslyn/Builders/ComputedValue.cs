@@ -1,0 +1,191 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using FluentRoslyn.Abstractions;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
+namespace FluentRoslyn.Builders;
+
+/// <summary>
+/// A value that is computed rather than named — <c>new T(args)</c>, or a call's result.
+/// </summary>
+/// <remarks>
+/// A producer cannot build its syntax when it is created: shadow qualification needs the
+/// enclosing parameter list, which only the statement builder has. So a value is a
+/// description, resolved at emission — the same deferral <see cref="IReferencePath"/>
+/// uses for an index, through the same one dispatch point.
+/// </remarks>
+internal interface IComputedValue
+{
+    /// <summary>
+    /// Builds the expression. <paramref name="qualify"/> builds any nested value —
+    /// arguments — through the shared shadow-qualification rules.
+    /// </summary>
+    ExpressionSyntax Build(Func<IValue, ExpressionSyntax> qualify);
+}
+
+/// <summary>
+/// <c>new T(arguments)</c>. The constructed type and the argument types were matched by
+/// the compiler where the handle was used; what remains here is emission.
+/// </summary>
+/// <typeparam name="T">The constructed type.</typeparam>
+internal sealed class ConstructionValue<T> : IValue<T>, IComputedValue
+{
+    private readonly ConstructorHandle _constructor;
+    private readonly IValue[] _arguments;
+
+    internal ConstructionValue(object constructor, IValue[] arguments, string context)
+    {
+        _constructor = ConstructorHandle.From(constructor, context);
+
+        if (arguments.Any(a => a is null)) throw new ArgumentNullException(nameof(arguments));
+        _arguments = arguments;
+    }
+
+    public ExpressionSyntax Build(Func<IValue, ExpressionSyntax> qualify)
+        => ObjectCreationExpression(_constructor.DeclaringType.BuildTypeSyntax())
+            .WithArgumentList(ArgumentList(SeparatedList(_arguments.Select(a => Argument(qualify(a))))));
+}
+
+/// <summary>
+/// <c>target.Method(arguments)</c> used as a value. Identical in syntax to the statement
+/// form, which is why both route through <see cref="SyntaxReferences"/>'s one builder.
+/// </summary>
+/// <typeparam name="T">The call's result type.</typeparam>
+internal sealed class InvocationValue<T> : IValue<T>, IComputedValue
+{
+    private readonly IReference _target;
+    private readonly MethodHandle _method;
+    private readonly IValue[] _arguments;
+
+    internal InvocationValue(IReference target, object method, IValue[] arguments, string context)
+    {
+        _target = target ?? throw new ArgumentNullException(nameof(target));
+        _method = MethodHandle.From(method, context);
+
+        if (arguments.Any(a => a is null)) throw new ArgumentNullException(nameof(arguments));
+        _arguments = arguments;
+    }
+
+    public ExpressionSyntax Build(Func<IValue, ExpressionSyntax> qualify)
+        => InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    qualify(_target),
+                    IdentifierName(_method.MethodName)))
+            .WithArgumentList(ArgumentList(SeparatedList(_arguments.Select(a => Argument(qualify(a))))));
+}
+
+/// <summary>
+/// The implementation behind every <c>IConstructor</c> handle. Carries the type to
+/// construct — the shape was validated when <c>AsConstructable</c> created the handle,
+/// and the arity lives in the interface's type arguments where the compiler enforces it.
+/// </summary>
+internal class ConstructorHandle
+{
+    internal ConstructorHandle(TypeNameBuilder declaringType)
+    {
+        DeclaringType = declaringType;
+    }
+
+    internal TypeNameBuilder DeclaringType { get; }
+
+    /// <summary>
+    /// Recovers the implementation from a handle interface. The interfaces are public but
+    /// only <c>AsConstructable</c> mints handles; anything else cannot carry a type.
+    /// </summary>
+    internal static ConstructorHandle From(object constructor, string context)
+        => constructor as ConstructorHandle
+           ?? throw new ArgumentException(
+               $"{context} was given an IConstructor that was not created by AsConstructable.",
+               nameof(constructor));
+}
+
+internal sealed class ConstructorHandle0<TDeclaring> : ConstructorHandle, IConstructor<TDeclaring>
+{
+    internal ConstructorHandle0(TypeNameBuilder declaringType) : base(declaringType)
+    {
+    }
+}
+
+internal sealed class ConstructorHandle1<TDeclaring, T1> : ConstructorHandle, IConstructor<TDeclaring, T1>
+{
+    internal ConstructorHandle1(TypeNameBuilder declaringType) : base(declaringType)
+    {
+    }
+}
+
+internal sealed class ConstructorHandle2<TDeclaring, T1, T2> : ConstructorHandle, IConstructor<TDeclaring, T1, T2>
+{
+    internal ConstructorHandle2(TypeNameBuilder declaringType) : base(declaringType)
+    {
+    }
+}
+
+internal sealed class ConstructorHandle3<TDeclaring, T1, T2, T3>
+    : ConstructorHandle, IConstructor<TDeclaring, T1, T2, T3>
+{
+    internal ConstructorHandle3(TypeNameBuilder declaringType) : base(declaringType)
+    {
+    }
+}
+
+internal sealed class FunctionHandle0<TResult> : MethodHandle, IFunction<TResult>
+{
+    internal FunctionHandle0(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class FunctionHandle1<TResult, T1> : MethodHandle, IFunction<TResult, T1>
+{
+    internal FunctionHandle1(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class FunctionHandle2<TResult, T1, T2> : MethodHandle, IFunction<TResult, T1, T2>
+{
+    internal FunctionHandle2(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class FunctionHandle3<TResult, T1, T2, T3> : MethodHandle, IFunction<TResult, T1, T2, T3>
+{
+    internal FunctionHandle3(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class FunctionHandleOn0<TDeclaring, TResult> : MethodHandle, IFunctionOn<TDeclaring, TResult>
+{
+    internal FunctionHandleOn0(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class FunctionHandleOn1<TDeclaring, TResult, T1> : MethodHandle, IFunctionOn<TDeclaring, TResult, T1>
+{
+    internal FunctionHandleOn1(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class FunctionHandleOn2<TDeclaring, TResult, T1, T2>
+    : MethodHandle, IFunctionOn<TDeclaring, TResult, T1, T2>
+{
+    internal FunctionHandleOn2(string methodName) : base(methodName)
+    {
+    }
+}
+
+internal sealed class FunctionHandleOn3<TDeclaring, TResult, T1, T2, T3>
+    : MethodHandle, IFunctionOn<TDeclaring, TResult, T1, T2, T3>
+{
+    internal FunctionHandleOn3(string methodName) : base(methodName)
+    {
+    }
+}

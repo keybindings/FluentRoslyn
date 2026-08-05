@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using FluentRoslyn.Abstractions;
 using Microsoft.CodeAnalysis.CSharp;
@@ -49,17 +49,17 @@ public abstract class StatementBuilder : NamedBuilder
         Parameters.Add(parameter);
     }
 
-    private protected void AddAssignment<TValue>(IReference<TValue> target, IReference<TValue> value)
+    private protected void AddAssignment<TValue>(IReference<TValue> target, IValue<TValue> value)
         => Statements.Add(SyntaxReferences.Assignment(target, value, Parameters, IsStaticContext, StatementContext));
 
-    private protected void AddInvocation(IReference target, object method, IReference[] arguments)
+    private protected void AddInvocation(IReference target, object method, IValue[] arguments)
         => Statements.Add(SyntaxReferences.Invocation(
             target, method, arguments, Parameters, IsStaticContext, StatementContext));
 
     private protected void AddRawStatement(string statement)
         => Statements.Add(SyntaxBodies.Statement(statement));
 
-    private protected void AddReturn(IReference? value)
+    private protected void AddReturn(IValue? value)
         => Statements.Add(SyntaxReferences.Return(value, Parameters, IsStaticContext, StatementContext));
 
     private protected void AddLiteralAssignment(IReference target, object? literal)
@@ -73,7 +73,7 @@ public abstract class StatementBuilder : NamedBuilder
         => Statements.Add(SyntaxReferences.ThrowIfNull(value, Parameters, IsStaticContext, StatementContext));
 
     private protected void AddCompoundAssignment<TValue>(
-        IReference<TValue> target, SyntaxKind kind, IReference<TValue> value)
+        IReference<TValue> target, SyntaxKind kind, IValue<TValue> value)
         => Statements.Add(SyntaxReferences.CompoundAssignment(
             target, kind, value, Parameters, IsStaticContext, StatementContext));
 
@@ -138,11 +138,12 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     }
 
     /// <summary>
-    /// Appends an assignment statement, e.g. <c>Name = name;</c>. Both sides are
-    /// references of the same type, so assigning the wrong one is a compile error in the
-    /// generator rather than broken generated source.
+    /// Appends an assignment statement, e.g. <c>Name = name;</c>. The value's type must
+    /// be the target's, so assigning the wrong one is a compile error in the generator
+    /// rather than broken generated source. The target names a location, so it stays a
+    /// reference; the value may be anything that produces one.
     /// </summary>
-    public TSelf Assign<TValue>(IReference<TValue> target, IReference<TValue> value)
+    public TSelf Assign<TValue>(IReference<TValue> target, IValue<TValue> value)
     {
         AddAssignment(target, value);
         return Self;
@@ -155,7 +156,7 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     /// primitives with a natural C# literal form; anything else needs a raw statement.
     /// </summary>
     /// <remarks>
-    /// Named apart from <see cref="Assign{TValue}(IReference{TValue}, IReference{TValue})"/>
+    /// Named apart from <see cref="Assign{TValue}(IReference{TValue}, IValue{TValue})"/>
     /// rather than overloading it: for a
     /// reference type, a value convertible to both <c>IReference&lt;T&gt;</c> and
     /// <c>T</c> — <c>null</c> most obviously — makes the two indistinguishable, and the
@@ -168,10 +169,10 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     }
 
     /// <summary>
-    /// Appends a compound assignment, e.g. <c>Count += delta;</c>. Both sides are
-    /// references of the same type, as with simple assignment.
+    /// Appends a compound assignment, e.g. <c>Count += delta;</c>. Typed like simple
+    /// assignment: a reference target, a value of its type.
     /// </summary>
-    public TSelf Assign<TValue>(IReference<TValue> target, AssignmentOperator op, IReference<TValue> value)
+    public TSelf Assign<TValue>(IReference<TValue> target, AssignmentOperator op, IValue<TValue> value)
     {
         AddCompoundAssignment(target, SyntaxReferences.KindOf(op), value);
         return Self;
@@ -191,7 +192,7 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     /// other operators because it needs a target that can be null, which the shared
     /// signature cannot state.
     /// </summary>
-    public TSelf AssignIfNull<TValue>(IReference<TValue> target, IReference<TValue> value) where TValue : class
+    public TSelf AssignIfNull<TValue>(IReference<TValue> target, IValue<TValue> value) where TValue : class
     {
         AddCompoundAssignment(target, SyntaxKind.CoalesceAssignmentExpression, value);
         return Self;
@@ -227,18 +228,18 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     /// reference's type must match the handle's — a mismatch is a compile error in the
     /// generator rather than broken generated source.
     /// </summary>
-    public TSelf Call<TTarget, T1>(IReference<TTarget> target, IMethod<T1> method, IReference<T1> argument1)
+    public TSelf Call<TTarget, T1>(IReference<TTarget> target, IMethod<T1> method, IValue<T1> argument1)
         => AddCall(target, method, argument1);
 
     /// <summary>Appends a two-argument call statement.</summary>
     public TSelf Call<TTarget, T1, T2>(
-        IReference<TTarget> target, IMethod<T1, T2> method, IReference<T1> argument1, IReference<T2> argument2)
+        IReference<TTarget> target, IMethod<T1, T2> method, IValue<T1> argument1, IValue<T2> argument2)
         => AddCall(target, method, argument1, argument2);
 
     /// <summary>Appends a three-argument call statement.</summary>
     public TSelf Call<TTarget, T1, T2, T3>(
         IReference<TTarget> target, IMethod<T1, T2, T3> method,
-        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
+        IValue<T1> argument1, IValue<T2> argument2, IValue<T3> argument3)
         => AddCall(target, method, argument1, argument2, argument3);
 
     /// <summary>
@@ -253,19 +254,19 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
 
     /// <summary>Appends a receiver-checked call with one argument.</summary>
     public TSelf CallOn<TDeclaring, T1>(
-        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1> method, IReference<T1> argument1)
+        IReference<TDeclaring> target, IMethodOn<TDeclaring, T1> method, IValue<T1> argument1)
         => AddCall(target, method, argument1);
 
     /// <summary>Appends a receiver-checked call with two arguments.</summary>
     public TSelf CallOn<TDeclaring, T1, T2>(
         IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2> method,
-        IReference<T1> argument1, IReference<T2> argument2)
+        IValue<T1> argument1, IValue<T2> argument2)
         => AddCall(target, method, argument1, argument2);
 
     /// <summary>Appends a receiver-checked call with three arguments.</summary>
     public TSelf CallOn<TDeclaring, T1, T2, T3>(
         IReference<TDeclaring> target, IMethodOn<TDeclaring, T1, T2, T3> method,
-        IReference<T1> argument1, IReference<T2> argument2, IReference<T3> argument3)
+        IValue<T1> argument1, IValue<T2> argument2, IValue<T3> argument3)
         => AddCall(target, method, argument1, argument2, argument3);
 
     /// <summary>Appends a complete statement from raw C# text.</summary>
@@ -282,7 +283,7 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
         return Self;
     }
 
-    private TSelf AddCall(IReference target, object method, params IReference[] arguments)
+    private TSelf AddCall(IReference target, object method, params IValue[] arguments)
     {
         AddInvocation(target, method, arguments);
         return Self;

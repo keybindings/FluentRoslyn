@@ -1,6 +1,32 @@
 # Computed values — design
 
-**Status: proposed, 2026-08-05. Nothing here is built.**
+**Status: built and shipped (2026-08-06).** Kept as the record of why it took this
+shape. The document below is unchanged from the proposal except for this block; the
+roadmap records what shipped.
+
+**Settled during implementation.** All four open decisions went the way they were
+recommended: `Invoke`/`InvokeOn` as extensions with `Value.New` as a static factory,
+CLR-type construction left to raw text, arity held at three, and locals out of scope.
+
+Two things the design did not predict, both found by probing rather than reasoning:
+
+- **The widening is safe, including the case that broke `AssignLiteral`.** The doc
+  demanded a probe before anything depended on the shape, and it was worth running:
+  `Assign<string>(target, null)` — the exact shape that produced CS0121 last time —
+  compiles cleanly against the single widened signature, because there is no second
+  candidate for `null` to fit. Every mismatch still reports `CS0411` naming `Assign`,
+  and a bad receiver reports `CS0411` naming `InvokeOn`, which is the diagnostic the
+  `Call`/`CallOn` split exists to produce.
+- **Construction inherits the simplifier's self-declared rule for free.** Because the
+  constructed type routes through `TypeNameBuilder` like every other type reference,
+  a file that itself declares a `Widget` emits `new MyApp.Widget()` fully qualified,
+  while a type from elsewhere shortens to `new Thing()` and adds the import. That is
+  the correct behaviour in both cases and needed no code: the short name would have
+  bound to the local declaration. An assertion written from the design's expectation
+  rather than from observed output got this wrong, which is the whole argument for
+  probing first.
+
+---
 
 This is the item the statement design deliberately separated out and warned about:
 

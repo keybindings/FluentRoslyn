@@ -37,6 +37,7 @@ them, not speculatively).
 | ~~25~~ | ~~**`SourceFile` — a file-level builder**~~ | Feature | High | High | **Done** (2026-08-02). A top-level type used to *be* a file, so two types could not share one, and 27 public methods describing file concerns were duplicated across six type builders. `SourceFile` owns usings, simplification, namespace style, and formatting; type builders lost all of it. **Breaking**, deliberately, while the version still says preview. `TypeNameSimplifier` needed no changes — it already worked on the whole compilation unit, so joint ambiguity analysis across types in one file came free. See [`DESIGN-source-files.md`](DESIGN-source-files.md). |
 | ~~24~~ | ~~**Compound assignment**~~ | Feature | Med | Low | **Done** (2026-08-02). `Assign(target, op, value)` and the literal form cover the ten arithmetic and bitwise operators via an `AssignmentOperator` enum — one method pair rather than ten. `??=` is separate (`AssignIfNull` / `AssignIfNullLiteral`) because it needs a nullable target, a constraint the shared signature cannot state. Needs no expression grammar: the operands are still references and literals. |
 | ~~18~~ | ~~**Receiver-typed handles**~~ | Feature | Med | Low | **Done** (2026-08-02). `AsCallableOn<TDeclaring, …>` yields `IMethodOn<TDeclaring, …>`, and `CallOn` rejects a receiver of the wrong type at compile time. Pairing needs no registry: a placeholder's emitted name and the declaring type's qualified name are the same string. Separate interface *and* method family — see the diagnostics note below. |
+| ~~27~~ | ~~**Computed values** — `new T(args)` and call results~~ | Feature | High | High | **Done** (2026-08-06). Closes the last structural limit from the statement design — `IValue<T>` sits above `IReference<T>`, so a value can now be produced rather than only named. `AsConstructable` mirrors `AsCallableOn` for `new T(…)`; `AsFunction`/`AsFunctionOn` are a return-carrying handle family, needed because `IMethod<T1…>` asserts argument types only and so cannot say what a call produces. Crosses the expression-grammar line deliberately, under a stated rule — see below and [`DESIGN-computed-values.md`](DESIGN-computed-values.md). |
 | ~~26~~ | ~~**Reference paths**~~ | Feature | High | Low | **Done** (2026-08-05). `Member`/`MemberNamed`/`Item` build one `IReference<T>` from another, closing the assignment *target* column: before this only a simple name could be assigned to, so `this.a.b = x;` and `arr[i] = x;` had to be raw text. Every position that already takes a reference accepts a path with no new overload, because a path *is* one. Extends references, not expressions — see the note below. |
 
 ## Reading of the table
@@ -60,12 +61,6 @@ them, not speculatively).
   metadata is immutable once pushed, and the nuget.org policy is keyed to the
   workflow's *file name*, so renaming `release.yml` breaks publishing until the
   policy is updated.
-
-## Planned
-
-| # | Item | Category | Value | Effort | Notes |
-|---|------|----------|:---:|:---:|-------|
-| 27 | **Computed values** — `new T(args)` and call results | Feature | High | High | **Designed, not built** — see [`DESIGN-computed-values.md`](DESIGN-computed-values.md). Closes the last structural limit from the statement design: today only a name or a constant can be a value, so construction and call results are raw text. Crosses the expression-grammar line deliberately, under a stated rule — **values are produced, never combined** — which admits `new T(…)` and a call's result and still excludes every operator, comparison and conditional. Needs `IValue<T>` above `IReference<T>`, `AsConstructable`, and a return-carrying handle family (`AsFunction`), because `IMethod<T1…>` asserts argument types only and so cannot say what a call produces. |
 
 ## Deliberate decisions (not gaps)
 
@@ -91,6 +86,28 @@ These look like omissions but are choices:
   mean. Under two names it reports *"cannot convert `PropertyBuilder<int>` to
   `IReference<string>`"* — the actual disagreement. The name also carries the
   meaning: `Member` derives the type, `MemberNamed` asserts it.
+
+- **Values are produced, never combined.** This is the rule that admits #27 and
+  still refuses an expression grammar, and it is stated as a rule rather than a
+  list so it can settle the *next* argument too. A value may be produced four
+  ways — a reference, a constant, `new T(…)`, a call's result — and that list is
+  closed. Nothing combines two values: no `a + b`, no `a == b`, no `a ?? b`, no
+  conditional, no cast, nothing needing precedence or evaluation order. The test
+  for a future addition is one question: **does it produce a value, or combine
+  values?** The reason the line sits exactly there is that a constructor and a
+  method each have a *declaration* to check an asserted shape against, which is
+  the machinery `AsCallable` already is. `a + b` has none, so the library would
+  have to model C#'s conversion and promotion rules itself to say anything useful.
+
+- **`Assign`'s target and `ThrowIfNull` still ask for `IReference<T>`** while every
+  value position takes `IValue<T>`. That is not bureaucracy: it is exactly the set
+  of operations needing a *location* rather than a value. You cannot assign to a
+  call's result, and `nameof` cannot see one.
+
+- **A call's receiver stays a reference too**, so `Factory.Create().Configure()` is
+  not expressible. Shadow qualification is defined on a root name and a call has
+  none; and a chain on a temporary is the shape that most wants a named local,
+  which costs one statement and keeps generated code flat and breakpointable.
 
 - **A reference path is not an expression.** `Member`/`Item` compose a *location*
   — they name where a value lives. Nothing about them evaluates, so there is no

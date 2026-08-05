@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using FluentRoslyn.Abstractions;
 using Microsoft.CodeAnalysis;
@@ -307,7 +307,7 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
 
     // A handle asserts the signature; validating here means a handle that exists is one
     // that matches, and freezing the parameters afterwards keeps it that way.
-    private void ValidateHandle(params Type[] argumentTypes)
+    private protected void ValidateHandle(params Type[] argumentTypes)
     {
         if (IsStatic)
             throw new InvalidOperationException(
@@ -334,7 +334,7 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
     // The pairing that makes receiver checking work: the placeholder's emitted name and
     // the declaring type's qualified name have to be the same string, since that is what
     // both will be in the generated source.
-    private void ValidateReceiver(Type declaringType)
+    private protected void ValidateReceiver(Type declaringType)
     {
         if (DeclaringType is null)
             throw new InvalidOperationException(
@@ -529,11 +529,11 @@ public class MethodBuilder<TReturn> : MethodBuilderBase<MethodBuilder<TReturn>>
         => new(name, accessModifier);
 
     /// <summary>
-    /// Appends <c>return value;</c>. The reference's type must be
+    /// Appends <c>return value;</c>. The value's type must be
     /// <typeparamref name="TReturn"/>, so returning the wrong thing is a compile error in
     /// the generator rather than generated source that does not build.
     /// </summary>
-    public MethodBuilder<TReturn> Return(IReference<TReturn> value)
+    public MethodBuilder<TReturn> Return(IValue<TReturn> value)
     {
         AddReturn(value ?? throw new ArgumentNullException(nameof(value)));
         return this;
@@ -542,7 +542,7 @@ public class MethodBuilder<TReturn> : MethodBuilderBase<MethodBuilder<TReturn>>
     /// <summary>
     /// Appends <c>return literal;</c> for a constant of the method's return type, e.g.
     /// <c>DefineMethod&lt;bool&gt;("IsValid").ReturnLiteral(true)</c>. Named apart from
-    /// <see cref="Return(IReference{TReturn})"/> because a value that is itself a
+    /// <see cref="Return(IValue{TReturn})"/> because a value that is itself a
     /// reference type would make the two overloads ambiguous.
     /// </summary>
     public MethodBuilder<TReturn> ReturnLiteral(TReturn literal)
@@ -550,4 +550,122 @@ public class MethodBuilder<TReturn> : MethodBuilderBase<MethodBuilder<TReturn>>
         AddLiteralReturn(literal);
         return this;
     }
+
+    #region FunctionHandles
+
+    /// <summary>
+    /// Hands back a handle to this parameterless method whose <em>result</em> is usable
+    /// as a value, so <c>target.Invoke(handle)</c> can be assigned or returned.
+    /// </summary>
+    /// <remarks>
+    /// Named apart from <c>AsCallable</c>, and living only on the value-returning builder,
+    /// because <see cref="IMethod"/> asserts argument types and cannot carry a result.
+    /// <typeparamref name="TReturn"/> is supplied by this builder rather than asserted by
+    /// the caller, so it cannot disagree with the declared return type.
+    /// </remarks>
+    /// <param name="function">Receives the handle.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> AsFunction(out IFunction<TReturn> function)
+    {
+        ValidateHandle();
+        function = new FunctionHandle0<TReturn>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a value-producing handle to this one-parameter method.</summary>
+    /// <typeparam name="T1">The parameter's type, validated against the declared one.</typeparam>
+    /// <param name="function">Receives the handle.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> AsFunction<T1>(out IFunction<TReturn, T1> function)
+    {
+        ValidateHandle(typeof(T1));
+        function = new FunctionHandle1<TReturn, T1>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a value-producing handle to this two-parameter method.</summary>
+    /// <typeparam name="T1">The first parameter's type.</typeparam>
+    /// <typeparam name="T2">The second parameter's type.</typeparam>
+    /// <param name="function">Receives the handle.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> AsFunction<T1, T2>(out IFunction<TReturn, T1, T2> function)
+    {
+        ValidateHandle(typeof(T1), typeof(T2));
+        function = new FunctionHandle2<TReturn, T1, T2>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a value-producing handle to this three-parameter method.</summary>
+    /// <typeparam name="T1">The first parameter's type.</typeparam>
+    /// <typeparam name="T2">The second parameter's type.</typeparam>
+    /// <typeparam name="T3">The third parameter's type.</typeparam>
+    /// <param name="function">Receives the handle.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> AsFunction<T1, T2, T3>(out IFunction<TReturn, T1, T2, T3> function)
+    {
+        ValidateHandle(typeof(T1), typeof(T2), typeof(T3));
+        function = new FunctionHandle3<TReturn, T1, T2, T3>(Name);
+        return this;
+    }
+
+    /// <summary>
+    /// Hands back a value-producing handle that also carries the declaring type, so
+    /// <c>InvokeOn</c> checks the receiver as well as the arguments and the result.
+    /// </summary>
+    /// <typeparam name="TDeclaring">The declaring type — its <c>[EmitsAs]</c> placeholder when it is being generated.</typeparam>
+    /// <param name="function">Receives the handle.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> AsFunctionOn<TDeclaring>(out IFunctionOn<TDeclaring, TReturn> function)
+    {
+        ValidateReceiver(typeof(TDeclaring));
+        ValidateHandle();
+        function = new FunctionHandleOn0<TDeclaring, TReturn>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a receiver-typed, value-producing handle to this one-parameter method.</summary>
+    /// <typeparam name="TDeclaring">The declaring type.</typeparam>
+    /// <typeparam name="T1">The parameter's type.</typeparam>
+    /// <param name="function">Receives the handle.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> AsFunctionOn<TDeclaring, T1>(out IFunctionOn<TDeclaring, TReturn, T1> function)
+    {
+        ValidateReceiver(typeof(TDeclaring));
+        ValidateHandle(typeof(T1));
+        function = new FunctionHandleOn1<TDeclaring, TReturn, T1>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a receiver-typed, value-producing handle to this two-parameter method.</summary>
+    /// <typeparam name="TDeclaring">The declaring type.</typeparam>
+    /// <typeparam name="T1">The first parameter's type.</typeparam>
+    /// <typeparam name="T2">The second parameter's type.</typeparam>
+    /// <param name="function">Receives the handle.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> AsFunctionOn<TDeclaring, T1, T2>(
+        out IFunctionOn<TDeclaring, TReturn, T1, T2> function)
+    {
+        ValidateReceiver(typeof(TDeclaring));
+        ValidateHandle(typeof(T1), typeof(T2));
+        function = new FunctionHandleOn2<TDeclaring, TReturn, T1, T2>(Name);
+        return this;
+    }
+
+    /// <summary>Hands back a receiver-typed, value-producing handle to this three-parameter method.</summary>
+    /// <typeparam name="TDeclaring">The declaring type.</typeparam>
+    /// <typeparam name="T1">The first parameter's type.</typeparam>
+    /// <typeparam name="T2">The second parameter's type.</typeparam>
+    /// <typeparam name="T3">The third parameter's type.</typeparam>
+    /// <param name="function">Receives the handle.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> AsFunctionOn<TDeclaring, T1, T2, T3>(
+        out IFunctionOn<TDeclaring, TReturn, T1, T2, T3> function)
+    {
+        ValidateReceiver(typeof(TDeclaring));
+        ValidateHandle(typeof(T1), typeof(T2), typeof(T3));
+        function = new FunctionHandleOn3<TDeclaring, TReturn, T1, T2, T3>(Name);
+        return this;
+    }
+
+    #endregion
 }

@@ -434,6 +434,70 @@ placeholder — a type from a shared library, say.
 One limit stated rather than papered over: static calls are not modelled, and
 `AsCallable` says so instead of emitting instance syntax on a static method.
 
+### Computed values
+
+A value need not be a name or a constant. `Value.New` and `Invoke` produce one from
+a constructor or a method that returns something:
+
+```csharp
+var file = SourceFile.InNamespace("MyApp");
+
+var widget = file.Class("Widget");
+widget.DefineConstructor(AccessModifier.Public)
+    .WithParameter<string>("label", out _)
+    .AsConstructable<WidgetPh, string>(out var newWidget);
+widget.DefineMethod<int>("Measure")
+    .WithParameter<string>("text", out _)
+    .AsFunction<string>(out var measure);
+
+var owner = file.Class("Owner");
+var current = owner.DefineProperty<WidgetPh>("Current");
+var size = owner.DefineField<int>("_size");
+
+owner.DefineConstructor(AccessModifier.Public)
+    .WithParameter<string>("label", out var label)
+    .Assign(current, Value.New(newWidget, label))
+    .Assign(size, current.Invoke(measure, label));
+```
+
+```csharp
+public Owner(string label)
+{
+    Current = new MyApp.Widget(label);
+    _size = Current.Measure(label);
+}
+```
+
+The constructed type is a type reference like any other, so it is fully qualified by
+default. `SimplifyTypeNames()` shortens it — except here, where the file declares its
+own `Widget`, so the short name would bind to that declaration instead.
+
+`AsConstructable` is `AsCallable` for constructors — it validates the asserted
+signature against the declared parameters and pairs the type argument with the
+declaring type, so `Value.New` gives back an `IValue<WidgetPh>` and assigning it to
+the wrong property is a compile error. `AsFunction` is a separate handle family
+because `IMethod<T1…>` asserts *argument* types and so cannot say what a call
+produces; `TResult` comes from `DefineMethod<T>` rather than being asserted, so it
+can't disagree with the declared return type. `AsFunctionOn` also checks the
+receiver, through `InvokeOn`.
+
+Values compose by nesting — `Call(current, take, current.Invoke(measure, name))` —
+and anything nested inside still gets shadow-qualified.
+
+The line this stops at is deliberate and stated as a rule, because the next feature
+always looks cheap too: **values are produced, never combined.** Four producers — a
+reference, a constant, `new T(…)`, a call's result — and nothing that joins two
+values. No `a + b`, no `a == b`, no conditional. A constructor and a method each have
+a declaration to check an asserted shape against, which is machinery this library
+already has; `a + b` has none, so checking it would mean reimplementing C#'s
+conversion rules. Branching and arithmetic stay raw text.
+
+Two things that follow from the split, rather than being extra rules: `Assign`'s
+*target* and `ThrowIfNull` still take an `IReference<T>`, because you cannot assign
+to a call's result and `nameof` cannot see one. And a call's receiver is a reference
+too, so `Factory.Create().Configure()` isn't expressible — that shape wants a named
+local, which costs one statement and keeps generated code flat.
+
 ### Files, and using directives
 
 `NamespaceBuilder.Get(ns).Class(name)` gives you a type in a file of its own. To

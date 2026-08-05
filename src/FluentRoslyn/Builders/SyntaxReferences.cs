@@ -15,10 +15,10 @@ namespace FluentRoslyn.Builders;
 /// </summary>
 internal static class SyntaxReferences
 {
-    /// <summary>Builds <c>target = value;</c> from two references of the same type.</summary>
+    /// <summary>Builds <c>target = value;</c> from a reference and a value of its type.</summary>
     internal static StatementSyntax Assignment<T>(
         IReference<T> target,
-        IReference<T> value,
+        IValue<T> value,
         IReadOnlyCollection<IParameter> parameters,
         bool inStaticContext,
         string context)
@@ -41,7 +41,7 @@ internal static class SyntaxReferences
     internal static StatementSyntax Invocation(
         IReference target,
         object method,
-        IReference[] arguments,
+        IValue[] arguments,
         IReadOnlyCollection<IParameter> parameters,
         bool inStaticContext,
         string context)
@@ -61,11 +61,11 @@ internal static class SyntaxReferences
                     Argument(Expression(a, parameters, inStaticContext, context)))))));
     }
 
-    /// <summary>Builds <c>target op= value;</c> from two references of the same type.</summary>
+    /// <summary>Builds <c>target op= value;</c> from a reference and a value of its type.</summary>
     internal static StatementSyntax CompoundAssignment<T>(
         IReference<T> target,
         SyntaxKind kind,
-        IReference<T> value,
+        IValue<T> value,
         IReadOnlyCollection<IParameter> parameters,
         bool inStaticContext,
         string context)
@@ -190,7 +190,7 @@ internal static class SyntaxReferences
     /// reference position.
     /// </summary>
     internal static StatementSyntax Return(
-        IReference? value,
+        IValue? value,
         IReadOnlyCollection<IParameter> parameters,
         bool inStaticContext,
         string context)
@@ -205,7 +205,7 @@ internal static class SyntaxReferences
     // there, refuse rather than emit the wrong thing. Applied to every reference
     // position: assignment targets and values, call receivers and arguments.
     private static ExpressionSyntax Expression(
-        IReference reference,
+        IValue value,
         IReadOnlyCollection<IParameter> parameters,
         bool inStaticContext,
         string context)
@@ -213,10 +213,21 @@ internal static class SyntaxReferences
         // A path -- `a.b`, `a[i]` -- qualifies at its root and nowhere else: only the
         // leading name can be shadowed by a parameter, since everything after the first
         // dot binds in the target's type. Recursion covers a chain of any depth.
-        if (reference is IReferencePath path)
+        if (value is IReferencePath path)
             return path.Compose(
                 Expression(path.Target, parameters, inStaticContext, context),
                 index => Expression(index, parameters, inStaticContext, context));
+
+        // A computed value -- `new T(args)`, a call's result -- has no name to shadow, but
+        // the values nested inside it do, so it resolves them through this same helper.
+        if (value is IComputedValue computed)
+            return computed.Build(nested => Expression(nested, parameters, inStaticContext, context));
+
+        if (value is not IReference reference)
+            throw new ArgumentException(
+                $"{context} was given an IValue that this library did not create. Values come from " +
+                "references and from the producers in the fluent API; an outside implementation " +
+                "carries no expression to emit.", nameof(value));
 
         var identifier = IdentifierName(reference.Name);
 
