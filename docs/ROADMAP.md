@@ -45,8 +45,8 @@ them, not speculatively).
   API docs, CI is green, and the inheritance modifiers are in.
 - **#5, #6, #7 and #10 are done** — usings, async methods, nested types, and doc
   comments on generated output. That clears every Medium-value item.
-- **Every item on this roadmap is now done.** The list is kept as a record of
-  what was built and why.
+- **Every item in the table above is done.** The list is kept as a record of
+  what was built and why. Work not yet started is in **Planned**, below.
 - **New work should come from a real generator's needs**, not from a
   speculative list. #14 is the first item added that way: writing a constructor
   by hand made it obvious that `AddStatement("Name = name;")` is the one place
@@ -60,6 +60,12 @@ them, not speculatively).
   metadata is immutable once pushed, and the nuget.org policy is keyed to the
   workflow's *file name*, so renaming `release.yml` breaks publishing until the
   policy is updated.
+
+## Planned
+
+| # | Item | Category | Value | Effort | Notes |
+|---|------|----------|:---:|:---:|-------|
+| 27 | **Computed values** — `new T(args)` and call results | Feature | High | High | **Designed, not built** — see [`DESIGN-computed-values.md`](DESIGN-computed-values.md). Closes the last structural limit from the statement design: today only a name or a constant can be a value, so construction and call results are raw text. Crosses the expression-grammar line deliberately, under a stated rule — **values are produced, never combined** — which admits `new T(…)` and a call's result and still excludes every operator, comparison and conditional. Needs `IValue<T>` above `IReference<T>`, `AsConstructable`, and a return-carrying handle family (`AsFunction`), because `IMethod<T1…>` asserts argument types only and so cannot say what a call produces. |
 
 ## Deliberate decisions (not gaps)
 
