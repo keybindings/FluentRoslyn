@@ -510,6 +510,33 @@ public class MethodBuilder : MethodBuilderBase<MethodBuilder>
         AddReturn(null);
         return this;
     }
+
+    /// <summary>
+    /// Appends <c>return value;</c> for a method whose return type was set by name —
+    /// <c>Returns(string)</c> or <c>Returns(builder)</c>.
+    /// </summary>
+    /// <remarks>
+    /// Unchecked against the return type, and it cannot be otherwise: a return type given
+    /// as text has no <c>T</c> to match a value against. That is the whole difference
+    /// between this and <c>MethodBuilder&lt;TReturn&gt;.Return</c>, and it is why this
+    /// takes an untyped <see cref="IValue"/> — the values that reach it are the ones that
+    /// could not be typed either. What it still buys over <c>AddStatement</c> is built
+    /// syntax and names that come from the builders that declared them.
+    /// </remarks>
+    /// <param name="value">The value to return, e.g. <c>This()</c> or <c>Value.NewOfType(…)</c>.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder Return(IValue value)
+    {
+        if (value is null) throw new ArgumentNullException(nameof(value));
+
+        if (ReturnsVoid)
+            throw new InvalidOperationException(
+                $"Method '{Name}' returns void, so it cannot return a value. " +
+                "Set a return type with Returns first, or use DefineMethod<T>.");
+
+        AddReturn(value);
+        return this;
+    }
 }
 
 /// <summary>

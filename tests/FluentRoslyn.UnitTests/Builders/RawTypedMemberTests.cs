@@ -88,14 +88,21 @@ public class RawTypedMemberTests
         builder.ToString().Should().Contain("public PersonBuilder(global::Consumer.Models.Person seed)");
     }
 
-    // The cost of the escape hatch, asserted rather than merely documented: there is no
-    // T to check against, so a raw-typed field is deliberately not a reference and
-    // cannot reach Assign, Return, or anything else on the typed surface.
+    // The cost of the escape hatch, asserted rather than merely documented. A raw-typed
+    // field is a named member, so it is an untyped IReference — that is what lets it be
+    // an argument to Value.NewOfType and be shadow-qualified. What it is not is an
+    // IReference<T>: there is no T to check against, so the typed surface — Assign,
+    // Call, ThrowIfNull — cannot reach it, and every one of those needs IReference<T>.
     [TestMethod]
-    public void ARawTypedField_IsNotAReference()
+    public void ARawTypedField_IsAnUntypedReferenceOnly()
     {
-        typeof(RawFieldBuilder).Should().NotBeAssignableTo<IReference>();
-        typeof(FieldBuilder<int>).Should().BeAssignableTo<IReference>();
+        typeof(RawFieldBuilder).Should().BeAssignableTo<IReference>();
+        typeof(RawFieldBuilder).Should().NotBeAssignableTo(typeof(IReference<>));
+
+        typeof(RawFieldBuilder).GetInterfaces()
+            .Should().NotContain(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IReference<>));
+
+        typeof(FieldBuilder<int>).Should().BeAssignableTo<IReference<int>>();
     }
 
     [TestMethod]

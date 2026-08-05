@@ -164,6 +164,11 @@ internal static class SyntaxReferences
         // for `nameof(items[0])`, CS8082 for `nameof(items[0].Length)`. Emitting it
         // would break the consumer's build, so refuse to emit rather than produce
         // source that cannot compile.
+        // `nameof(this)` is not legal C#, and a null guard on `this` is meaningless anyway.
+        if (value is IThisReference)
+            throw new InvalidOperationException(
+                $"{context} cannot guard 'this': it is never null, and nameof(this) is not legal C#.");
+
         if (value is IReferencePath { CanNameOf: false })
             throw new InvalidOperationException(
                 $"{context} cannot guard '{value.Name}': the guard needs nameof, and C# rejects " +
@@ -217,6 +222,19 @@ internal static class SyntaxReferences
             return path.Compose(
                 Expression(path.Target, parameters, inStaticContext, context),
                 index => Expression(index, parameters, inStaticContext, context));
+
+        // `this` is a keyword, not an identifier, and nothing can shadow it -- but it
+        // does not exist at all in a static context, where emitting it would produce
+        // source the consumer cannot compile.
+        if (value is IThisReference)
+        {
+            if (inStaticContext)
+                throw new InvalidOperationException(
+                    $"{context} is static, so it has no 'this'. Reference the member directly, " +
+                    "or make the member non-static.");
+
+            return ThisExpression();
+        }
 
         // A computed value -- `new T(args)`, a call's result -- has no name to shadow, but
         // the values nested inside it do, so it resolves them through this same helper.

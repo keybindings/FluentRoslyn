@@ -50,6 +50,36 @@ internal sealed class ConstructionValue<T> : IValue<T>, IComputedValue
 }
 
 /// <summary>
+/// <c>new T(arguments)</c> where <c>T</c> is named by text and nothing about the
+/// constructor is checked — for a type the generator did not build and cannot name as a
+/// type argument, above all one discovered from the consumer's compilation.
+/// </summary>
+/// <remarks>
+/// Produces an untyped <see cref="IValue"/>, so it reaches only the positions that
+/// accept a bare value and cannot slip into a typed one. The gain over a raw statement
+/// is real but bounded: the syntax is built rather than concatenated, and the arguments
+/// are references whose names come from the builders that declared them, so a name
+/// cannot drift between the declaration and the use.
+/// </remarks>
+internal sealed class RawConstructionValue : IValue, IComputedValue
+{
+    private readonly TypeNameBuilder _type;
+    private readonly IValue[] _arguments;
+
+    internal RawConstructionValue(string typeName, IValue[] arguments)
+    {
+        _type = TypeNameBuilder.ForRawName(typeName);
+
+        if (arguments.Any(a => a is null)) throw new ArgumentNullException(nameof(arguments));
+        _arguments = arguments;
+    }
+
+    public ExpressionSyntax Build(Func<IValue, ExpressionSyntax> qualify)
+        => ObjectCreationExpression(_type.BuildTypeSyntax())
+            .WithArgumentList(ArgumentList(SeparatedList(_arguments.Select(a => Argument(qualify(a))))));
+}
+
+/// <summary>
 /// <c>target.Method(arguments)</c> used as a value. Identical in syntax to the statement
 /// form, which is why both route through <see cref="SyntaxReferences"/>'s one builder.
 /// </summary>

@@ -35,6 +35,47 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 
     internal override bool HasTypeParameters => _generics.Any;
 
+    /// <summary>
+    /// A reference to <c>this</c> inside a body of this type, untyped — for a type with
+    /// no <c>[EmitsAs]</c> placeholder to name it, which is every type a generator
+    /// discovers rather than declares.
+    /// </summary>
+    /// <remarks>
+    /// Untyped means it reaches only the positions that accept a bare value, above all
+    /// <c>Return</c> on a method with a raw return type. Use <see cref="This{T}"/> when a
+    /// placeholder exists and the typed surface is wanted. Using either from a static
+    /// member is rejected at emission, because there is no <c>this</c> to emit.
+    /// </remarks>
+    /// <returns>A reference to <c>this</c>.</returns>
+    public IReference This() => new ThisReference();
+
+    /// <summary>
+    /// A reference to <c>this</c> inside a body of this type, typed through the
+    /// declaring type's <c>[EmitsAs]</c> placeholder — so it composes with the typed
+    /// surface as a call receiver, an argument, or an assigned value.
+    /// </summary>
+    /// <remarks>
+    /// <typeparamref name="T"/> is paired with this type by the rule <c>AsCallableOn</c>
+    /// uses and for the same reason: a placeholder's emitted name and the declaring
+    /// type's qualified name are the same string, because that is what both become in
+    /// the generated source. A mismatch throws rather than emitting a <c>this</c> that
+    /// claims to be something else.
+    /// </remarks>
+    /// <typeparam name="T">This type, named by its placeholder.</typeparam>
+    /// <returns>A typed reference to <c>this</c>.</returns>
+    public IReference<T> This<T>()
+    {
+        var asserted = TypeNameBuilder.New<T>().ToString();
+        var declared = BuildTypeSyntax().ToString();
+
+        if (!string.Equals(asserted, declared, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"Type '{declared}' cannot hand back a 'this' typed as '{asserted}'. The type " +
+                "argument must name this type — its [EmitsAs] placeholder when it is being generated.");
+
+        return new ThisReference<T>();
+    }
+
     #region Members
 
     /// <summary>Declares a field of type <typeparamref name="T"/>, private by default.</summary>

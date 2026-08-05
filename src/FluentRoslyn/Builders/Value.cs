@@ -1,3 +1,4 @@
+using System;
 using FluentRoslyn.Abstractions;
 
 namespace FluentRoslyn.Builders;
@@ -13,6 +14,25 @@ namespace FluentRoslyn.Builders;
 public static class Value
 {
     private const string Context = "Value.New";
+
+    /// <summary>
+    /// Produces <c>new T(arguments)</c> for a type named by text — for a type the
+    /// generator did not build, above all one discovered from the consumer's compilation
+    /// as an <c>ISymbol</c>, which has no <c>ConstructorBuilder</c> to take a handle from.
+    /// </summary>
+    /// <remarks>
+    /// Nothing about the constructor is checked: the generator has no signature to check
+    /// against. The result is an untyped <see cref="IValue"/>, so it reaches only the
+    /// positions that accept a bare value and cannot pass for a checked one. What it does
+    /// buy over a raw statement is that the syntax is built rather than concatenated, and
+    /// the argument names come from the builders that declared them rather than from a
+    /// second piece of string formatting that can drift.
+    /// </remarks>
+    /// <param name="typeName">The type to construct, as C# text. Parsed, so a malformed name is rejected.</param>
+    /// <param name="arguments">The constructor arguments, in order.</param>
+    /// <returns>The construction, as an untyped value.</returns>
+    public static IValue NewOfType(string typeName, params IValue[] arguments)
+        => new RawConstructionValue(typeName, arguments ?? throw new ArgumentNullException(nameof(arguments)));
 
     /// <summary>Produces <c>new T()</c>.</summary>
     /// <typeparam name="TDeclaring">The type being constructed, taken from the handle.</typeparam>

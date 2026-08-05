@@ -99,12 +99,16 @@ public class FieldBuilder<T> : FieldBuilderBase<FieldBuilder<T>>, IReference<T>,
 /// <c>AddStatement</c>. Everything structural — the declaration, modifiers, attributes,
 /// docs — is still built rather than concatenated.
 /// </remarks>
-public sealed class RawFieldBuilder : FieldBuilderBase<RawFieldBuilder>
+public sealed class RawFieldBuilder : FieldBuilderBase<RawFieldBuilder>, IReference, IReferenceInfo
 {
     internal RawFieldBuilder(string name, string typeName, AccessModifier accessModifier)
         : base(TypeNameBuilder.ForRawName(typeName), name, accessModifier)
     {
     }
+
+    ReferenceKind IReferenceInfo.Kind => ReferenceKind.Member;
+
+    bool IReferenceInfo.IsStaticMember => IsStatic;
 }
 
 /// <summary>

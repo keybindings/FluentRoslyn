@@ -315,6 +315,30 @@ than concatenated: modifiers, attributes, docs, and the declaration itself.
 The two string arguments could be transposed, which no compiler can catch — so the
 name is validated as a C# identifier, and a qualified type name isn't one.
 
+`this` and construction work here too, so a fluent setter and a `Build()` need no raw
+statements:
+
+```csharp
+builder.DefineMethod("Build")
+    .Returns("global::MyApp.Order")
+    .Return(Value.NewOfType("global::MyApp.Order", customerField, shipToField));
+```
+
+```csharp
+public global::MyApp.Order Build()
+{
+    return new global::MyApp.Order(_customer, _shipTo);
+}
+```
+
+Both are deliberately untyped — a consumer's constructor has no signature the generator
+can check against, and `This()` has no `T` unless a placeholder names it (`This<T>()`
+does, and rejoins the typed surface). The gain over a raw statement is bounded and
+worth being precise about: the syntax is *built* rather than concatenated, and the
+argument names come from the field builders that declared them rather than from a
+second round of string formatting that can drift. `This()` also picks up the guards for
+free — using it from a static member is refused, since there is no `this` to emit.
+
 A complete symbol-driven generator is in
 [`examples/`](https://github.com/keybindings/FluentRoslyn/tree/main/examples): it reads
 the consumer's constructors and emits a fluent builder for each marked type.
