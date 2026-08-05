@@ -33,7 +33,7 @@
          FluentRoslyn is also what someone searching for this library actually types,
          so the assembly, namespaces, repo, and package all use it. -->
     <PackageId>FluentRoslyn</PackageId>
-    <Version>0.1.0-preview.2</Version>
+    <Version>0.1.0-preview.3</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
@@ -47,7 +47,9 @@
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>Adds Source Link and a symbol package, so stepping into this library in a debugger lands on the real source rather than decompiled IL. Builds from CI are now deterministic. No API changes from 0.1.0-preview.1.
+    <PackageReleaseNotes>BREAKING: a generated file is now its own builder. SourceFile.InNamespace("MyApp") owns the using directives, SimplifyTypeNames(), BlockScopedNamespace(), WithIndentation() and WithLineEndings() — those five moved off the type builders, because they describe a file rather than a type. Several types can now share one file, and simplification decides ambiguity across all of them, which is the only way that decision can be correct when types share a file. NamespaceBuilder.Get(ns).Class(name) still works and opens a single-type file, so the common path is unchanged.
+
+Adds Source Link and a symbol package, so stepping into this library in a debugger lands on the real source rather than decompiled IL. Builds from CI are deterministic.
 
 First preview.
 
