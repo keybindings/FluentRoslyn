@@ -209,22 +209,31 @@ exists or can.
   instance syntax. Modelling them needs a type-level receiver
   (`Type.Method(args)`) rather than a reference, which is a different shape
   from everything in #17–#18.
-- **Compile-checked templates.** A meta-generator that runs on generator
-  projects: the author writes real C# — compiled, type-checked, refactorable —
-  and the meta-generator lifts it into the emission calls that reproduce it,
-  with marked holes for the varying parts. Legal because a generator project is
-  an ordinary library at its own build time — verified empirically twice with a
-  three-level chain (meta-generator → generator → app), all netstandard2.0
-  where required. The second run closed the remaining doubt: the meta-generator
-  used `RegisterSourceOutput` (the normal generation pass, not the special
-  post-initialization hook) and *read the generator project's own syntax trees*,
-  discovering a class name and embedding it in code the generator then consumed.
-  So a generator can genuinely analyse a generator, not merely emit blind at a
-  privileged moment. The ns2.0 rule constrains what a generator *is*, not what it
-  runs *on*. The hard ceiling: the consumer's types exist only when the
-  generator runs, so template holes stay unchecked at the seams — "type safe,
-  almost" is the honest maximum. Build it when a real generator's needs demand
-  it, per the rule above.
+- **Compile-checked templates — now designed, see
+  [`DESIGN-templates.md`](DESIGN-templates.md).** A meta-generator that runs on
+  generator projects: the author writes real C# — compiled, type-checked,
+  refactorable — and the meta-generator lifts it into the emission calls that
+  reproduce it, with marked holes for the varying parts. Legal because a
+  generator project is an ordinary library at its own build time, and re-measured
+  in the design: the meta-generator uses `RegisterSourceOutput` (the normal
+  generation pass, not the privileged post-initialization hook) and reads the
+  *generator project's own syntax trees*; the generator consumes that generated
+  code and emits into the app, which runs correctly. The ns2.0 rule constrains
+  what a generator *is*, not what it runs *on*, and generators not seeing each
+  other's output applies within *one* compilation — these are two.
+
+  The measurement that justifies the feature rather than merely permitting it:
+  breaking a template gives **CS0103, build FAILED, in the generator author's own
+  compile** — an error that stops the build, where the raw-string form it replaces
+  fails as CS8785, a *warning*, in the *consumer's* build. Right side of all three
+  asymmetries at once.
+
+  The hard ceiling, unchanged and unfixable: a hole is filled when the generator
+  runs, with an expression naming the consumer's types, which do not exist when the
+  template compiles. So the body and the hole's declared type are checked; whether
+  the substituted expression is valid in the consumer's compilation is not. "Type
+  safe, almost" is the honest maximum, and the answer is to keep holes narrow and
+  few rather than to pretend otherwise.
 
 ## Known constraints
 
