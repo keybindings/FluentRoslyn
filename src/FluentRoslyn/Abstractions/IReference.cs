@@ -7,7 +7,12 @@ namespace FluentRoslyn.Abstractions;
 /// </summary>
 public interface IReference
 {
-    /// <summary>The identifier as it will be emitted.</summary>
+    /// <summary>
+    /// The identifier as it will be emitted. A reference composed from another — a
+    /// member path or an element access, built by <see cref="Builders.References"/> —
+    /// has no single identifier, and reports the whole access instead:
+    /// <c>Config.Label</c>, <c>_items[0]</c>.
+    /// </summary>
     string Name { get; }
 }
 

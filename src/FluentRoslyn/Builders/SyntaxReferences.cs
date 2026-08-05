@@ -160,6 +160,15 @@ internal static class SyntaxReferences
     {
         if (value is null) throw new ArgumentNullException(nameof(value));
 
+        // `nameof` rejects an element access anywhere in the chain -- measured: CS8081
+        // for `nameof(items[0])`, CS8082 for `nameof(items[0].Length)`. Emitting it
+        // would break the consumer's build, so refuse to emit rather than produce
+        // source that cannot compile.
+        if (value is IReferencePath { CanNameOf: false })
+            throw new InvalidOperationException(
+                $"{context} cannot guard '{value.Name}': the guard needs nameof, and C# rejects " +
+                "an element access inside nameof. Guard the collection itself, or use AddStatement.");
+
         var expression = Expression(value, parameters, inStaticContext, context);
 
         var nameOf = InvocationExpression(
@@ -201,6 +210,14 @@ internal static class SyntaxReferences
         bool inStaticContext,
         string context)
     {
+        // A path -- `a.b`, `a[i]` -- qualifies at its root and nowhere else: only the
+        // leading name can be shadowed by a parameter, since everything after the first
+        // dot binds in the target's type. Recursion covers a chain of any depth.
+        if (reference is IReferencePath path)
+            return path.Compose(
+                Expression(path.Target, parameters, inStaticContext, context),
+                index => Expression(index, parameters, inStaticContext, context));
+
         var identifier = IdentifierName(reference.Name);
 
         if (!IsMember(reference) || !IsShadowed(reference.Name, parameters))

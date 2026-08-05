@@ -37,13 +37,12 @@ them, not speculatively).
 | ~~25~~ | ~~**`SourceFile` — a file-level builder**~~ | Feature | High | High | **Done** (2026-08-02). A top-level type used to *be* a file, so two types could not share one, and 27 public methods describing file concerns were duplicated across six type builders. `SourceFile` owns usings, simplification, namespace style, and formatting; type builders lost all of it. **Breaking**, deliberately, while the version still says preview. `TypeNameSimplifier` needed no changes — it already worked on the whole compilation unit, so joint ambiguity analysis across types in one file came free. See [`DESIGN-source-files.md`](DESIGN-source-files.md). |
 | ~~24~~ | ~~**Compound assignment**~~ | Feature | Med | Low | **Done** (2026-08-02). `Assign(target, op, value)` and the literal form cover the ten arithmetic and bitwise operators via an `AssignmentOperator` enum — one method pair rather than ten. `??=` is separate (`AssignIfNull` / `AssignIfNullLiteral`) because it needs a nullable target, a constraint the shared signature cannot state. Needs no expression grammar: the operands are still references and literals. |
 | ~~18~~ | ~~**Receiver-typed handles**~~ | Feature | Med | Low | **Done** (2026-08-02). `AsCallableOn<TDeclaring, …>` yields `IMethodOn<TDeclaring, …>`, and `CallOn` rejects a receiver of the wrong type at compile time. Pairing needs no registry: a placeholder's emitted name and the declaring type's qualified name are the same string. Separate interface *and* method family — see the diagnostics note below. |
+| ~~26~~ | ~~**Reference paths**~~ | Feature | High | Low | **Done** (2026-08-05). `Member`/`MemberNamed`/`Item` build one `IReference<T>` from another, closing the assignment *target* column: before this only a simple name could be assigned to, so `this.a.b = x;` and `arr[i] = x;` had to be raw text. Every position that already takes a reference accepts a path with no new overload, because a path *is* one. Extends references, not expressions — see the note below. |
 
 ## Reading of the table
 
 - **#1–#4 are done** — the whole shippable story. The package builds with full
-  API docs, CI is green, and the inheritance modifiers are in. The one remaining
-  step to actual availability is publishing to nuget.org (needs an API key and a
-  decision on whether 0.1.0 goes out as a preview).
+  API docs, CI is green, and the inheritance modifiers are in.
 - **#5, #6, #7 and #10 are done** — usings, async methods, nested types, and doc
   comments on generated output. That clears every Medium-value item.
 - **Every item on this roadmap is now done.** The list is kept as a record of
@@ -52,12 +51,15 @@ them, not speculatively).
   speculative list. #14 is the first item added that way: writing a constructor
   by hand made it obvious that `AddStatement("Name = name;")` is the one place
   the library still lets you emit silently wrong code.
-- **Publishing is the remaining step.** The package is prepared as
-  `FluentRoslyn` version `0.1.0-preview.1` — the original name `Generatr` collides
-  with an unrelated database scaffolder on nuget.org, and ids are
-  case-insensitive. Pushing needs a nuget.org API key. Note that package
-  metadata is immutable once pushed, so settle the repository URL (i.e. any
-  GitHub account rename) *before* the first push.
+- **Publishing is done.** `FluentRoslyn` `0.1.0-preview.3` is live on nuget.org —
+  the original name `Generatr` collided with an unrelated database scaffolder,
+  and ids are case-insensitive. Releases go out hands-off through Trusted
+  Publishing (OIDC), so there is no API key to hold: bump `<Version>` and
+  `<PackageReleaseNotes>`, then push a `vX.Y.Z` tag and
+  `.github/workflows/release.yml` does the rest. Two things that bite: package
+  metadata is immutable once pushed, and the nuget.org policy is keyed to the
+  workflow's *file name*, so renaming `release.yml` breaks publishing until the
+  policy is updated.
 
 ## Deliberate decisions (not gaps)
 
@@ -73,6 +75,41 @@ These look like omissions but are choices:
   `CallOn<TDeclaring>` — the same diagnostic a mismatched `Assign` gives. The
   extra name buys an error that points at the actual problem.
 
+- **`MemberNamed<T>("x")` is named apart from `Member(handle)`**, for the third
+  time and the third instance of the same rule. The two would overload cleanly on
+  argument type (`string` versus `IReference<T>`), but the type parameter binds
+  differently — inferred from the handle, explicit-only from the string — so a
+  mismatch picks the wrong candidate to blame. Probed:
+  `config.Member<string>(intProperty)` under one name reports *"cannot convert
+  `PropertyBuilder<int>` to `string`"*, pointing at the overload the caller did not
+  mean. Under two names it reports *"cannot convert `PropertyBuilder<int>` to
+  `IReference<string>`"* — the actual disagreement. The name also carries the
+  meaning: `Member` derives the type, `MemberNamed` asserts it.
+
+- **A reference path is not an expression.** `Member`/`Item` compose a *location*
+  — they name where a value lives. Nothing about them evaluates, so there is no
+  operator, no precedence, and no ordering to model, which is what keeps #26 on
+  the near side of the expression-grammar line the statement design draws. The
+  test of whether a later addition belongs here is the same: does it name
+  something, or compute something?
+
+- **`Item` is typed by the container, not by assertion.** Overloads on
+  `IReference<T[]>`, `IReference<List<T>>` and `IReference<Dictionary<TKey, TValue>>`
+  derive the element type from the receiver, so it cannot be asserted wrongly. The
+  cost is that an interface-typed container (`IReadOnlyDictionary<,>`) and any
+  custom indexer are not covered, because `IReference<T>` is invariant and the
+  library has no way to know an arbitrary type's indexer signature. Deliberate: a
+  general `Item<TItem>(this IReference target, …)` would accept *any* receiver and
+  silently succeed on the mismatch that the typed overloads catch, which is the
+  same trap as an untyped `Call` overload. Those cases stay with `AddStatement`.
+
+- **`ThrowIfNull` refuses an element path.** `nameof` rejects an element access
+  anywhere in the chain — measured as CS8081 for `nameof(items[0])` and CS8082 for
+  `nameof(items[0].Length)` — so the guard would emit source that fails the
+  *consumer's* build. Throwing at generation time is the worse kind of check by
+  this project's own argument, but the alternative here is not a compile-time
+  check; it is emitting code that cannot compile.
+
 - **Fully-qualified type names by default.** Correct without any collision
   analysis. `SimplifyTypeNames()` (#5) opts into shortened names plus imports;
   it stays opt-in so the safe behaviour is what you get for free.
@@ -87,8 +124,10 @@ These look like omissions but are choices:
   time, so they cannot silently emit broken source. A fluent expression tree is
   a much larger project and may never be worth it. **Narrowed by #14:**
   assignment now has a typed form (`Assign`), because it was the one statement
-  common enough — and error-prone enough — to justify the machinery. Every other
-  statement is still raw text.
+  common enough — and error-prone enough — to justify the machinery. **Narrowed
+  again by #26:** the typed form now reaches member paths and indexed elements, so
+  what is left to raw text on the assignment side is genuinely computed values.
+  Branching, loops and operators are all still raw.
 - **`Parameter<T>` / `IParameter` stay internal.** Parameters are still added
   only via `WithParameter<T>(name)`; the #14 overload hands back an
   `IReference<T>`, which is a name and a phantom type, not the parameter builder.

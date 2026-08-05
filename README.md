@@ -86,8 +86,9 @@ code it produces.
 - Output: 4-space indentation, `\n` line endings (byte-identical across
   operating systems)
 
-> **Status:** packaged as `FluentRoslyn` but not yet pushed to nuget.org —
-> reference the project directly for now. See [What's next](#whats-next).
+> **Status:** published as [`FluentRoslyn`](https://www.nuget.org/packages/FluentRoslyn)
+> on nuget.org, currently `0.1.0-preview.3`. Breaking changes are still on the table
+> while the version says preview. See [What's next](#whats-next).
 
 ## Building blocks
 
@@ -239,6 +240,53 @@ library exists to rule out.
 C# generic constraints can't express "implicitly convertible to", and a looser
 rule would let the mismatch it exists to catch slip through. Use `AddStatement`
 for those.
+
+### Reference paths
+
+A reference need not be a simple name. `Member` and `Item` build one reference out
+of another, so `this.a.b` and `arr[i]` can be assigned to as well:
+
+```csharp
+var widget = NamespaceBuilder.Get("MyApp").Class("Widget");
+var config = widget.DefineField<Uri>("_config");
+var items  = widget.DefineField<string[]>("_items");
+var byName = widget.DefineField<Dictionary<string, string>>("_byName");
+
+widget.DefineMethod("Configure")
+    .WithParameter<string>("host", out var host)
+    .WithParameter<int>("index",   out var index)
+    .Assign(config.MemberNamed<string>("Host"), host)
+    .Assign(items.Item(index), host)
+    .Assign(byName.Item("default"), host);
+```
+
+```csharp
+public void Configure(string host, int index)
+{
+    _config.Host = host;
+    _items[index] = host;
+    _byName["default"] = host;
+}
+```
+
+The result is an ordinary `IReference<T>`, so every position that already took one
+accepts a path with no new overload — assignment on either side, `Call` receivers
+and arguments, `Return`, `ThrowIfNull`. Paths chain, and when a parameter shadows
+the leading name only *that* is qualified — `this.config.Host` — because
+everything after the first dot binds in the target's type and can't be shadowed.
+
+`Item` is typed by the container — `IReference<T[]>`, `IReference<List<T>>` and
+`IReference<Dictionary<TKey, TValue>>` — so the element type can't be asserted
+wrongly and a dictionary key of the wrong type is a compile error. Members come in
+two forms, and the distinction is the same one `Assign`/`AssignLiteral` draws:
+`Member(labelProperty)` takes the name *and* the type from the member's own
+definition, while `MemberNamed<string>("Host")` asserts both, for a member of a
+type the generator has no handle to.
+
+This extends *references*, not expressions. A path names a location; it computes
+nothing, so there is still no operator and no evaluation to model. One thing it
+cannot do: `ThrowIfNull` refuses an element access, because `nameof(items[0])` is
+not legal C# — so the guard would emit source the consumer's build rejects.
 
 ### Referencing generated types
 
@@ -463,8 +511,9 @@ references) entirely through the fluent API, plus the app that consumes them.
 
 ## What's next
 
-Feature-complete for common generator scenarios; the remaining work is
-packaging and long-tail language features. See
+Feature-complete for common generator scenarios and published; the remaining work
+is long-tail language features and the larger items sketched at the end of the
+roadmap. See
 [`docs/ROADMAP.md`](https://github.com/keybindings/FluentRoslyn/blob/main/docs/ROADMAP.md)
 for the prioritised list, plus the deliberate design decisions behind things
 that look like gaps (fully-qualified names, fixed formatting, raw-string
