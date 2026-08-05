@@ -537,6 +537,57 @@ per type, which is the only way it can be right when types share one.
 `WithUsing("System.Linq")` adds a directive explicitly, which is also how you
 shorten names inside raw expression strings.
 
+## Compile-checked templates
+
+Every escape hatch above is the same shape: a body the compiler never sees. The
+companion package [`FluentRoslyn.Templates`](https://www.nuget.org/packages/FluentRoslyn.Templates)
+closes that by inverting it — stop describing the body, and write it:
+
+```csharp
+using FluentRoslyn.Templates;
+
+internal static partial class Templates
+{
+    [Template]
+    public static int Add(int a, int b) => a + b;
+}
+```
+
+That is real C# in your generator project: the compiler checks it, IntelliSense
+completes it, and Rename refactors it. A *meta-generator* — a source generator that
+runs on your generator project — lifts it into the calls that reproduce it:
+
+```csharp
+public static MethodBuilder<int> EmitAdd(TypeBuilder target)
+    => target.DefineMethod<int>("Add")
+        .WithParameter<int>("a")
+        .WithParameter<int>("b")
+        .AsExpressionBody("a + b");
+```
+
+so your generator just says `Templates.EmitAdd(calc);` and gets an ordinary
+`MethodBuilder<int>` that composes with everything else.
+
+This is legal because a generator project is an ordinary library at *its own* build
+time. The `netstandard2.0` rule constrains what a generator **is** — it loads into the
+compiler process — not what it runs **on**; and generators not seeing each other's
+output applies within *one* compilation, while a meta-generator and its target are two.
+
+**What it buys, measured.** Rename `a` and you get `error CS0103` with a **failed
+build, in your own project**. The string form it replaces fails as CS8785 — a
+*warning*, in your *consumer's* build, which succeeds with the generated code silently
+missing. Types in the body are bound and emitted fully qualified, so a template using
+`StringBuilder` still compiles once it lands in a file with different usings.
+
+**The ceiling, stated plainly.** Templates today are fixed — no holes for varying
+parts yet. When holes arrive they will stay unchecked at the seams, because a hole is
+filled when the generator runs, with an expression naming the *consumer's* types, which
+do not exist when the template compiles. "Type safe, almost" is the honest maximum.
+A runnable three-project chain is in
+[`examples/`](https://github.com/keybindings/FluentRoslyn/tree/main/examples), and the
+reasoning is in
+[`docs/DESIGN-templates.md`](https://github.com/keybindings/FluentRoslyn/blob/main/docs/DESIGN-templates.md).
+
 ## Escape hatches
 
 Statement- and expression-bearing members take raw C# text, parsed into the

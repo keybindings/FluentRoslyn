@@ -1,0 +1,66 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+    <!-- This project *is* the analyzer, so nothing here is meant to be referenced
+         directly; the package puts the assembly under analyzers/ instead of lib/. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- An analyzer package carries no lib/ and must declare no dependencies: Roslyn is
+         supplied by the host. NU5128 is the "no lib for the declared framework" warning,
+         which is the intended shape here rather than a mistake. -->
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Debugging">
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>portable</DebugType>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package">
+    <PackageId>FluentRoslyn.Templates</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Authors>Cameron Lambert</Authors>
+    <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
+    <Description>Compile-checked templates for FluentRoslyn. A meta-generator that runs on your source-generator project: mark a method [Template] and its body is real, compiled, refactorable C# that the meta-generator lifts into the FluentRoslyn calls which reproduce it. Breaking a template is an error in your own build, not a CS8785 warning in your consumer's.</Description>
+    <PackageTags>roslyn;source-generator;codegen;code-generation;template;meta-generator;fluent;csharp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <DevelopmentDependency>true</DevelopmentDependency>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.9.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Release tracking for the FRT diagnostics; RS2008 requires it of analyzer projects. -->
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentRoslyn.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <!-- The analyzer itself. A generator loads from analyzers/dotnet/cs/. -->
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+
+</Project>

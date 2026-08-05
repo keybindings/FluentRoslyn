@@ -52,8 +52,26 @@ jobs:
             exit 1
           fi
 
+      # The three-level chain: the meta-generator lifts [Template] methods into builder
+      # calls at the *generator's* build time, the generator emits from them into the
+      # app, and the app runs. Nothing but running it proves the chain still works —
+      # a broken link mostly shows up as generated code silently missing.
+      - name: Run templates chain end-to-end
+        run: |
+          output=$(dotnet run --project examples/FluentRoslyn.Example.Templates.App -c Release --no-build)
+          echo "$output"
+          expected=$'Add: 5\nDescribe: Cart has 4 item(s)\nIsEmpty: True\nTag: [sale]'
+          if [ "$output" != "$expected" ]; then
+            echo "::error::Templates example output did not match."
+            echo "expected: $expected"
+            echo "actual:   $output"
+            exit 1
+          fi
+
       - name: Pack
-        run: dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts
+        run: |
+          dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts
+          dotnet pack src/FluentRoslyn.Templates/FluentRoslyn.Templates.csproj -c Release --no-build -o artifacts
 
       - name: Upload package
         uses: actions/upload-artifact@v7

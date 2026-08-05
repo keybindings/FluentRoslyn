@@ -1,8 +1,33 @@
 # Compile-checked templates — design
 
-**Status: proposed, 2026-08-06. Nothing is built in this repo.** The feasibility
-claims below are measured, not recalled — see [Measured](#measured), which records
-exactly what was run so it can be re-run.
+**Status: steps 1 and 2 built and shipped (2026-08-06); steps 3–5 still proposed.**
+The feasibility claims below are measured, not recalled — see
+[Measured](#measured) — and are now a CI regression test rather than a record: the
+three-level chain lives in `examples/FluentRoslyn.Example.Templates.*` and CI asserts
+on the app's output.
+
+**Built:** `FluentRoslyn.Templates`, a separate analyzer-only package. `[Template]`
+is injected as source, so nothing flows to a consumer. A fixed template — signature
+and expression body, no holes — lifts into `Emit…` methods generated into the other
+half of the containing `static partial` class. Four diagnostics (FRT001–FRT004)
+reject unsupported shapes rather than skipping them, because a skipped template
+compiles fine and fails later as a missing method.
+
+**One thing the design got wrong, found by building it.** The design said the body is
+lifted as text and treated that as benign. It is not: a body resolving `StringBuilder`
+through the *template file's* `using System.Text;` was emitted unqualified into a
+generated file carrying none of those usings, and failed the **consumer's** build with
+CS0246 — measured. The fix is a semantic-model rewrite that binds every type reference
+in the body to its fully qualified name, which is the same choice the builder API
+already makes everywhere (fully qualified is always correct; `SimplifyTypeNames()`
+opts into shortening). A residual limit remains and is not fixable this way:
+**extension-method invocations** still resolve through usings, so a body calling
+`.Where(…)` depends on the consumer importing `System.Linq`.
+
+**Still open, and the honest reason:** holes (steps 3–4) and statement bodies (step 5)
+are unbuilt. Per the roadmap's standing rule they should wait for a real generator to
+need them, and a template with no holes already delivers the whole compile-checking
+benefit.
 
 This is the largest item on the roadmap and the one the reference story has been
 leading toward. It is also the one most able to go wrong by being designed

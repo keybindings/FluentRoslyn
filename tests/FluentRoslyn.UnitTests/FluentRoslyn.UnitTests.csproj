@@ -20,6 +20,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FluentRoslyn\FluentRoslyn.csproj" />
+    <!-- Referenced as an ordinary library, not an analyzer: these tests drive the
+         meta-generator directly through CSharpGeneratorDriver rather than letting the
+         compiler run it, so they can assert on the lifted source and the diagnostics. -->
+    <ProjectReference Include="..\..\src\FluentRoslyn.Templates\FluentRoslyn.Templates.csproj" />
   </ItemGroup>
 
 </Project>
