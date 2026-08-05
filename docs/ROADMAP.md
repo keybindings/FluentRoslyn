@@ -63,6 +63,27 @@ them, not speculatively).
   workflow's *file name*, so renaming `release.yml` breaks publishing until the
   policy is updated.
 
+## Planned — pulled by a real generator
+
+Everything below came from **writing a generator, not from a feature list**, which is
+the standing rule working as intended. The generator attempted (2026-08-06) was a
+classic one: `[GenerateBuilder]` on a consumer's class, emitting a fluent builder from
+that class's constructor — one `With…` setter per parameter and a `Build()` that calls
+the constructor. It is the first example written against the **consumer's** types
+rather than a shape the generator invented, and it did not get far.
+
+| # | Item | Category | Value | Effort | Notes |
+|---|------|----------|:---:|:---:|-------|
+| 29 | **Members typed by name** — `DefineField(typeName, name)`, `WithParameter(typeName, name)` | Feature | **High** | Low | **The blocker.** A generator driven by consumer symbols has an `ISymbol`, never a CLR `T`. `DefineField<T>` and `WithParameter<T>` are `<T>`-only, so a field or parameter of a consumer's type **cannot be declared at all** — the generator has to abandon the fluent API and hand-build syntax. Note the asymmetry that makes this an oversight rather than a decision: `Returns(string)` already exists and is documented as the escape hatch for exactly this case. Fields and parameters simply never got the same overload. |
+| 30 | **`this` as a reference** | Feature | Med | Low | A fluent setter ends `return this;`. `Returns(builder)` can state the *type*, but there is no `IReference` for `this`, so the return is raw text. Small and self-contained. |
+| 31 | **Constructing a consumer's type** | Feature | Med | Med | `Value.New` needs an `IConstructor<T>` from `AsConstructable`, which derives from a `ConstructorBuilder`. A consumer's constructor has no builder, so `Build()`'s `new Person(a, b)` is raw text. [`DESIGN-computed-values.md`](DESIGN-computed-values.md) named this limit and deferred the choice pending a real need; this is that need, and it argues for the reflected/symbol-derived handle it listed as option (b). |
+
+**The pattern across all three:** the typed surface is complete for types the generator
+*builds* and for types it can name as `<T>`, and absent for types it *discovers*. That
+is the third column of the reference story below — and while no *compile-time* story
+exists for consumer types, that is an argument for a well-marked raw seam, not for no
+API at all. #29 is the one that blocks; #30 and #31 are ergonomics on top of it.
+
 ## Deliberate decisions (not gaps)
 
 These look like omissions but are choices:
