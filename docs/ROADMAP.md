@@ -34,6 +34,7 @@ them, not speculatively).
 | ~~21~~ | ~~**Literal values**~~ | Feature | High | Low | **Done** (2026-08-02). `AssignLiteral` / `ReturnLiteral` reach the existing `SyntaxLiterals` machinery. Named apart from `Assign` rather than overloaded — see the diagnostics note below. |
 | ~~22~~ | ~~**Typed accessor bodies**~~ | Feature | Med | Med | **Done** (2026-08-02). `WithGetter(g => g.Return(field))` / `WithSetter(s => s.Assign(field, s.Value))`. The setter's `value` is a typed `IReference<T>`, and it sits in the scope's parameter list, so a member named `value` qualifies with `this.` instead of self-assigning. |
 | ~~23~~ | ~~**Null guards**~~ | Feature | Med | Low | **Done** (2026-08-02). `ThrowIfNull(reference)` emits the classic `if`/`throw`, not `ArgumentNullException.ThrowIfNull` — the consumer's target framework is unknown to the generator and the helper is .NET 6+. Constrained to reference types; the exception type routes through `TypeNameBuilder`, so it shortens under `SimplifyTypeNames`. |
+| ~~25~~ | ~~**`SourceFile` — a file-level builder**~~ | Feature | High | High | **Done** (2026-08-02). A top-level type used to *be* a file, so two types could not share one, and 27 public methods describing file concerns were duplicated across six type builders. `SourceFile` owns usings, simplification, namespace style, and formatting; type builders lost all of it. **Breaking**, deliberately, while the version still says preview. `TypeNameSimplifier` needed no changes — it already worked on the whole compilation unit, so joint ambiguity analysis across types in one file came free. See [`DESIGN-source-files.md`](DESIGN-source-files.md). |
 | ~~24~~ | ~~**Compound assignment**~~ | Feature | Med | Low | **Done** (2026-08-02). `Assign(target, op, value)` and the literal form cover the ten arithmetic and bitwise operators via an `AssignmentOperator` enum — one method pair rather than ten. `??=` is separate (`AssignIfNull` / `AssignIfNullLiteral`) because it needs a nullable target, a constraint the shared signature cannot state. Needs no expression grammar: the operands are still references and literals. |
 | ~~18~~ | ~~**Receiver-typed handles**~~ | Feature | Med | Low | **Done** (2026-08-02). `AsCallableOn<TDeclaring, …>` yields `IMethodOn<TDeclaring, …>`, and `CallOn` rejects a receiver of the wrong type at compile time. Pairing needs no registry: a placeholder's emitted name and the declaring type's qualified name are the same string. Separate interface *and* method family — see the diagnostics note below. |
 
@@ -97,17 +98,6 @@ These look like omissions but are choices:
   compile by inferring a common base — the exact bug the type parameter exists
   to catch. Widening (`object` ← `string`, `long` ← `int`) falls back to
   `AddStatement`.
-
-- **`SourceFile` — a file-level builder.** A top-level type currently *is* a file,
-  so two types cannot share one, and 27 public methods describing file concerns
-  (usings, simplification, namespace style, formatting) are duplicated across six
-  type builders. Designed in [`DESIGN-source-files.md`](DESIGN-source-files.md).
-  The correctness-critical half turns out to be done already: `TypeNameSimplifier`
-  operates on the whole compilation unit and derives shadowing from every
-  declaration in it, so joint ambiguity analysis across several types needs no
-  changes — it has simply never been handed more than one type. This would be the
-  first breaking change since publishing, which is an argument for doing it while
-  the version still says preview.
 
 ## Future direction (sketched, not committed)
 

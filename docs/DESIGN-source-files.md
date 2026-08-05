@@ -1,9 +1,16 @@
 # Source files — design
 
-Status as of 2026-08-02. Proposes a `SourceFile` builder to own what is currently
-owned by whichever type happens to be top-level. Not built; the API shape wants
-agreement first, because this is the library's first breaking change since
-publishing.
+**Status: built and shipped (2026-08-02).** Kept as the record of why it took this
+shape. Both open decisions were settled as recommended: the file-level methods were
+**removed** from type builders rather than deprecated, and `SourceFile.InNamespace`
+is the entry point. The prediction that `TypeNameSimplifier` needed no changes held
+— it was not touched.
+
+One thing the design did not anticipate: `TypeDeclarationBuilder.ToString()` and
+`BuildCompilationUnit()` now render the *whole file*, since a type cannot be shown
+correctly without the usings its file carries. For a single-type file — every case
+that existed before — this is byte-identical to the old behaviour, which is why the
+migration cost stayed at the predicted call sites rather than every assertion.
 
 ## The problem
 

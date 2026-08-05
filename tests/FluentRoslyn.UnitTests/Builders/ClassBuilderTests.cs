@@ -82,7 +82,7 @@ public class ClassBuilderTests
     public void NewEmptyClass_WithTestNamespace_ShouldMatchExpectedOutput()
     {
         var emptyClass = NamespaceBuilder.Class("TestClass2");
-        emptyClass.IsFileScopedNamespace = false;
+        emptyClass.File.BlockScopedNamespace();
         var value = emptyClass.ToString();
         value.Should().Be(ExpectedEmptyClassOutput);
     }
@@ -100,7 +100,7 @@ public class ClassBuilderTests
     public void NewEmptyClass_WithOneField_ShouldMatchExpectedOutput()
     {
         var oneFieldClass = NamespaceBuilder.Class("TestClass2");
-        oneFieldClass.IsFileScopedNamespace = false;
+        oneFieldClass.File.BlockScopedNamespace();
         oneFieldClass.DefineField<List<List<string>>>("TestField", AccessModifier.Public);
         var value = oneFieldClass.ToString();
         value.Should().Be(ExpectedOneFieldClassOutput);

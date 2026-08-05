@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using FluentRoslyn.Abstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -74,46 +75,47 @@ public class NamespaceBuilder : NamedBuilder
         return target;
     }
 
-    /// <summary>Declares a class in this namespace.</summary>
-    public ClassBuilder Class(string name)
-        => new(this, name);
+    // Each of these opens a file containing exactly that type, which is what this API
+    // could express before SourceFile existed. Reach the file through the builder's
+    // File property to add usings, or start from SourceFile to declare several types
+    // together.
 
-    /// <summary>Declares a struct in this namespace.</summary>
-    public StructBuilder Struct(string name)
-        => new(this, name);
+    /// <summary>Declares a class in a new single-type file in this namespace.</summary>
+    public ClassBuilder Class(string name) => SourceFile.InNamespace(this).Class(name);
 
-    /// <summary>Declares an enum in this namespace.</summary>
-    public EnumBuilder Enum(string name)
-        => new(this, name);
+    /// <summary>Declares a struct in a new single-type file in this namespace.</summary>
+    public StructBuilder Struct(string name) => SourceFile.InNamespace(this).Struct(name);
 
-    /// <summary>Declares a positional record in this namespace.</summary>
-    public RecordBuilder Record(string name)
-        => new(this, name);
+    /// <summary>Declares an enum in a new single-type file in this namespace.</summary>
+    public EnumBuilder Enum(string name) => SourceFile.InNamespace(this).Enum(name);
 
-    /// <summary>Declares an interface in this namespace.</summary>
-    public InterfaceBuilder Interface(string name)
-        => new(this, name);
+    /// <summary>Declares a positional record in a new single-type file in this namespace.</summary>
+    public RecordBuilder Record(string name) => SourceFile.InNamespace(this).Record(name);
 
-    /// <summary>Declares a <c>void</c>-returning delegate in this namespace.</summary>
-    public DelegateBuilder Delegate(string name)
-        => new(this, name, PredefinedType(Token(SyntaxKind.VoidKeyword)));
+    /// <summary>Declares an interface in a new single-type file in this namespace.</summary>
+    public InterfaceBuilder Interface(string name) => SourceFile.InNamespace(this).Interface(name);
 
-    /// <summary>Declares a delegate returning <typeparamref name="TReturn"/>.</summary>
-    public DelegateBuilder Delegate<TReturn>(string name)
-        => new(this, name, TypeNameBuilder.New<TReturn>().BuildTypeSyntax());
+    /// <summary>Declares a <c>void</c>-returning delegate in a new single-type file.</summary>
+    public DelegateBuilder Delegate(string name) => SourceFile.InNamespace(this).Delegate(name);
+
+    /// <summary>Declares a delegate returning <typeparamref name="TReturn"/> in a new file.</summary>
+    public DelegateBuilder Delegate<TReturn>(string name) => SourceFile.InNamespace(this).Delegate<TReturn>(name);
 
     /// <summary>
     /// Wraps a top-level type declaration in this namespace and a compilation unit. A
     /// global namespace yields the bare type; otherwise a file-scoped or block-scoped
     /// namespace declaration.
     /// </summary>
-    internal CompilationUnitSyntax CompilationUnitFor(MemberDeclarationSyntax member, bool fileScoped)
+    internal CompilationUnitSyntax CompilationUnitFor(
+        IEnumerable<MemberDeclarationSyntax> members, bool fileScoped)
     {
+        var declarations = List(members);
+
         if (IsGlobal)
-            return CompilationUnit().WithMembers(SingletonList(member));
+            return CompilationUnit().WithMembers(declarations);
 
         var name = BuildNameSyntax();
-        var body = SingletonList(member);
+        var body = declarations;
 
         MemberDeclarationSyntax namespaceDeclaration = fileScoped
             ? FileScopedNamespaceDeclaration(name).WithMembers(body)

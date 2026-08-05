@@ -82,7 +82,7 @@ public class BuilderReferenceTests
     public void BuilderReference_UnderSimplifyTypeNames_ImportsAndShortens()
     {
         var model = NamespaceBuilder.Get("MyApp.Models").Class("Order");
-        var handler = NamespaceBuilder.Get("MyApp.Web").Class("Handler").SimplifyTypeNames();
+        var handler = SourceFile.InNamespace("MyApp.Web").SimplifyTypeNames().Class("Handler");
         handler.DefineConstructor().WithParameter(model, "order").AddStatement("_ = order;");
 
         handler.ToString().Should().StartWith("using MyApp.Models;")

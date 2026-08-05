@@ -27,7 +27,7 @@ public class EnumBuilder : TypeDeclarationBuilder
     private TypeNameBuilder? _underlyingType;
     private Type? _underlyingClrType;
 
-    internal EnumBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
+    internal EnumBuilder(SourceFile file, string name, TypeDeclarationBuilder? declaringType = null) : base(file, name, declaringType)
     {
     }
 
@@ -38,21 +38,6 @@ public class EnumBuilder : TypeDeclarationBuilder
 
     /// <summary>Documents the enum with an XML <c>&lt;summary&gt;</c>.</summary>
     public EnumBuilder WithSummary(string text) => this.With(() => AddSummary(text));
-
-    /// <summary>Adds a using directive, e.g. <c>WithUsing("System.Linq")</c>.</summary>
-    public EnumBuilder WithUsing(string namespaceName) => this.With(() => AddUsing(namespaceName));
-
-    /// <summary>Sets the indentation string, e.g. a tab. Four spaces by default.</summary>
-    public EnumBuilder WithIndentation(string indentation) => this.With(() => SetFormatting(f => f.WithIndentation(indentation)));
-
-    /// <summary>Sets the line endings, e.g. CRLF. LF by default, which keeps output byte-identical across operating systems.</summary>
-    public EnumBuilder WithLineEndings(string lineEndings) => this.With(() => SetFormatting(f => f.WithLineEndings(lineEndings)));
-
-    /// <summary>Shortens generated type references and imports the namespaces they need.</summary>
-    public EnumBuilder SimplifyTypeNames() => this.With(() => EnableTypeNameSimplification());
-
-    /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
-    public EnumBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
     /// <summary>Sets the underlying integral type: <c>enum Name : byte</c>.</summary>
     public EnumBuilder WithUnderlyingType<T>() => this.With(() =>

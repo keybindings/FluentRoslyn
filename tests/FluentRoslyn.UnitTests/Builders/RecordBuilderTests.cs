@@ -62,8 +62,7 @@ public class RecordBuilderTests
     [TestMethod]
     public void BlockScopedNamespace_WrapsRecordInBraces()
     {
-        var r = NamespaceBuilder.Get("TestNamespace").Record("Person")
-            .BlockScopedNamespace()
+        var r = SourceFile.InNamespace("TestNamespace").BlockScopedNamespace().Record("Person")
             .WithParameter<string>("Name");
 
         r.ToString().Should().Be(string.Join("\n",

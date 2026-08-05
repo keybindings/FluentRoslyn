@@ -20,10 +20,10 @@ public class DelegateBuilder : TypeDeclarationBuilder
     private TypeSyntax _returnType;
 
     internal DelegateBuilder(
-        NamespaceBuilder @namespace,
+        SourceFile file,
         string name,
         TypeSyntax returnType,
-        TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
+        TypeDeclarationBuilder? declaringType = null) : base(file, name, declaringType)
     {
         _returnType = returnType;
     }
@@ -39,21 +39,6 @@ public class DelegateBuilder : TypeDeclarationBuilder
 
     /// <summary>Adds an attribute.</summary>
     public DelegateBuilder WithAttribute(string attribute) => this.With(() => AddAttribute(attribute));
-
-    /// <summary>Adds a using directive, e.g. <c>WithUsing("System.Linq")</c>.</summary>
-    public DelegateBuilder WithUsing(string namespaceName) => this.With(() => AddUsing(namespaceName));
-
-    /// <summary>Sets the indentation string, e.g. a tab. Four spaces by default.</summary>
-    public DelegateBuilder WithIndentation(string indentation) => this.With(() => SetFormatting(f => f.WithIndentation(indentation)));
-
-    /// <summary>Sets the line endings, e.g. CRLF. LF by default, which keeps output byte-identical across operating systems.</summary>
-    public DelegateBuilder WithLineEndings(string lineEndings) => this.With(() => SetFormatting(f => f.WithLineEndings(lineEndings)));
-
-    /// <summary>Shortens generated type references and imports the namespaces they need.</summary>
-    public DelegateBuilder SimplifyTypeNames() => this.With(() => EnableTypeNameSimplification());
-
-    /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
-    public DelegateBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
     /// <summary>Appends a parameter of type <typeparamref name="T"/>.</summary>
     public DelegateBuilder WithParameter<T>(string name) => this.With(() => _params.Add(Parameter<T>.New(name)));

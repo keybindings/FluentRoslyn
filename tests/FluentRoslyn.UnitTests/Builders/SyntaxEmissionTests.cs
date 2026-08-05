@@ -77,7 +77,7 @@ public class SyntaxEmissionTests
     [TestMethod]
     public void BuildCompilationUnit_BlockScoped_ContainsNamespaceDeclarationNode()
     {
-        var cu = NewClass().BlockScopedNamespace().BuildCompilationUnit();
+        var cu = SourceFile.InNamespace("MyApp").BlockScopedNamespace().Class("TestClass").BuildCompilationUnit();
 
         cu.Members.Should().ContainSingle()
             .Which.Should().BeOfType<NamespaceDeclarationSyntax>();

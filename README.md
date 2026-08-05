@@ -386,14 +386,19 @@ placeholder — a type from a shared library, say.
 One limit stated rather than papered over: static calls are not modelled, and
 `AsCallable` says so instead of emitting instance syntax on a static method.
 
-### Using directives
+### Files, and using directives
 
-Type references are fully qualified by default, which is always correct.
-`SimplifyTypeNames()` shortens them and adds the imports they need:
+`NamespaceBuilder.Get(ns).Class(name)` gives you a type in a file of its own. To
+put several types in one file — and to control its usings, namespace style, and
+formatting — start from a `SourceFile`:
 
 ```csharp
-var repo = NamespaceBuilder.Get("MyApp").Class("Repo").SimplifyTypeNames();
-repo.DefineField<List<int>>("_items");
+var file = SourceFile.InNamespace("MyApp").SimplifyTypeNames();
+
+file.Class("Repo").DefineField<List<int>>("_items");
+file.Record("Box").WithParameter<List<string>>("Values");
+
+context.AddSource("Storage.g.cs", file.ToSourceText());
 ```
 
 ```csharp
@@ -404,12 +409,21 @@ public class Repo
 {
     private List<int> _items;
 }
+
+public record Box(List<string> Values);
 ```
 
-A name offered by two different namespaces — or one the file declares itself —
-stays fully qualified rather than becoming ambiguous. `WithUsing("System.Linq")`
-adds a directive explicitly, which is also how you shorten names inside raw
-expression strings.
+Usings, `SimplifyTypeNames()`, `BlockScopedNamespace()`, `WithIndentation` and
+`WithLineEndings` live on the file rather than on a type, because they describe a
+file — two types sharing one cannot disagree about them.
+
+Type references are fully qualified by default, which is always correct.
+`SimplifyTypeNames()` shortens them and adds the imports they need. A name offered
+by two different namespaces stays fully qualified rather than becoming ambiguous,
+and so does one that *any* type in the file declares — the check is per file, not
+per type, which is the only way it can be right when types share one.
+`WithUsing("System.Linq")` adds a directive explicitly, which is also how you
+shorten names inside raw expression strings.
 
 ## Escape hatches
 

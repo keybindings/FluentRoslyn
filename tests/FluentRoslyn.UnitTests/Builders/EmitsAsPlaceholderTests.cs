@@ -92,7 +92,7 @@ public class EmitsAsPlaceholderTests
     [TestMethod]
     public void Placeholder_UnderSimplifyTypeNames_ImportsAndShortens()
     {
-        var simp = NamespaceBuilder.Get("MyApp").Class("Simp").SimplifyTypeNames();
+        var simp = SourceFile.InNamespace("MyApp").SimplifyTypeNames().Class("Simp");
         simp.DefineProperty<CustomerPlaceholder>("Current");
 
         simp.ToString().Should().StartWith("using MyApp.Models;")

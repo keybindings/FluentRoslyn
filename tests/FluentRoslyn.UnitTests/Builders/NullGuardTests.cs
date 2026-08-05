@@ -40,7 +40,7 @@ public class NullGuardTests
     [TestMethod]
     public void ThrowIfNull_UnderSimplifyTypeNames_ShortensAndImports()
     {
-        var s = NamespaceBuilder.Get("MyApp").Class("S").SimplifyTypeNames();
+        var s = SourceFile.InNamespace("MyApp").SimplifyTypeNames().Class("S");
         s.DefineMethod("Check").WithParameter<string>("text", out var text).ThrowIfNull(text);
 
         s.ToString().Should().StartWith("using System;")

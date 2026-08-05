@@ -85,7 +85,7 @@ public class StructBuilderTests
     [TestMethod]
     public void BlockScopedNamespace_WrapsStruct()
     {
-        var s = NewStruct().BlockScopedNamespace();
+        var s = SourceFile.InNamespace("TestNamespace").BlockScopedNamespace().Struct("Point");
 
         s.ToString().Should().Be(string.Join("\n",
             "namespace TestNamespace",

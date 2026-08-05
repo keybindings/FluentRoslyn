@@ -23,7 +23,7 @@ public class SourceFormattingTests
     [TestMethod]
     public void WithIndentation_Tabs_IndentsWithTabs()
     {
-        var cb = NewClass().WithIndentation("\t");
+        var cb = NewFile().WithIndentation("\t").Class("C");
         cb.DefineProperty<int>("X");
 
         cb.ToString().Should().Contain("\tpublic int X").And.NotContain("    public int X");
@@ -32,7 +32,7 @@ public class SourceFormattingTests
     [TestMethod]
     public void WithIndentation_TwoSpaces_Applies()
     {
-        var cb = NewClass().WithIndentation("  ");
+        var cb = NewFile().WithIndentation("  ").Class("C");
         cb.DefineProperty<int>("X");
 
         cb.ToString().Should().Contain("\n  public int X");
@@ -41,7 +41,7 @@ public class SourceFormattingTests
     [TestMethod]
     public void WithLineEndings_CrLf_Applies()
     {
-        var cb = NewClass().WithIndentation("    ").WithLineEndings("\r\n");
+        var cb = NewFile().WithIndentation("    ").WithLineEndings("\r\n").Class("C");
         cb.DefineProperty<int>("X");
 
         var value = cb.ToString();
@@ -57,7 +57,7 @@ public class SourceFormattingTests
     [TestMethod]
     public void Formatting_CarriesIntoToSourceText()
     {
-        var cb = NewClass().WithLineEndings("\r\n");
+        var cb = NewFile().WithLineEndings("\r\n").Class("C");
         cb.DefineProperty<int>("X");
 
         cb.ToSourceText().ToString().Should().Contain("\r\n");
@@ -66,17 +66,17 @@ public class SourceFormattingTests
     [TestMethod]
     public void Formatting_AppliesToEveryTypeKind()
     {
-        NamespaceBuilder.Get("N").Record("R").WithIndentation("\t").WithParameter<int>("X")
+        SourceFile.InNamespace("N").WithIndentation("\t").Record("R").WithParameter<int>("X")
             .ToString().Should().NotBeNullOrEmpty();
 
-        var e = NamespaceBuilder.Get("N").Enum("E").WithIndentation("\t").AddMember("A");
+        var e = SourceFile.InNamespace("N").WithIndentation("\t").Enum("E").AddMember("A");
         e.ToString().Should().Contain("\tA");
 
-        var i = NamespaceBuilder.Get("N").Interface("I").WithIndentation("\t");
+        var i = SourceFile.InNamespace("N").WithIndentation("\t").Interface("I");
         i.DefineMethod("M");
         i.ToString().Should().Contain("\tvoid M();");
 
-        NamespaceBuilder.Get("N").Delegate("D").WithLineEndings("\r\n")
+        SourceFile.InNamespace("N").WithLineEndings("\r\n").Delegate("D")
             .ToString().Should().Contain("\r\n");
     }
 
@@ -86,7 +86,7 @@ public class SourceFormattingTests
     public void WithIndentation_NonWhitespace_Throws(string indentation)
     {
         // Anything but whitespace would corrupt the source, not merely restyle it.
-        var act = () => NewClass().WithIndentation(indentation);
+        var act = () => NewFile().WithIndentation(indentation);
 
         act.Should().Throw<ArgumentException>();
     }
@@ -96,7 +96,7 @@ public class SourceFormattingTests
     [DataRow("")]
     public void WithLineEndings_NotALineEnding_Throws(string lineEndings)
     {
-        var act = () => NewClass().WithLineEndings(lineEndings);
+        var act = () => NewFile().WithLineEndings(lineEndings);
 
         act.Should().Throw<ArgumentException>();
     }
@@ -114,6 +114,7 @@ public class SourceFormattingTests
         modified.LineEndings.Should().Be("\r\n");
     }
 
-    private static ClassBuilder NewClass()
-        => NamespaceBuilder.Get("N").Class("C");
+    private static SourceFile NewFile() => SourceFile.InNamespace("N");
+
+    private static ClassBuilder NewClass() => NewFile().Class("C");
 }

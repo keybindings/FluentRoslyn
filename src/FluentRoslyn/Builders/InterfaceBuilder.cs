@@ -22,7 +22,7 @@ public class InterfaceBuilder : TypeDeclarationBuilder
     private readonly List<TypeSyntax> _baseInterfaces = [];
     private readonly GenericParameters _generics = new();
 
-    internal InterfaceBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
+    internal InterfaceBuilder(SourceFile file, string name, TypeDeclarationBuilder? declaringType = null) : base(file, name, declaringType)
     {
     }
 
@@ -35,21 +35,6 @@ public class InterfaceBuilder : TypeDeclarationBuilder
 
     /// <summary>Documents the interface with an XML <c>&lt;summary&gt;</c>.</summary>
     public InterfaceBuilder WithSummary(string text) => this.With(() => AddSummary(text));
-
-    /// <summary>Adds a using directive, e.g. <c>WithUsing("System.Linq")</c>.</summary>
-    public InterfaceBuilder WithUsing(string namespaceName) => this.With(() => AddUsing(namespaceName));
-
-    /// <summary>Sets the indentation string, e.g. a tab. Four spaces by default.</summary>
-    public InterfaceBuilder WithIndentation(string indentation) => this.With(() => SetFormatting(f => f.WithIndentation(indentation)));
-
-    /// <summary>Sets the line endings, e.g. CRLF. LF by default, which keeps output byte-identical across operating systems.</summary>
-    public InterfaceBuilder WithLineEndings(string lineEndings) => this.With(() => SetFormatting(f => f.WithLineEndings(lineEndings)));
-
-    /// <summary>Shortens generated type references and imports the namespaces they need.</summary>
-    public InterfaceBuilder SimplifyTypeNames() => this.With(() => EnableTypeNameSimplification());
-
-    /// <summary>Emits a block-scoped namespace instead of the default file-scoped form.</summary>
-    public InterfaceBuilder BlockScopedNamespace() => this.With(() => IsFileScopedNamespace = false);
 
     /// <summary>Adds an attribute, e.g. <c>WithAttribute("Obsolete")</c>.</summary>
     public InterfaceBuilder WithAttribute(string attribute) => this.With(() => AddAttribute(attribute));

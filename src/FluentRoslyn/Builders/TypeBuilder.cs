@@ -29,7 +29,7 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     private readonly List<TypeSyntax> _interfaces = [];
     private readonly GenericParameters _generics = new();
 
-    private protected TypeBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType) : base(@namespace, name, declaringType)
+    private protected TypeBuilder(SourceFile file, string name, TypeDeclarationBuilder? declaringType) : base(file, name, declaringType)
     {
     }
 
@@ -134,28 +134,31 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 
     #region Nested types
 
+    // Nested types share their declaring type's file: they are not files themselves, so
+    // they never carry usings or formatting of their own.
+
     /// <summary>Declares a class nested inside this type.</summary>
-    public ClassBuilder DefineClass(string name) => AddNested(new ClassBuilder(Namespace, name, this));
+    public ClassBuilder DefineClass(string name) => AddNested(new ClassBuilder(File, name, this));
 
     /// <summary>Declares a struct nested inside this type.</summary>
-    public StructBuilder DefineStruct(string name) => AddNested(new StructBuilder(Namespace, name, this));
+    public StructBuilder DefineStruct(string name) => AddNested(new StructBuilder(File, name, this));
 
     /// <summary>Declares an enum nested inside this type.</summary>
-    public EnumBuilder DefineEnum(string name) => AddNested(new EnumBuilder(Namespace, name, this));
+    public EnumBuilder DefineEnum(string name) => AddNested(new EnumBuilder(File, name, this));
 
     /// <summary>Declares a positional record nested inside this type.</summary>
-    public RecordBuilder DefineRecord(string name) => AddNested(new RecordBuilder(Namespace, name, this));
+    public RecordBuilder DefineRecord(string name) => AddNested(new RecordBuilder(File, name, this));
 
     /// <summary>Declares an interface nested inside this type.</summary>
-    public InterfaceBuilder DefineInterface(string name) => AddNested(new InterfaceBuilder(Namespace, name, this));
+    public InterfaceBuilder DefineInterface(string name) => AddNested(new InterfaceBuilder(File, name, this));
 
     /// <summary>Declares a <c>void</c>-returning delegate nested inside this type.</summary>
     public DelegateBuilder DefineDelegate(string name)
-        => AddNested(new DelegateBuilder(Namespace, name, PredefinedType(Token(SyntaxKind.VoidKeyword)), this));
+        => AddNested(new DelegateBuilder(File, name, PredefinedType(Token(SyntaxKind.VoidKeyword)), this));
 
     /// <summary>Declares a nested delegate returning <typeparamref name="TReturn"/>.</summary>
     public DelegateBuilder DefineDelegate<TReturn>(string name)
-        => AddNested(new DelegateBuilder(Namespace, name, TypeNameBuilder.New<TReturn>().BuildTypeSyntax(), this));
+        => AddNested(new DelegateBuilder(File, name, TypeNameBuilder.New<TReturn>().BuildTypeSyntax(), this));
 
     private TNested AddNested<TNested>(TNested nested) where TNested : TypeDeclarationBuilder
     {
@@ -252,7 +255,7 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
 public abstract class TypeBuilder<TSelf> : TypeBuilder
     where TSelf : TypeBuilder<TSelf>
 {
-    private protected TypeBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType) : base(@namespace, name, declaringType)
+    private protected TypeBuilder(SourceFile file, string name, TypeDeclarationBuilder? declaringType) : base(file, name, declaringType)
     {
     }
 
@@ -260,16 +263,6 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     public TSelf WithAccessModifier(AccessModifier accessModifier)
     {
         AccessModifier = accessModifier;
-        return (TSelf)this;
-    }
-
-    /// <summary>
-    /// Emits a block-scoped namespace (<c>namespace N { ... }</c>) instead of the
-    /// default file-scoped form (<c>namespace N;</c>).
-    /// </summary>
-    public TSelf BlockScopedNamespace()
-    {
-        IsFileScopedNamespace = false;
         return (TSelf)this;
     }
 
@@ -287,44 +280,6 @@ public abstract class TypeBuilder<TSelf> : TypeBuilder
     public TSelf WithSummary(string text)
     {
         AddSummary(text);
-        return (TSelf)this;
-    }
-
-    /// <summary>Adds a using directive, e.g. <c>WithUsing("System.Linq")</c>.</summary>
-    public TSelf WithUsing(string namespaceName)
-    {
-        AddUsing(namespaceName);
-        return (TSelf)this;
-    }
-
-    /// <summary>
-    /// Sets the indentation string, e.g. <c>"\t"</c>. Four spaces by default.
-    /// </summary>
-    public TSelf WithIndentation(string indentation)
-    {
-        SetFormatting(f => f.WithIndentation(indentation));
-        return (TSelf)this;
-    }
-
-    /// <summary>
-    /// Sets the line endings, e.g. <c>"\r\n"</c>. <c>"\n"</c> by default, which keeps
-    /// output byte-identical across operating systems.
-    /// </summary>
-    public TSelf WithLineEndings(string lineEndings)
-    {
-        SetFormatting(f => f.WithLineEndings(lineEndings));
-        return (TSelf)this;
-    }
-
-    /// <summary>
-    /// Shortens generated type references and imports the namespaces they need, so
-    /// <c>System.Collections.Generic.List&lt;int&gt;</c> becomes <c>List&lt;int&gt;</c>
-    /// under a <c>using System.Collections.Generic;</c>. A name offered by two different
-    /// namespaces, or one this file declares itself, stays fully qualified.
-    /// </summary>
-    public TSelf SimplifyTypeNames()
-    {
-        EnableTypeNameSimplification();
         return (TSelf)this;
     }
 

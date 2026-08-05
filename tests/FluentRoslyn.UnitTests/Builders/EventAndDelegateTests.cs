@@ -64,7 +64,7 @@ public class EventAndDelegateTests
     [TestMethod]
     public void Event_ComposesWithSimplifyTypeNames()
     {
-        var cb = NewClass().SimplifyTypeNames();
+        var cb = NewSimplifiedClass();
         cb.DefineEvent<EventHandler>("Changed");
 
         cb.ToString().Should().Contain("using System;").And.Contain("public event EventHandler Changed;");
@@ -152,4 +152,7 @@ public class EventAndDelegateTests
 
     private static ClassBuilder NewClass()
         => NamespaceBuilder.Get("N").Class("Widget");
+
+    private static ClassBuilder NewSimplifiedClass()
+        => SourceFile.InNamespace("N").SimplifyTypeNames().Class("Widget");
 }

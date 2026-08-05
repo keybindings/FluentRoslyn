@@ -49,8 +49,7 @@ public class RecordInheritanceTests
     [TestMethod]
     public void WithParent_ComposesWithSimplifyTypeNames()
     {
-        var derived = NamespaceBuilder.Get("Other").Record("Derived")
-            .SimplifyTypeNames()
+        var derived = SourceFile.InNamespace("Other").SimplifyTypeNames().Record("Derived")
             .WithParameter<int>("Id")
             .WithParent(NewBase(), "Id");
 

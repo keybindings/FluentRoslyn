@@ -143,8 +143,7 @@ public class EnumBuilderTests
     [TestMethod]
     public void Enum_BlockScopedNamespace_WrapsInBraces()
     {
-        var e = NamespaceBuilder.Get("TestNamespace").Enum("Color")
-            .BlockScopedNamespace()
+        var e = SourceFile.InNamespace("TestNamespace").BlockScopedNamespace().Enum("Color")
             .AddMember("Red");
 
         e.ToString().Should().Be(string.Join("\n",

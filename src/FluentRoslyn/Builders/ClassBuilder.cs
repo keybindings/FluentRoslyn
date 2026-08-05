@@ -10,7 +10,7 @@ namespace FluentRoslyn.Builders;
 /// </summary>
 public class ClassBuilder : TypeBuilder<ClassBuilder>
 {
-    internal ClassBuilder(NamespaceBuilder @namespace, string name, TypeDeclarationBuilder? declaringType = null) : base(@namespace, name, declaringType)
+    internal ClassBuilder(SourceFile file, string name, TypeDeclarationBuilder? declaringType = null) : base(file, name, declaringType)
     {
     }
 

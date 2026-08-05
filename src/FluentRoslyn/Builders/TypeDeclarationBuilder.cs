@@ -19,20 +19,25 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
 {
     private readonly List<AttributeListSyntax> _attributes = [];
     private readonly DocComment _docs = new();
-    private readonly TypeImports _imports = new();
-    private SourceFormatting _formatting = SourceFormatting.Default;
 
     private protected TypeDeclarationBuilder(
-        NamespaceBuilder @namespace,
+        SourceFile file,
         string name,
         TypeDeclarationBuilder? declaringType = null) : base(name, Identifiers.Validate)
     {
-        Namespace = @namespace;
+        File = file ?? throw new ArgumentNullException(nameof(file));
         DeclaringType = declaringType;
     }
 
+    /// <summary>
+    /// The file this type is declared in. Usings, type-name simplification, namespace
+    /// style, and formatting live there, because they are shared by every type in the
+    /// file rather than owned by any one of them.
+    /// </summary>
+    public SourceFile File { get; }
+
     /// <summary>The namespace this type is declared in.</summary>
-    public NamespaceBuilder Namespace { get; }
+    public NamespaceBuilder Namespace => File.Namespace;
 
     /// <summary>
     /// The type this one is nested inside, or null when it is declared directly in a
@@ -49,12 +54,6 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     /// </summary>
     internal virtual bool HasTypeParameters => false;
 
-    /// <summary>
-    /// Whether to emit a file-scoped namespace (<c>namespace N;</c>). True by default;
-    /// see <c>BlockScopedNamespace()</c> for the braced form.
-    /// </summary>
-    public bool IsFileScopedNamespace { get; set; } = true;
-
     /// <summary>The type's accessibility. Public by default.</summary>
     public AccessModifier AccessModifier { get; set; } = AccessModifier.Public;
 
@@ -62,14 +61,12 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     private protected abstract MemberDeclarationSyntax BuildDeclaration();
 
     /// <summary>
-    /// Builds the whole file as a Roslyn syntax tree — the namespace declaration wrapping
-    /// this type. The escape hatch for anything the fluent API cannot express.
+    /// Builds the whole file this type belongs to, as a Roslyn syntax tree. The escape
+    /// hatch for anything the fluent API cannot express. Note this is the *file*: if
+    /// other types share it, they are included, because a type cannot be rendered
+    /// correctly without the usings its file carries.
     /// </summary>
-    public CompilationUnitSyntax BuildCompilationUnit()
-    {
-        var unit = Namespace.CompilationUnitFor(BuildDocumentedDeclaration(), IsFileScopedNamespace);
-        return _imports.ApplyTo(unit, Namespace.IsGlobal ? null : Namespace.ToString());
-    }
+    public CompilationUnitSyntax BuildCompilationUnit() => File.BuildCompilationUnit();
 
     // Doc trivia is attached centrally, so every type kind gets it without repeating the
     // wiring — and before NormalizeWhitespace, which is what indents it correctly.
@@ -119,14 +116,5 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     private protected void AddSummary(string text)
         => _docs.SetSummary(text);
 
-    private protected override SourceFormatting Formatting => _formatting;
-
-    private protected void SetFormatting(Func<SourceFormatting, SourceFormatting> configure)
-        => _formatting = configure(_formatting);
-
-    private protected void AddUsing(string namespaceName)
-        => _imports.Add(namespaceName);
-
-    private protected void EnableTypeNameSimplification()
-        => _imports.EnableSimplification();
+    private protected override SourceFormatting Formatting => File.FormattingForTypes;
 }
