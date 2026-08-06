@@ -33,7 +33,7 @@
          FluentRoslyn is also what someone searching for this library actually types,
          so the assembly, namespaces, repo, and package all use it. -->
     <PackageId>FluentRoslyn</PackageId>
-    <Version>0.1.0-preview.4</Version>
+    <Version>0.1.0-preview.5</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
@@ -47,7 +47,13 @@
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>0.1.0-preview.4
+    <PackageReleaseNotes>0.1.0-preview.5
+
+No changes to this library. It is identical to 0.1.0-preview.4 and there is no reason to upgrade for its own sake.
+
+This version exists so that the companion package FluentRoslyn.Templates — new in this release — shares a version line with it. The two ship from one tag and are versioned in lockstep, so a matching pair is always obvious at a glance. FluentRoslyn.Templates is a meta-generator that runs on your source-generator project: mark a method [Template] and its body is real, compiled C# that gets lifted into the FluentRoslyn calls reproducing it. It is optional, and install it into the generator project rather than the consumer.
+
+0.1.0-preview.4
 
 Extends the typed statement surface at both ends: the locations a value can be written to, and the values that can be written.
 
