@@ -41,6 +41,17 @@ internal class Parameter : NamedBuilder, IParameter
     internal static IParameter OfRawName(string name, string typeName)
         => new Parameter(TypeNameBuilder.ForRawName(typeName), name);
 
+    /// <summary>
+    /// As <see cref="OfRawName(string, string)"/>, also handing back a reference carrying the declared
+    /// type text, so an assignment against another raw-typed reference can compare them.
+    /// </summary>
+    internal static IParameter OfRawName(string name, string typeName, out IRawReference reference)
+    {
+        var parameter = new Parameter(TypeNameBuilder.ForRawName(typeName), name);
+        reference = new RawParameterReference(parameter.Name, parameter.TypeName.ToString());
+        return parameter;
+    }
+
     public TypeNameBuilder TypeName { get; }
 
     internal override SyntaxNode BuildSyntax()

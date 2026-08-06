@@ -52,6 +52,9 @@ public abstract class StatementBuilder : NamedBuilder
     private protected void AddAssignment<TValue>(IReference<TValue> target, IValue<TValue> value)
         => Statements.Add(SyntaxReferences.Assignment(target, value, Parameters, IsStaticContext, StatementContext));
 
+    private protected void AddRawAssignment(IReference target, IReference value)
+        => Statements.Add(SyntaxReferences.RawAssignment(target, value, Parameters, IsStaticContext, StatementContext));
+
     private protected void AddInvocation(IReference target, object method, IValue[] arguments)
         => Statements.Add(SyntaxReferences.Invocation(
             target, method, arguments, Parameters, IsStaticContext, StatementContext));
@@ -158,6 +161,20 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     }
 
     /// <summary>
+    /// Appends a parameter whose type is named by text and hands back a reference to it,
+    /// so it can be assigned into a field declared with the same type text.
+    /// </summary>
+    /// <param name="name">The parameter's name.</param>
+    /// <param name="typeName">The parameter's type, as C# text.</param>
+    /// <param name="reference">Receives a reference to the parameter.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf WithParameter(string name, string typeName, out IRawReference reference)
+    {
+        AddParameter(Parameter.OfRawName(name, typeName, out reference));
+        return Self;
+    }
+
+    /// <summary>
     /// Appends an assignment statement, e.g. <c>Name = name;</c>. The value's type must
     /// be the target's, so assigning the wrong one is a compile error in the generator
     /// rather than broken generated source. The target names a location, so it stays a
@@ -166,6 +183,50 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     public TSelf Assign<TValue>(IReference<TValue> target, IValue<TValue> value)
     {
         AddAssignment(target, value);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends an assignment between two references whose types were given as text, e.g.
+    /// <c>_customer = customer;</c> — the shape a generator working from the consumer's
+    /// symbols is left with, since neither side has a <typeparamref name="TSelf"/>-style
+    /// type argument to match on.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Named apart from <see cref="Assign{TValue}(IReference{TValue}, IValue{TValue})"/>,
+    /// for the fourth time and the same reason as <c>CallOn</c>, <c>AssignLiteral</c> and
+    /// <c>MemberNamed</c>. Overloading looked safe here — the parameter sets are genuinely
+    /// disjoint, so no call could bind to the wrong one — but the probe that mattered was
+    /// the <em>mismatch</em>, not the happy path: a mismatched <em>typed</em>
+    /// <c>Assign</c> drops the generic candidate when inference fails, leaving this one to
+    /// report <c>CS1503 … cannot convert … to 'IRawReference'</c> — an interface the
+    /// caller never mentioned. A distinct name leaves one candidate, so the typed
+    /// mismatch keeps reporting <c>CS0411</c> against <c>Assign</c>.
+    /// </para>
+    /// <para>
+    /// What is checked: both sides' declared type <em>text</em>, compared exactly — the
+    /// same rule <c>AsCallable</c> validates handles by. A mismatch throws when the
+    /// generator runs, which is weaker than a compile error and is the strongest rule
+    /// available for a type the generator knows only as an <c>ISymbol</c>.
+    /// </para>
+    /// </remarks>
+    /// <param name="target">The reference being assigned to.</param>
+    /// <param name="value">The reference being assigned from.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf AssignRaw(IRawReference target, IRawReference value)
+    {
+        if (target is null) throw new ArgumentNullException(nameof(target));
+        if (value is null) throw new ArgumentNullException(nameof(value));
+
+        if (target is IRawTypeInfo declaredTarget && value is IRawTypeInfo declaredValue &&
+            !string.Equals(declaredTarget.TypeText, declaredValue.TypeText, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"{StatementContext} cannot assign '{value.Name}' to '{target.Name}': " +
+                $"'{target.Name}' is declared '{declaredTarget.TypeText}' but '{value.Name}' is " +
+                $"'{declaredValue.TypeText}'. Their declared types must match exactly.");
+
+        AddRawAssignment(target, value);
         return Self;
     }
 

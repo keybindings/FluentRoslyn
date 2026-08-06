@@ -22,3 +22,14 @@ internal interface IReferenceInfo
     /// <summary>Whether the referenced member is <c>static</c>, which rules out <c>this.</c>.</summary>
     bool IsStaticMember { get; }
 }
+
+/// <summary>
+/// The declared type of a reference whose type came from text, so two of them can be
+/// compared. Internal because the comparison is the library's business: the public
+/// contract is that a mismatch throws, not how the match is decided.
+/// </summary>
+internal interface IRawTypeInfo
+{
+    /// <summary>The declared type as it will be emitted.</summary>
+    string TypeText { get; }
+}

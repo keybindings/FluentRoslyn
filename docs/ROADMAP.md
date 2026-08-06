@@ -78,15 +78,22 @@ than a shape the generator invented, it now lives in
 | ~~29~~ | ~~**Members typed by name** — `DefineField(name, typeName)`, `WithParameter(name, typeName)`~~ | Feature | High | Low | **Done** (2026-08-06). This was the blocker: a generator driven by consumer symbols holds an `ISymbol`, never a CLR `T`, and `DefineField<T>`/`WithParameter<T>` were `<T>`-only — so a field or parameter of a consumer's type could not be declared **at all**, and the generator had to abandon the fluent API. What made it an oversight rather than a decision is the asymmetry: `Returns(string)` and `DefineEvent(name, handlerTypeName)` were already the raw-name escape hatch for exactly this case. Fields and parameters never got the same overload. A raw-typed field is a `RawFieldBuilder`, deliberately **not** an `IReference<T>` — there is no `T` to check against, and saying so beats a phantom type that lies. Transposing the two string arguments is caught, because the name is validated as an identifier and a qualified type name is not one. |
 | ~~30~~ | ~~**`this` as a reference**~~ | Feature | Med | Low | **Done** (2026-08-06). `This()` gives an untyped reference for a type with no placeholder — which is every type a generator discovers — and `This<T>()` a typed one, paired with the declaring type by the rule `AsCallableOn` uses, so it composes with the whole typed surface. Emitted as `ThisExpression()`, not a parsed identifier. Two guards fall out of the shared emission path: `this` in a static member is refused, since there is none to emit, and `ThrowIfNull(this)` is refused, since `nameof(this)` is not legal C# and `this` is never null anyway. |
 | ~~31~~ | ~~**Constructing a consumer's type**~~ | Feature | Med | Med | **Done** (2026-08-06). `Value.NewOfType(typeName, args…)` constructs a type named by text, and `MethodBuilder.Return(IValue)` returns it. Deliberately **untyped**: nothing about a consumer's constructor can be checked, and the result is an `IValue` rather than an `IValue<T>` so it reaches only the positions that accept a bare value and cannot pass for a checked one. What it buys over a raw statement is real but bounded, and worth stating as the general case for this whole tier: **the syntax is built rather than concatenated, and argument names come from the builders that declared them rather than from a second round of string formatting that can drift.** |
-| 32 | **Assignment between consumer-typed members** | Feature | Med | Med | Follows from #29 rather than being fixed by it, and now the **only** raw statement left in the builders example. A raw-typed field and a raw-typed parameter share no `T`, so `Assign` cannot connect them and `_x = x;` stays text. Note the trap: an untyped `Assign(IReference, IValue)` beside the typed `Assign<T>` would be *applicable* to typed calls too, and C# prefers the non-generic candidate — silently routing checked assignments through the unchecked path. So this needs a distinct name, for the fourth time and the same reason. A checked form would need name-based type equality ("declared with the same type text"), which is weaker than the `<T>` contract and should only be built if it earns itself. |
+| ~~32~~ | ~~**Assignment between consumer-typed members**~~ | Feature | Med | Med | **Done** (2026-08-06). `AssignRaw(target, value)` connects two references whose types were given as text, via a new `IRawReference` and `WithParameter(name, typeName, out …)`. It **is** checked, more than expected: both sides' declared type text is compared exactly — the same rule `AsCallable` already validates handles by — so assigning the wrong parameter into the wrong field throws. Weaker than `<T>` and it fires when the generator runs, but it is the strongest rule available for a type known only as an `ISymbol`. With this the builders example emits **no raw statements at all**. |
 
 **The pattern across all four:** the typed surface is complete for types the generator
 *builds* and for types it can name as `<T>`, and thins out for types it *discovers*.
 That is the third column of the reference story below. No *compile-time* story exists
 for consumer types — but as #29 showed, that argues for a well-marked raw seam, not for
-no API at all. With #29–#31 in, a symbol-driven generator builds every declaration and
-every `return` through the fluent API, and the builders example is down to a single raw
-statement.
+no API at all.
+
+**Where #29–#32 leave a symbol-driven generator.** The builders example now emits
+nothing from a string: every declaration, assignment, return and constructor call is
+built. What it does *not* get is compile-time checking, and the distinction is worth
+keeping sharp, because "no raw statements" is easily mistaken for "checked". A raw
+assignment compares declared type *text*; a raw construction checks nothing at all.
+Both fire when the generator runs, if at all. What is genuinely bought is that
+malformed syntax is impossible and that names come from the builders that declared
+them rather than from string formatting that can drift — real, and less than `<T>`.
 
 ## Deliberate decisions (not gaps)
 
@@ -101,6 +108,18 @@ These look like omissions but are choices:
   Distinct names leave one candidate, so the error is `CS0411` naming
   `CallOn<TDeclaring>` — the same diagnostic a mismatched `Assign` gives. The
   extra name buys an error that points at the actual problem.
+
+- **`AssignRaw` is named apart from `Assign`** — the fourth instance of the rule, and
+  the one that shows probing the *happy path* is not enough. Overloading looked safe on
+  paper and was: the parameter sets are genuinely disjoint (a builder is either an
+  `IReference<T>` or an `IRawReference`, never both), so no call could bind to the wrong
+  candidate. The damage was to the *diagnostic*. Measured: with an overload, a mismatched
+  **typed** `Assign(stringProperty, intParameter)` reports
+  *"cannot convert `PropertyBuilder<string>` to `IRawReference`"* — the generic candidate
+  fails inference and is dropped, and the raw overload survives to blame an interface the
+  caller never mentioned. With a distinct name it reports `CS0411` against `Assign`, as
+  it always did. The lesson sharpens: **probe the mismatch of the calls you are not
+  changing**, not just of the one you are adding.
 
 - **`MemberNamed<T>("x")` is named apart from `Member(handle)`**, for the third
   time and the third instance of the same rule. The two would overload cleanly on

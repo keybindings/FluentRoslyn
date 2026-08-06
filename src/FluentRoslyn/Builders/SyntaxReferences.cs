@@ -34,6 +34,23 @@ internal static class SyntaxReferences
     }
 
     /// <summary>
+    /// Builds <c>target = value;</c> between two references whose types are text. The
+    /// declared types were compared at the call site; what remains here is emission,
+    /// which is the same as any other assignment.
+    /// </summary>
+    internal static StatementSyntax RawAssignment(
+        IReference target,
+        IReference value,
+        IReadOnlyCollection<IParameter> parameters,
+        bool inStaticContext,
+        string context)
+        => ExpressionStatement(
+            AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                Expression(target, parameters, inStaticContext, context),
+                Expression(value, parameters, inStaticContext, context)));
+
+    /// <summary>
     /// Builds <c>target.Method(arguments);</c> from a receiver, a method handle, and
     /// argument references. The types were matched by the compiler at the
     /// <c>Call</c> overload; what remains here is emission.

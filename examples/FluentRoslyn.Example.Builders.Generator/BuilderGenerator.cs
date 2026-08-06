@@ -23,12 +23,12 @@ namespace FluentRoslyn.Example.Builders.Generator;
 /// here is declared through the raw-name overloads for exactly that reason.
 /// </para>
 /// <para>
-/// Exactly one raw statement is left, marked below and tracked as roadmap #32: the
-/// assignment inside a setter, whose two sides are both consumer-typed and so share no
-/// <c>T</c> for <c>Assign</c> to match. Everything else — declarations, the fluent
-/// <c>return this</c>, and the constructor call in <c>Build</c> — is built rather than
-/// parsed from text. That last statement is worth leaving visible: it is precisely
-/// where the typed surface still stops for a symbol-driven generator.
+/// Nothing here is parsed from text: every declaration, the assignment, the fluent
+/// <c>return this</c>, and the constructor call in <c>Build</c> are all built. What is
+/// <em>not</em> available is the compile-time checking, because none of these types
+/// exist as <c>T</c> — the assignment compares declared type text and the constructor
+/// call is unchecked, both when the generator runs. That is the honest ceiling for a
+/// symbol-driven generator, and it is a different thing from emitting strings.
 /// </para>
 /// </remarks>
 [Generator]
@@ -91,13 +91,12 @@ public class BuilderGenerator : IIncrementalGenerator
 
             builder.DefineMethod($"With{Capitalise(parameter.Name)}")
                 .WithSummary($"Sets {parameter.Name}.")
-                .WithParameter(parameter.Name, parameterType)
+                .WithParameter(parameter.Name, parameterType, out var argument)
                 .Returns(builder)
-                // GAP (roadmap #32): the field and the parameter are both consumer-typed,
-                // so they share no T and Assign cannot connect them. The last raw
-                // statement here.
-                .AddStatement($"{field.Name} = {parameter.Name};")
-                // `this` is a reference now, so the fluent return is built, not parsed.
+                // Both sides are consumer-typed, so there is no shared T -- but their
+                // declared type text is compared, which catches assigning the wrong
+                // parameter into the wrong field.
+                .AssignRaw(field, argument)
                 .Return(builder.This());
         }
 

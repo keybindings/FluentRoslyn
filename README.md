@@ -333,11 +333,32 @@ public global::MyApp.Order Build()
 
 Both are deliberately untyped — a consumer's constructor has no signature the generator
 can check against, and `This()` has no `T` unless a placeholder names it (`This<T>()`
-does, and rejoins the typed surface). The gain over a raw statement is bounded and
-worth being precise about: the syntax is *built* rather than concatenated, and the
-argument names come from the field builders that declared them rather than from a
-second round of string formatting that can drift. `This()` also picks up the guards for
-free — using it from a static member is refused, since there is no `this` to emit.
+does, and rejoins the typed surface). `This()` picks up the guards for free: using it
+from a static member is refused, since there is no `this` to emit.
+
+Assignment between two such members is `AssignRaw`, which *is* checked — not by `T`,
+but by comparing both sides' declared type text, the same rule `AsCallable` validates
+handles by:
+
+```csharp
+builder.DefineMethod("WithShipTo")
+    .WithParameter("shipTo", "global::MyApp.Address", out var shipTo)
+    .Returns(builder)
+    .AssignRaw(shipToField, shipTo)     // throws if the two declared types differ
+    .Return(builder.This());
+```
+
+It's named apart from `Assign` rather than overloading it. Overloading is provably
+safe — the two parameter sets are disjoint — but it wrecks the *other* method's
+diagnostics: a mismatched typed `Assign` drops the generic candidate when inference
+fails, and the raw overload survives to report "cannot convert … to `IRawReference`",
+an interface you never mentioned.
+
+Between them these cover a symbol-driven generator without emitting a single raw
+statement. Be clear on what that does and doesn't mean: malformed syntax becomes
+impossible and names come from the builders that declared them, but the checks are by
+type *text* and happen when the generator runs. That is strictly less than `<T>` — it
+is simply the most available when the type exists only as an `ISymbol`.
 
 A complete symbol-driven generator is in
 [`examples/`](https://github.com/keybindings/FluentRoslyn/tree/main/examples): it reads
