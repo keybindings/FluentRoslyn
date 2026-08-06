@@ -87,7 +87,7 @@ code it produces.
   operating systems)
 
 > **Status:** published as [`FluentRoslyn`](https://www.nuget.org/packages/FluentRoslyn)
-> on nuget.org, currently `0.1.0-preview.3`. Breaking changes are still on the table
+> on nuget.org, currently `0.1.0-preview.4`. Breaking changes are still on the table
 > while the version says preview. See [What's next](#whats-next).
 
 ## Building blocks

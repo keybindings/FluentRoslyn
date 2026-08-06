@@ -33,7 +33,7 @@
          FluentRoslyn is also what someone searching for this library actually types,
          so the assembly, namespaces, repo, and package all use it. -->
     <PackageId>FluentRoslyn</PackageId>
-    <Version>0.1.0-preview.3</Version>
+    <Version>0.1.0-preview.4</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
@@ -47,13 +47,25 @@
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>BREAKING: a generated file is now its own builder. SourceFile.InNamespace("MyApp") owns the using directives, SimplifyTypeNames(), BlockScopedNamespace(), WithIndentation() and WithLineEndings() — those five moved off the type builders, because they describe a file rather than a type. Several types can now share one file, and simplification decides ambiguity across all of them, which is the only way that decision can be correct when types share a file. NamespaceBuilder.Get(ns).Class(name) still works and opens a single-type file, so the common path is unchanged.
+    <PackageReleaseNotes>0.1.0-preview.4
 
-Adds Source Link and a symbol package, so stepping into this library in a debugger lands on the real source rather than decompiled IL. Builds from CI are deterministic.
+Extends the typed statement surface at both ends: the locations a value can be written to, and the values that can be written.
 
-First preview.
+Reference paths. Member, MemberNamed and Item build one reference out of another, so this.a.b, arr[i] and map[k] are now assignment targets, call receivers, arguments and return values. A path is an IReference, so every position that already accepted one takes a path with no new overload. When a parameter shadows a path's leading name only that name is qualified, because everything after the first dot binds in the target's type.
 
-Type declarations: classes, structs, records, enums, interfaces, and delegates, nestable to any depth; fields, constructors, properties, methods, and events; generics with constraints, attributes (including target specifiers), base types and interfaces, async, required members, and XML doc comments.
+Computed values. AsConstructable yields a type-checked new T(args), and a call's result can be used as a value rather than only as a statement. Assign, Return and argument positions now take IValue&lt;T&gt;, which IReference&lt;T&gt; implements — existing calls are unaffected.
+
+Members typed by name, for generators driven by the consumer's own code. A consumer's type is an ISymbol, never a CLR T, so the &lt;T&gt; surface could not declare a field or parameter of one at all. DefineField(name, typeName) and WithParameter(name, typeName) now can; AssignRaw connects two such references; Value.NewOfType constructs a type named by text; and This()/This&lt;T&gt;() make `this` a reference. Together these let a generator working purely from consumer symbols emit without a single raw statement — see the builders example in the repository.
+
+Worth being precise about what that buys. The raw-name forms are checked by declared type text when the generator runs, not by the compiler when it builds; construction is not checked at all. That is strictly less than &lt;T&gt;, and it is the most available when a type exists only as an ISymbol. What it does guarantee is that malformed syntax is impossible and that names come from the builders that declared them.
+
+Source-compatible with preview.3; binary-breaking, as previews are permitted to be. Field builders gained a shared base and several signatures widened from IReference to IValue, so recompile rather than drop in.
+
+Earlier previews
+
+BREAKING in preview.3: a generated file is its own builder. SourceFile.InNamespace("MyApp") owns the using directives, SimplifyTypeNames(), BlockScopedNamespace(), WithIndentation() and WithLineEndings() — those five moved off the type builders, because they describe a file rather than a type. Several types can share one file, and simplification decides ambiguity across all of them, which is the only way that decision can be correct when types share a file. NamespaceBuilder.Get(ns).Class(name) still works and opens a single-type file, so the common path is unchanged. Preview.3 also added Source Link and a symbol package, so stepping into this library lands on the real source rather than decompiled IL, and CI builds are deterministic.
+
+From the first preview — type declarations: classes, structs, records, enums, interfaces, and delegates, nestable to any depth; fields, constructors, properties, methods, and events; generics with constraints, attributes (including target specifiers), base types and interfaces, async, required members, and XML doc comments.
 
 Type-checked statements: properties, fields, and parameters are typed references, so Assign matches both sides at generator compile time; AsCallable/Call check a method call's arguments, and AsCallableOn/CallOn check the receiver too. Also Return, literal values, null guards, and compound assignment. A member shadowed by a parameter is qualified automatically rather than silently binding the parameter.
 

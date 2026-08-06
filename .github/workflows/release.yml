@@ -55,6 +55,30 @@ jobs:
             exit 1
           fi
 
+      # The meta-generator chain: a generator whose own source is lifted from compiled,
+      # type-checked C# by another generator, three compilations deep.
+      - name: Run templates chain end-to-end
+        run: |
+          output=$(dotnet run --project examples/FluentRoslyn.Example.Templates.App -c Release --no-build)
+          echo "$output"
+          expected=$'Add: 5\nDescribe: Cart has 4 item(s)\nIsEmpty: True\nTag: [sale]'
+          if [ "$output" != "$expected" ]; then
+            echo "::error::Templates chain output did not match."
+            exit 1
+          fi
+
+      # The symbol-driven case: the generator reads the app's own types as ISymbols and
+      # emits a fluent builder for each.
+      - name: Run builders example end-to-end
+        run: |
+          output=$(dotnet run --project examples/FluentRoslyn.Example.Builders.App -c Release --no-build)
+          echo "$output"
+          expected="3 x for Ada to Bristol"
+          if [ "$output" != "$expected" ]; then
+            echo "::error::Builders example output did not match."
+            exit 1
+          fi
+
       - name: Pack
         run: dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts
 
