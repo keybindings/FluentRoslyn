@@ -83,6 +83,19 @@ jobs:
             exit 1
           fi
 
+      # Implementing a discovered interface: the generator enumerates IGreeter's members
+      # and emits a forwarding decorator. Exercises raw-typed properties and the raw
+      # null guard, neither of which the other examples reach.
+      - name: Run decorator example end-to-end
+        run: |
+          output=$(dotnet run --project examples/FluentRoslyn.Example.Decorator.App -c Release --no-build)
+          echo "$output"
+          expected=$'[log] Greet\nHello, Ada\n[log] Count\nCount: 1\n[log] Reset\n[log] Count\nCount: 0'
+          if [ "$output" != "$expected" ]; then
+            echo "::error::Decorator example output did not match."
+            exit 1
+          fi
+
       - name: Pack
         run: |
           dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts

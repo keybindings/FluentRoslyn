@@ -29,6 +29,32 @@ are unbuilt. Per the roadmap's standing rule they should wait for a real generat
 need them, and a template with no holes already delivers the whole compile-checking
 benefit.
 
+**A generator asked, and the answer was no — recorded so it is not re-derived.** The
+decorator example (2026-08-06) was written specifically to pull holes into existence:
+it emits one repeated body per interface member, which is the shape holes exist for.
+It did not need them, and could not have used them. The variation between its bodies
+is not a value, a name, or a type — it is **arity and shape**:
+
+```csharp
+// per member, the parts that vary:
+public {ReturnType} {Name}({ParameterList})     // count and types differ per member
+    => _inner.{Name}({ArgumentList});          // argument count follows from that
+```
+
+A template is a real C# method, so its signature is fixed when it is written. Steps 3
+and 4 substitute *into* a fixed shape; they cannot vary the shape itself — there is no
+way to write one template that forwards two parameters for one member and none for
+the next, nor one that is `void` for some members and value-returning for others.
+
+So the decorator builds its members through the ordinary builder API, and that is the
+right outcome rather than a shortfall. The lesson for holes is narrower than it looks:
+**templates fit generators that emit a fixed shape with varying values, not generators
+that emit a varying shape.** A generator of the first kind — the same method emitted
+against many types, differing only in a type name or a constant — would genuinely pull
+steps 3–4, and none of the three examples is one. Until such a generator exists, holes
+stay unbuilt on the same standing-rule grounds as before, now with evidence behind the
+claim rather than caution.
+
 This is the largest item on the roadmap and the one the reference story has been
 leading toward. It is also the one most able to go wrong by being designed
 optimistically, so this document leads with what was measured and states the ceiling

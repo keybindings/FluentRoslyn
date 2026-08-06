@@ -300,6 +300,25 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
         return Self;
     }
 
+    /// <summary>
+    /// Appends a null guard for a reference whose type was given as text:
+    /// <c>if (x is null) throw new ArgumentNullException(nameof(x));</c>.
+    /// </summary>
+    /// <remarks>
+    /// Named apart from <see cref="ThrowIfNull{TValue}"/> for the same reason as
+    /// <see cref="AssignRaw"/>: the typed form constrains <c>TValue</c> to a reference
+    /// type, so an overload here would survive as the sole candidate whenever that
+    /// constraint fails and would report the mismatch against <c>IRawReference</c> — a
+    /// type the caller never mentioned.
+    /// </remarks>
+    /// <param name="value">The reference to guard.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf ThrowIfNullRaw(IRawReference value)
+    {
+        AddNullGuard(value ?? throw new ArgumentNullException(nameof(value)));
+        return Self;
+    }
+
     /// <summary>Appends a call statement: <c>target.Method();</c>.</summary>
     public TSelf Call<TTarget>(IReference<TTarget> target, IMethod method)
         => AddCall(target, method);

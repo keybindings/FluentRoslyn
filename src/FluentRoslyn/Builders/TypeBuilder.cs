@@ -145,6 +145,30 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     }
 
     /// <summary>
+    /// Declares a public auto-property whose type is named by text — for a type the
+    /// generator cannot name as <c>T</c>, above all one discovered from the consumer's
+    /// compilation. Implementing a discovered interface needs this, since the property
+    /// types come from the interface rather than from the generator.
+    /// </summary>
+    /// <param name="name">The property's name.</param>
+    /// <param name="typeName">The property's type, as C# text. Parsed, so a malformed name is rejected.</param>
+    /// <returns>The property builder.</returns>
+    public RawPropertyBuilder DefineProperty(string name, string typeName)
+        => DefineProperty(name, typeName, AccessModifier.Public);
+
+    /// <summary>Declares an auto-property whose type is named by text.</summary>
+    /// <param name="name">The property's name.</param>
+    /// <param name="typeName">The property's type, as C# text.</param>
+    /// <param name="accessModifier">The property's accessibility.</param>
+    /// <returns>The property builder.</returns>
+    public RawPropertyBuilder DefineProperty(string name, string typeName, AccessModifier accessModifier)
+    {
+        var pb = new RawPropertyBuilder(name, typeName, accessModifier);
+        _properties.Add(pb);
+        return pb;
+    }
+
+    /// <summary>
     /// Declares a field-like event whose handler type is <typeparamref name="THandler"/>,
     /// e.g. <c>DefineEvent&lt;EventHandler&gt;("Changed")</c>.
     /// </summary>
