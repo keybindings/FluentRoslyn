@@ -27,7 +27,13 @@
 
   <PropertyGroup Label="Package">
     <PackageId>FluentRoslyn.Templates</PackageId>
-    <Version>0.1.0-preview.1</Version>
+    <!-- Versioned in lockstep with FluentRoslyn, because one repository, one tag, and
+         one release workflow make the tag the unit of release — and the workflow
+         asserts that every packed version equals the tag, so the two cannot drift.
+         This package also tracks FluentRoslyn's API closely enough that a pair which
+         disagreed about its version would be a puzzle rather than a convenience.
+         Bump both, or the release fails before anything is pushed. -->
+    <Version>0.1.0-preview.4</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>Compile-checked templates for FluentRoslyn. A meta-generator that runs on your source-generator project: mark a method [Template] and its body is real, compiled, refactorable C# that the meta-generator lifts into the FluentRoslyn calls which reproduce it. Breaking a template is an error in your own build, not a CS8785 warning in your consumer's.</Description>
@@ -39,6 +45,15 @@
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <DevelopmentDependency>true</DevelopmentDependency>
+    <PackageReleaseNotes>First release, alongside FluentRoslyn 0.1.0-preview.4.
+
+Mark a method [Template] and its body becomes real, compiled, refactorable C#. The meta-generator reads your generator project's own syntax trees and lifts each template into the FluentRoslyn calls that reproduce it, so breaking a template is an error in your own build rather than a CS8785 warning in your consumer's — a warning that leaves the build green and the generated file silently missing.
+
+Holes are marked in the template and filled at generation time. Diagnostics are reported under the FRT prefix.
+
+The ceiling, stated rather than discovered later: a template is checked against the types your generator project can see. The consumer's types exist only when the generator runs, so anything a hole reaches into stays unchecked at that seam. "Type safe, almost" is the honest description.
+
+Install into the source-generator project itself, not into the consumer.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

@@ -80,37 +80,52 @@ jobs:
           fi
 
       - name: Pack
-        run: dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts
+        run: |
+          dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts
+          dotnet pack src/FluentRoslyn.Templates/FluentRoslyn.Templates.csproj -c Release --no-build -o artifacts
 
-      # Guards against tagging one version and shipping another, which cannot be
-      # undone once pushed. Skipped for manual runs, which have no tag to compare.
-      - name: Verify package version matches the tag
+      # Guards against tagging one version and shipping another, which cannot be undone
+      # once pushed. Asserting the exact expected filenames does three jobs at once: it
+      # proves every package carries the tag's version, that both were actually produced,
+      # and — via the count — that nothing unexpected slipped into the directory. The two
+      # ids are listed rather than derived, because "everything before the version" is
+      # ambiguous when one id is a prefix of the other. Skipped for manual runs, which
+      # have no tag to compare against.
+      - name: Verify package versions match the tag
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          file=$(ls artifacts/*.nupkg)
-          packed=$(basename "$file" .nupkg)
-          packed="${packed#FluentRoslyn.}"
-          echo "tag=$tag packed=$packed"
-          if [ "$tag" != "$packed" ]; then
-            echo "::error::Tag '$tag' does not match packaged version '$packed'."
+          for id in FluentRoslyn FluentRoslyn.Templates; do
+            expected="artifacts/$id.$tag.nupkg"
+            if [ ! -f "$expected" ]; then
+              echo "::error::Expected $expected for tag '$tag'. Both csproj <Version> values must equal the tag."
+              ls -1 artifacts/*.nupkg || true
+              exit 1
+            fi
+            echo "ok: $expected"
+          done
+          count=$(ls -1 artifacts/*.nupkg | wc -l)
+          if [ "$count" -ne 2 ]; then
+            echo "::error::Expected exactly 2 packages, found $count."
+            ls -1 artifacts/*.nupkg
             exit 1
           fi
 
-      # Roslyn is referenced with PrivateAssets=all so it never flows to
-      # consumers. That is the package's central promise, so it is asserted here
-      # rather than assumed.
+      # Roslyn is referenced with PrivateAssets=all so it never flows to consumers. That
+      # is the central promise of both packages, so it is asserted rather than assumed —
+      # for each of them, since a leak in either is a leak.
       - name: Verify no dependencies leak to consumers
         run: |
-          unzip -p artifacts/*.nupkg FluentRoslyn.nuspec > nuspec.xml
-          echo "--- packaged contents ---"
-          unzip -l artifacts/*.nupkg
-          if grep -q '<dependency ' nuspec.xml; then
-            echo "::error::Package declares dependencies; they must not flow to consumers."
-            grep '<dependency ' nuspec.xml
-            exit 1
-          fi
-          echo "Dependency groups are empty, as expected."
+          for file in artifacts/*.nupkg; do
+            echo "--- $file ---"
+            unzip -l "$file"
+            if unzip -p "$file" '*.nuspec' | grep -q '<dependency '; then
+              echo "::error::$file declares dependencies; they must not flow to consumers."
+              unzip -p "$file" '*.nuspec' | grep '<dependency '
+              exit 1
+            fi
+            echo "Dependency groups are empty, as expected."
+          done
 
       # Exchanges the OIDC token for a short-lived API key. The username is the
       # nuget.org profile name, which is public on every package page, so it is
@@ -121,17 +136,44 @@ jobs:
         with:
           user: keybindings
 
-      # Pushes the symbol package too. The *.nupkg glob does not match *.snupkg, but it
-      # does not need to: the NuGet client looks for an adjacent .snupkg and pushes it
-      # to the symbol endpoint on its own. An earlier version of this workflow added a
-      # separate snupkg step and it failed with 409 Conflict, because the symbols were
-      # already there. Verified in the run log: two PUTs, /api/v2/package/ then
-      # /api/v2/symbolpackage/, both Created.
-      - name: Push to nuget.org
-        run: >
-          dotnet nuget push artifacts/*.nupkg
-          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
-          --source https://api.nuget.org/v3/index.json
+      # Templates goes FIRST, deliberately. Its id has never been published, and a
+      # trusted-publishing policy is scoped to "all packages owned by this account" —
+      # which says nothing about an id that has no owner yet, making this the step most
+      # likely to fail. Pushed second, a failure would land after FluentRoslyn was
+      # already live and immutable: re-tagging would then 409 on FluentRoslyn and fail
+      # again, so the only way out would be burning a version number. Pushed first, a
+      # failure publishes nothing and the same tag can simply be re-cut.
+      #
+      # --skip-duplicate on both makes a re-run idempotent rather than a 409. nuget.org
+      # will not overwrite a published version whatever this flag says; it only decides
+      # whether an already-present version is an error or a no-op. The tag/version
+      # check above is what actually guards against shipping the wrong thing.
+      - name: Push FluentRoslyn.Templates to nuget.org
+        run: |
+          file=$(ls artifacts/FluentRoslyn.Templates.*.nupkg)
+          echo "pushing $file"
+          dotnet nuget push "$file" \
+            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+      # Selected by excluding Templates rather than by globbing FluentRoslyn.*, which
+      # would match FluentRoslyn.Templates.*.nupkg too.
+      #
+      # Pushes the symbol package with it. The .nupkg path does not name the .snupkg and
+      # does not need to: the NuGet client looks for an adjacent one and pushes it to the
+      # symbol endpoint itself. An earlier version of this workflow added a separate
+      # snupkg step and it failed with 409, because the symbols were already there.
+      # Verified in the run log: two PUTs, /api/v2/package/ then /api/v2/symbolpackage/,
+      # both Created. Templates ships no symbols, so it has no equivalent.
+      - name: Push FluentRoslyn to nuget.org
+        run: |
+          file=$(ls artifacts/*.nupkg | grep -v 'FluentRoslyn\.Templates\.')
+          echo "pushing $file"
+          dotnet nuget push "$file" \
+            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
 
       # A published tag with no Release leaves the repo's Releases tab empty while the
       # package is live. Notes come from the tag annotation when there is one.

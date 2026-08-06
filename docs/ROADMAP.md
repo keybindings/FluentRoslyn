@@ -62,6 +62,19 @@ them, not speculatively).
   metadata is immutable once pushed, and the nuget.org policy is keyed to the
   workflow's *file name*, so renaming `release.yml` breaks publishing until the
   policy is updated.
+- **Two packages now ship from one tag.** `FluentRoslyn.Templates` joined the
+  release workflow, and the two version **in lockstep** — the workflow asserts
+  that every packed file is `<id>.<tag>.nupkg`, so bumping one and forgetting the
+  other fails the release before anything is pushed. One nuget.org policy covers
+  both: a Trusted Publishing policy names a repository owner, repository and
+  workflow file, has **no package-id field**, and applies to every package the
+  account owns. So a second package needs no second policy — and the flip side is
+  that the policy's blast radius is the whole account. Templates is pushed
+  *first*, because its id has never been published and that makes it the step most
+  likely to fail; going second, a failure would land after `FluentRoslyn` was
+  already immutable and would cost a version number to recover from. Worth knowing:
+  `FluentRoslyn` is **not** a reserved id prefix, so sibling ids are unclaimed but
+  also unprotected.
 
 ## Planned — pulled by a real generator
 
