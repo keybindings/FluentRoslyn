@@ -82,7 +82,11 @@ public class ReturnStatementTests
     public void Return_RemainsAvailableAfterInheritedFluentMethods()
     {
         var ch = NamespaceBuilder.Get("MyApp").Class("Ch");
-        var v = ch.DefineField<int>("_v");
+        // Static, because the method is: as originally written this test returned an
+        // instance field from a static method, which emits `return _v;` into a static
+        // context and fails the consumer's build with CS0120. The library now refuses
+        // that, and this test was the counterexample hiding in the suite.
+        var v = ch.DefineField<int>("_v").Static();
         ch.DefineMethod<int>("Val").Static().WithSummary("doc").WithAttribute("Obsolete").Return(v);
 
         ch.ToString().Should().Contain("public static int Val()")

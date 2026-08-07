@@ -20,12 +20,15 @@ internal static class SyntaxFormatting
         Inheritance inheritance = Inheritance.None,
         bool isSealed = false,
         bool isAsync = false,
-        bool isRequired = false)
+        bool isRequired = false,
+        bool isUnsafe = false)
     {
         var tokens = new List<SyntaxToken>(accessModifier.Tokens);
         if (isConst) tokens.Add(SyntaxFactory.Token(SyntaxKind.ConstKeyword));
         if (isRequired) tokens.Add(SyntaxFactory.Token(SyntaxKind.RequiredKeyword));
         if (isStatic) tokens.Add(SyntaxFactory.Token(SyntaxKind.StaticKeyword));
+        // `public static unsafe` is the conventional order, so unsafe sits after static.
+        if (isUnsafe) tokens.Add(SyntaxFactory.Token(SyntaxKind.UnsafeKeyword));
         // A sealed *type* stands alone; a sealed member only exists as `sealed override`,
         // which Inheritance covers.
         if (isSealed) tokens.Add(SyntaxFactory.Token(SyntaxKind.SealedKeyword));

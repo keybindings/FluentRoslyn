@@ -32,6 +32,8 @@ public class ClassBuilder : TypeBuilder<ClassBuilder>
     // Abstract members are only legal in an abstract class.
     private protected override bool AllowsAbstractMembers => IsAbstract;
 
+    private protected override bool IsStaticType => IsStatic;
+
     #region FluentMethods
 
     /// <summary>Marks the class <c>static</c>.</summary>

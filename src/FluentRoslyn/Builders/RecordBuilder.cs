@@ -23,6 +23,7 @@ public class RecordBuilder : TypeDeclarationBuilder
     private readonly GenericParameters _generics = new();
 
     internal override bool HasTypeParameters => _generics.Any;
+    private readonly OperatorSet _operators = new();
     private bool _isStruct;
 
     internal RecordBuilder(SourceFile file, string name, TypeDeclarationBuilder? declaringType = null) : base(file, name, declaringType)
@@ -86,7 +87,55 @@ public class RecordBuilder : TypeDeclarationBuilder
     public RecordBuilder WithConstraint(string typeParameter, string constraint)
         => this.With(() => _generics.AddConstraint(typeParameter, constraint));
 
+    /// <summary>
+    /// Declares an operator returning <typeparamref name="TReturn"/> on the record. The
+    /// record gains a brace body to hold it, after the positional parameter list.
+    /// </summary>
+    /// <remarks>
+    /// <c>==</c> and <c>!=</c> are refused: a record synthesizes both from its value
+    /// semantics, and declaring either is an error in the consumer's build. If the
+    /// synthesized equality is wrong for the type, the member to replace is
+    /// <c>Equals(T)</c>, not the operators.
+    /// </remarks>
+    /// <typeparam name="TReturn">The operator's result type.</typeparam>
+    /// <param name="kind">Which operator to declare.</param>
+    /// <returns>The operator builder.</returns>
+    public OperatorBuilder<TReturn> DefineOperator<TReturn>(OperatorKind kind)
+        => AddOperator(new OperatorBuilder<TReturn>(RefuseSynthesized(kind)));
+
+    /// <summary>Declares an operator whose result type is named by text.</summary>
+    /// <param name="kind">Which operator to declare.</param>
+    /// <param name="resultTypeName">The result type, as C# text.</param>
+    /// <returns>The operator builder.</returns>
+    public OperatorBuilder DefineOperator(OperatorKind kind, string resultTypeName)
+        => AddOperator(new OperatorBuilder(RefuseSynthesized(kind), SyntaxParse.TypeName(resultTypeName)));
+
+    /// <summary>Declares a conversion to <typeparamref name="TTarget"/> on the record.</summary>
+    /// <typeparam name="TTarget">The type converted to.</typeparam>
+    /// <param name="kind">Whether the conversion is implicit or explicit.</param>
+    /// <returns>The operator builder.</returns>
+    public OperatorBuilder<TTarget> DefineConversion<TTarget>(ConversionKind kind)
+        => AddOperator(new OperatorBuilder<TTarget>(kind));
+
+    /// <summary>Declares a conversion to a type named by text.</summary>
+    /// <param name="kind">Whether the conversion is implicit or explicit.</param>
+    /// <param name="targetTypeName">The type converted to, as C# text.</param>
+    /// <returns>The operator builder.</returns>
+    public OperatorBuilder DefineConversion(ConversionKind kind, string targetTypeName)
+        => AddOperator(new OperatorBuilder(kind, SyntaxParse.TypeName(targetTypeName)));
+
     #endregion
+
+    private TOperator AddOperator<TOperator>(TOperator @operator) where TOperator : IOperatorMember
+        => _operators.Add(@operator);
+
+    private OperatorKind RefuseSynthesized(OperatorKind kind)
+        => kind is OperatorKind.Equality or OperatorKind.Inequality
+            ? throw new InvalidOperationException(
+                $"Record '{Name}' cannot declare operator '{Operators.SymbolFor(kind)}': a record " +
+                "synthesizes == and != from its value semantics, and declaring either is an error. " +
+                "To change what equality means, declare Equals instead.")
+            : kind;
 
     private protected override MemberDeclarationSyntax BuildDeclaration()
     {
@@ -95,8 +144,20 @@ public class RecordBuilder : TypeDeclarationBuilder
         var declaration = RecordDeclaration(kind, Token(SyntaxKind.RecordKeyword), Identifier(Name))
             .WithAttributeLists(BuildAttributeLists())
             .WithModifiers(SyntaxFormatting.Modifiers(AccessModifier))
-            .WithParameterList(SyntaxParameters.List(_params))
-            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+            .WithParameterList(SyntaxParameters.List(_params));
+
+        // A bodiless record ends in a semicolon; one with members gains braces after the
+        // positional parameter list. Records are never static, so isStaticType is false.
+        _operators.Validate(Name, isStaticType: false);
+        var operators = new List<MemberDeclarationSyntax>();
+        _operators.AppendMembers(operators);
+
+        declaration = operators.Count == 0
+            ? declaration.WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+            : declaration
+                .WithOpenBraceToken(Token(SyntaxKind.OpenBraceToken))
+                .WithMembers(List(operators))
+                .WithCloseBraceToken(Token(SyntaxKind.CloseBraceToken));
 
         declaration = _generics.ApplyTo(declaration, $"Record '{Name}'");
 

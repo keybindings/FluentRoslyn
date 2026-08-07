@@ -297,7 +297,19 @@ internal static class SyntaxReferences
 
         var identifier = IdentifierName(reference.Name);
 
-        if (!IsMember(reference) || !IsShadowed(reference.Name, parameters))
+        if (!IsMember(reference))
+            return identifier;
+
+        // An instance member referenced where no instance exists -- a static method, an
+        // operator -- would emit bare and fail the consumer's build with CS0120. This
+        // fires whether or not a parameter shadows the name, because renaming the
+        // parameter cannot fix it: there is no instance to reach the member through.
+        if (inStaticContext && !IsStaticMember(reference))
+            throw new InvalidOperationException(
+                $"{context} is static, so it cannot reference '{reference.Name}', an instance member " +
+                "of the type. Reach it through a parameter, or make the member static.");
+
+        if (!IsShadowed(reference.Name, parameters))
             return identifier;
 
         if (inStaticContext || IsStaticMember(reference))

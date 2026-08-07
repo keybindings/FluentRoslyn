@@ -22,9 +22,11 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     private readonly List<ConstructorBuilder> _constructors = [];
     private readonly List<EventBuilder> _events = [];
     private readonly List<PropertyBuilder> _properties = [];
+    // Typed as the operator contract, not IMemberSyntaxBuilder: validation iterates the
+    // list directly, so nothing can be added that the operator rules silently skip.
+    private readonly OperatorSet _operators = new();
     // Methods of differing return types are different classes, so the list is typed by
     // what a declaring type actually needs from them.
-    private readonly List<IMemberSyntaxBuilder> _operators = [];
     private readonly List<IMethodMember> _methods = [];
     private readonly List<TypeDeclarationBuilder> _nestedTypes = [];
     private readonly List<TypeSyntax> _interfaces = [];
@@ -235,11 +237,8 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         => AddOperator(new OperatorBuilder(kind, SyntaxParse.TypeName(targetTypeName)));
 
     private TOperator AddOperator<TOperator>(TOperator @operator)
-        where TOperator : IMemberSyntaxBuilder
-    {
-        _operators.Add(@operator);
-        return @operator;
-    }
+        where TOperator : IOperatorMember
+        => _operators.Add(@operator);
 
     /// <summary>Declares a public <c>void</c> method with an empty body.</summary>
     public MethodBuilder DefineMethod(string name)
@@ -323,6 +322,12 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     /// </summary>
     private protected virtual bool AllowsAbstractMembers => false;
 
+    /// <summary>
+    /// Whether this type is a static class, which cannot declare operators (CS0715):
+    /// its type can never appear as a parameter or result. Structs are never static.
+    /// </summary>
+    private protected virtual bool IsStaticType => false;
+
     // Member group order: fields, constructors, events, properties, methods, nested
     // types;
     // within each group, least protected first, then alphabetical.
@@ -334,62 +339,20 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
             throw new InvalidOperationException(
                 $"Type '{Name}' declares abstract method '{abstractMethod.Name}' but is not abstract.");
 
-        ValidateOperatorPairs();
+        // The cross-member operator rules -- pairing, twinning, duplicates, and the
+        // static-class refusal -- live on the set, shared with every builder that can
+        // carry operators. Refusing here beats a build error in the consumer's project.
+        _operators.Validate(Name, IsStaticType);
 
         var members = new List<MemberDeclarationSyntax>();
         AddMemberGroup(members, _fields);
         AddMemberGroup(members, _constructors);
         AddMemberGroup(members, _events);
         AddMemberGroup(members, _properties);
-        AddOperators(members);
+        _operators.AppendMembers(members);
         AddMemberGroup(members, _methods);
         AddNestedTypes(members);
         return List(members);
-    }
-
-    // Operators keep their declaration order rather than sorting like other member
-    // groups. The group rule is "least protected first, then alphabetical", and an
-    // operator has no access modifier to sort by -- they are all public static. Sorting
-    // the remainder alphabetically would put `operator !=` before `operator ==`, which
-    // splits a pair the language requires together for no gain. Declaration order is
-    // still fully deterministic, because the generator chooses it.
-    private void AddOperators(List<MemberDeclarationSyntax> members)
-        => members.AddRange(_operators.Select(o => o.BuildMember()));
-
-    // C# refuses several operators declared alone -- `==` without `!=` is CS0216, and the
-    // ordering pairs and true/false behave the same way. Only the type sees every
-    // operator, so the check belongs here, and it refuses to emit rather than handing the
-    // consumer a build error nobody in this repository would see.
-    private void ValidateOperatorPairs()
-    {
-        var operators = _operators.OfType<IOperatorMember>().ToList();
-
-        var declared = new HashSet<OperatorKind>(
-            operators.Where(o => o.Kind is not null).Select(o => o.Kind!.Value));
-
-        foreach (var kind in declared)
-        {
-            var partner = Operators.PartnerOf(kind);
-            if (partner is not null && !declared.Contains(partner.Value))
-                throw new InvalidOperationException(
-                    $"Type '{Name}' declares operator '{Operators.SymbolFor(kind)}' without " +
-                    $"'{Operators.SymbolFor(partner.Value)}'. C# requires the pair.");
-        }
-
-        // A checked form is only legal on some operators, and only alongside its
-        // unchecked counterpart (CS9023/CS9024/CS9025). The per-operator part is asked of
-        // the operator itself, since only it knows its own arity.
-        var unchecked_ = new HashSet<string>(operators.Where(o => !o.IsChecked).Select(o => o.SignatureKey));
-
-        foreach (var @operator in operators)
-        {
-            @operator.ValidateChecked(Name);
-
-            if (@operator.IsChecked && !unchecked_.Contains(@operator.SignatureKey))
-                throw new InvalidOperationException(
-                    $"Type '{Name}' declares checked '{@operator.Display}' without a matching " +
-                    "unchecked form. C# requires both.");
-        }
     }
 
     // Nested types sort by the same rule as members, but they are not IMemberSyntaxBuilder
