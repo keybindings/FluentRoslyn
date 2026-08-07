@@ -51,6 +51,21 @@ internal static class SyntaxReferences
                 Expression(value, parameters, inStaticContext, context)));
 
     /// <summary>
+    /// Builds <c>T.Method(arguments);</c> — a static call as a statement. The expression
+    /// is the one <c>InvokeStatic</c> produces as a value, so the two cannot drift.
+    /// </summary>
+    internal static StatementSyntax StaticInvocation(
+        TypeNameBuilder type,
+        string methodName,
+        IValue[] arguments,
+        IReadOnlyCollection<IParameter> parameters,
+        bool inStaticContext,
+        string context)
+        => ExpressionStatement(
+            new StaticInvocationValue(type, methodName, arguments)
+                .Build(value => Expression(value, parameters, inStaticContext, context)));
+
+    /// <summary>
     /// Builds <c>target.Method(arguments);</c> for a method on a type the generator only
     /// discovered. The expression is the same one <c>InvokeRaw</c> produces as a value;
     /// this wraps it as a statement, so the two forms cannot drift.

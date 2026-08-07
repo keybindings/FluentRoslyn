@@ -525,8 +525,28 @@ qualified name are the same string, because that is what both become in the
 generated source. The plain `AsCallable` family remains for receivers with no
 placeholder — a type from a shared library, say.
 
-One limit stated rather than papered over: static calls are not modelled, and
-`AsCallable` says so instead of emitting instance syntax on a static method.
+`AsCallable` refuses a static method rather than emitting instance syntax on one.
+Static calls have their own family, because their receiver is a *type*:
+
+```csharp
+run.CallStatic(typeof(Console), nameof(Console.WriteLine), Value.Literal("hi"))
+   .CallStatic<Guid>(nameof(Guid.NewGuid))          // non-static declaring type
+   .CallStaticRaw("global::Consumer.Log", "Write"); // a type only discovered
+```
+
+Use `typeof` for a **static class** — `Console`, `Math`, `File`, `Enumerable`. C#
+forbids a static type as a type argument, so `CallStatic<Console>` doesn't compile,
+and that covers most static methods there are. The `<T>` form is for non-static
+declaring types.
+
+Every form but the raw one routes the type through the same machinery as any other
+type reference, so it's fully qualified by default and shortens under
+`SimplifyTypeNames` with the import added. The *method* is named by text and
+unchecked in all of them — the library has no signature to check against, and a
+handle would look like a check without being one.
+
+`Value.Literal(x)` is what lets a constant be an argument at all; it's typed, so it
+fits the checked handles too.
 
 ### Computed values
 

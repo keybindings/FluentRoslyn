@@ -55,6 +55,10 @@ public abstract class StatementBuilder : NamedBuilder
     private protected void AddRawAssignment(IReference target, IReference value)
         => Statements.Add(SyntaxReferences.RawAssignment(target, value, Parameters, IsStaticContext, StatementContext));
 
+    private protected void AddStaticInvocation(TypeNameBuilder type, string methodName, IValue[] arguments)
+        => Statements.Add(SyntaxReferences.StaticInvocation(
+            type, methodName, arguments, Parameters, IsStaticContext, StatementContext));
+
     private protected void AddRawInvocation(IReference target, string methodName, IValue[] arguments)
         => Statements.Add(SyntaxReferences.RawInvocation(
             target, methodName, arguments, Parameters, IsStaticContext, StatementContext));
@@ -320,6 +324,92 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     public TSelf ThrowIfNullRaw(IRawReference value)
     {
         AddNullGuard(value ?? throw new ArgumentNullException(nameof(value)));
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a static call statement: <c>Console.WriteLine("hi");</c>. The receiver is
+    /// a type rather than a reference, which is why this is a separate family — there is
+    /// nothing on the left to qualify, and nothing that can be shadowed.
+    /// </summary>
+    /// <remarks>
+    /// The type goes through <see cref="TypeNameBuilder"/>, so it is fully qualified by
+    /// default and shortens under <c>SimplifyTypeNames</c> with the import added. Prefer
+    /// this over <see cref="CallStaticRaw"/> whenever the type can be named as
+    /// <typeparamref name="TDeclaring"/>. The method is named by text and unchecked: the
+    /// library has no signature for it, and inventing a handle would look like a check
+    /// without being one.
+    /// </remarks>
+    /// <typeparam name="TDeclaring">The type declaring the static method.</typeparam>
+    /// <param name="methodName">The method's name. Validated as a C# identifier.</param>
+    /// <param name="arguments">The arguments, in order.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf CallStatic<TDeclaring>(string methodName, params IValue[] arguments)
+    {
+        AddStaticInvocation(TypeNameBuilder.New<TDeclaring>(), methodName, arguments);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a static call statement whose declaring type is given as a
+    /// <see cref="Type"/>: <c>CallStatic(typeof(Console), "WriteLine", …)</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <strong>This is the overload for a <c>static class</c>, and most static methods
+    /// live in one.</strong> C# forbids a static type as a type argument (CS0718), so
+    /// <c>CallStatic&lt;Console&gt;</c> does not compile — nor does it for
+    /// <c>Math</c>, <c>File</c>, or <c>Enumerable</c>. <c>typeof</c> has no such
+    /// restriction, so this form reaches them while still going through
+    /// <see cref="TypeNameBuilder"/>, keeping the qualification and simplifier
+    /// behaviour that the raw form loses.
+    /// </para>
+    /// <para>
+    /// <see cref="CallStatic{TDeclaring}"/> remains for non-static declaring types —
+    /// <c>Guid.NewGuid()</c>, <c>int.Parse(…)</c> — where the type-argument form matches
+    /// the rest of the library.
+    /// </para>
+    /// </remarks>
+    /// <param name="declaringType">The type declaring the static method, e.g. <c>typeof(Console)</c>.</param>
+    /// <param name="methodName">The method's name. Validated as a C# identifier.</param>
+    /// <param name="arguments">The arguments, in order.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf CallStatic(Type declaringType, string methodName, params IValue[] arguments)
+    {
+        AddStaticInvocation(
+            TypeNameBuilder.New(declaringType ?? throw new ArgumentNullException(nameof(declaringType))),
+            methodName,
+            arguments);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a static call statement whose declaring type is one being generated
+    /// alongside, named by its builder.
+    /// </summary>
+    /// <param name="type">The builder of the type declaring the static method.</param>
+    /// <param name="methodName">The method's name. Validated as a C# identifier.</param>
+    /// <param name="arguments">The arguments, in order.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf CallStatic(TypeDeclarationBuilder type, string methodName, params IValue[] arguments)
+    {
+        AddStaticInvocation(
+            TypeNameBuilder.For(type ?? throw new ArgumentNullException(nameof(type))), methodName, arguments);
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a static call statement whose declaring type is named by text — for a
+    /// type the generator only discovered. The text is taken as written, so it neither
+    /// shortens nor gains an import.
+    /// </summary>
+    /// <param name="typeName">The declaring type, as C# text. Parsed, so a malformed name is rejected.</param>
+    /// <param name="methodName">The method's name. Validated as a C# identifier.</param>
+    /// <param name="arguments">The arguments, in order.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf CallStaticRaw(string typeName, string methodName, params IValue[] arguments)
+    {
+        AddStaticInvocation(TypeNameBuilder.ForRawName(typeName), methodName, arguments);
         return Self;
     }
 

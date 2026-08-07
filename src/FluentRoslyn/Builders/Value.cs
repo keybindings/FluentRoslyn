@@ -16,6 +16,23 @@ public static class Value
     private const string Context = "Value.New";
 
     /// <summary>
+    /// A constant where a value is expected — a call argument above all:
+    /// <c>CallStatic&lt;Console&gt;("WriteLine", Value.Literal("hello"))</c>.
+    /// </summary>
+    /// <remarks>
+    /// Typed, so it composes with the checked families: <c>Value.Literal("x")</c> is an
+    /// <c>IValue&lt;string&gt;</c> and fits a handle whose parameter is a string, while
+    /// <c>Value.Literal(1)</c> does not. Covers the primitives with a natural C# literal
+    /// form; anything else needs a raw expression. This is the argument-position
+    /// counterpart of <c>AssignLiteral</c> and <c>ReturnLiteral</c>, which closed the
+    /// same limit for assignment and return only.
+    /// </remarks>
+    /// <typeparam name="T">The constant's type, inferred from the argument.</typeparam>
+    /// <param name="value">The constant.</param>
+    /// <returns>The constant, as a typed value.</returns>
+    public static IValue<T> Literal<T>(T value) => new LiteralValue<T>(value);
+
+    /// <summary>
     /// Produces <c>new T(arguments)</c> for a type named by text — for a type the
     /// generator did not build, above all one discovered from the consumer's compilation
     /// as an <c>ISymbol</c>, which has no <c>ConstructorBuilder</c> to take a handle from.

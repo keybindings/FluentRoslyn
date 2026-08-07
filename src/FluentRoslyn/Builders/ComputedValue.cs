@@ -80,6 +80,66 @@ internal sealed class RawConstructionValue : IValue, IComputedValue
 }
 
 /// <summary>
+/// A constant used where a value is expected — a call argument, above all. Typed, so it
+/// composes with the checked families: <c>Value.Literal("x")</c> is an
+/// <c>IValue&lt;string&gt;</c> and fits a handle whose parameter is a string.
+/// </summary>
+/// <remarks>
+/// Closes the last part of the "only named references can be values" limit that
+/// <c>AssignLiteral</c> closed for assignment alone. Nothing needs qualifying inside a
+/// literal, so the callback is ignored.
+/// </remarks>
+internal sealed class LiteralValue<T> : IValue<T>, IComputedValue
+{
+    private readonly T _value;
+
+    internal LiteralValue(T value)
+    {
+        _value = value;
+    }
+
+    public ExpressionSyntax Build(Func<IValue, ExpressionSyntax> qualify)
+        => SyntaxLiterals.Expression(_value);
+}
+
+/// <summary>
+/// <c>Type.Method(arguments)</c> — a static call. The receiver is a type rather than a
+/// reference, which is why this could not be folded into the handle families: there is
+/// nothing to qualify on the left, and nothing that can be shadowed.
+/// </summary>
+/// <remarks>
+/// The type goes through <see cref="TypeNameBuilder"/>, so a <c>&lt;T&gt;</c> or
+/// builder-reference receiver is fully qualified by default and <em>shortens under
+/// <c>SimplifyTypeNames</c></em> with the import added — which raw text cannot do. The
+/// method itself is named by text and unchecked, in every form.
+/// </remarks>
+internal sealed class StaticInvocationValue : IValue, IComputedValue
+{
+    private readonly TypeNameBuilder _type;
+    private readonly string _methodName;
+    private readonly IValue[] _arguments;
+
+    internal StaticInvocationValue(TypeNameBuilder type, string methodName, IValue[] arguments)
+    {
+        _type = type;
+        Identifiers.Validate(methodName);
+        _methodName = methodName;
+
+        if (arguments is null) throw new ArgumentNullException(nameof(arguments));
+        if (arguments.Any(a => a is null)) throw new ArgumentNullException(nameof(arguments));
+        _arguments = arguments;
+    }
+
+    public ExpressionSyntax Build(Func<IValue, ExpressionSyntax> qualify)
+        => InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                _type.BuildTypeSyntax(),
+                IdentifierName(_methodName)),
+            ArgumentList(SeparatedList(_arguments.Select(a => Argument(qualify(a))))));
+}
+
+/// <summary>
 /// <c>target.Method(arguments)</c> where the method belongs to a type the generator only
 /// discovered, so nothing about it is checked — not its existence, not its arity, not
 /// its argument types.

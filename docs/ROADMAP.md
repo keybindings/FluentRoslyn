@@ -106,7 +106,8 @@ than a shape the generator invented, it now lives in
 | ~~33~~ | ~~**Properties typed by name** — `DefineProperty(name, typeName)`~~ | Feature | High | Low | **Done** (2026-08-06). Pulled by the decorator example, and a blocker in the same way #29 was: implementing a *discovered* interface means emitting properties whose types come from that interface, and `DefineProperty` was `<T>`-only, so it could not be done at all. The same oversight as #29 and missed in the same pass — #29 added the field and parameter forms and stopped there. `RawPropertyBuilder` mirrors `RawFieldBuilder`: an `IRawReference`, not an `IReference<T>`, so the typed accessor scopes are unavailable and bodies go through `WithGetterBody`. |
 | ~~34~~ | ~~**`ThrowIfNullRaw`**~~ | Feature | Med | Low | **Done** (2026-08-06). `ThrowIfNull` constrains `TValue : class`, which a raw reference cannot satisfy — so a decorator could not guard its own constructor argument. Named apart from `ThrowIfNull` for the reason `AssignRaw` was: when the `class` constraint fails the generic candidate is dropped, and an overload would survive to report the mismatch against `IRawReference`. |
 | ~~35~~ | ~~**Reaching a discovered member**~~ | Feature | High | Med | **Done** (2026-08-06). `MemberRaw(name)` reads or writes a member of a discovered type, `CallRaw(target, name, args…)` forwards a call as a statement, and `Invocations.InvokeRaw(…)` does the same as a value. `RawPropertyBuilder` gained `WithGetter`/`WithSetter` scopes, without which a raw property's body fell straight back to text and the tier was pointless for the case that pulled it. **Arguments are `params`, not fixed arities** — the handle-based families stop at three because each arity needs its own type parameters, and with nothing to check there is nothing to bound. That turned out to matter: a forwarding generator needs whatever arity the discovered method has, and it is the reason the decorator can be written at all. A symbol-derived *handle* (option (b) in [`DESIGN-computed-values.md`](DESIGN-computed-values.md)) was **not** built — it would check a signature the library never sees, so it would be ceremony around the same unchecked call. |
-| 36 | **Static calls** — promoted from sketch to earned | Feature | Med | Med | Was a "future direction" sketch; the decorator needs it for real. With #35 done it is **the only raw text left in that generator** — two `Console.WriteLine(...)` lines. Needs a type-level receiver (`Type.Method(args)`) rather than a reference, which is a different shape from #17–#18 — see the sketch below. |
+| ~~36~~ | ~~**Static calls**~~ | Feature | Med | Med | **Done** (2026-08-06). `CallStatic`/`InvokeStatic` in four flavours, one per place a type name can come from: a type argument, a `typeof`, a builder reference, and raw text. The receiver is a type, so nothing on the left can be shadowed and none of the reference machinery applies — which is why it was never foldable into #17–#18. The type routes through `TypeNameBuilder`, so every form except the raw one is fully qualified by default and **shortens under `SimplifyTypeNames` with the import added** — tested, and the reason to prefer them over raw text. With this the decorator emits **zero** raw statements. |
+| ~~37~~ | ~~**Literals as call arguments** — `Value.Literal`~~ | Feature | Med | Low | **Done** (2026-08-06). Found while building #36: `Console.WriteLine("…")` was inexpressible because no literal could be an `IValue`, so a constant could not be a call argument in *any* family, checked or raw. `AssignLiteral`/`ReturnLiteral` had closed the same limit for assignment and return only. Typed — `Value.Literal("x")` is an `IValue<string>` — so it composes with the checked handles too. |
 
 **The pattern across all four:** the typed surface is complete for types the generator
 *builds* and for types it can name as `<T>`, and thins out for types it *discovers*.
@@ -136,6 +137,16 @@ These look like omissions but are choices:
   Distinct names leave one candidate, so the error is `CS0411` naming
   `CallOn<TDeclaring>` — the same diagnostic a mismatched `Assign` gives. The
   extra name buys an error that points at the actual problem.
+
+- **`CallStatic` needs a `typeof` overload, because C# forbids a static type as a
+  type argument.** `CallStatic<Console>(…)` does not compile — CS0718 — and neither
+  would `Math`, `File`, or `Enumerable`. Those are exactly where static methods live,
+  so the `<T>` form alone would have missed the majority of its own use case. Found by
+  writing the call, not by reasoning about it: the design was written with `<T>` as the
+  recommended form and the compiler rejected the first real use. `typeof` has no such
+  restriction and still routes through `TypeNameBuilder`, so it keeps the qualification
+  and simplifier behaviour that raw text loses. Both forms stay: `<T>` matches the
+  library's idiom for non-static declaring types (`Guid.NewGuid`, `int.Parse`).
 
 - **`AssignRaw` is named apart from `Assign`** — the fourth instance of the rule, and
   the one that shows probing the *happy path* is not enough. Overloading looked safe on
@@ -278,10 +289,11 @@ exists or can.
   that goes blind the moment definitions become data-driven — which is the
   reason generators exist. The dependency has to point placeholder → builder,
   never the reverse.
-- **Static calls.** `AsCallable` refuses a static method rather than emitting
-  instance syntax. Modelling them needs a type-level receiver
-  (`Type.Method(args)`) rather than a reference, which is a different shape
-  from everything in #17–#18.
+- ~~**Static calls.**~~ **Built — see #36.** The sketch here was right about the
+  shape: a type-level receiver is genuinely different from a reference, which is why
+  it never belonged in #17–#18. It was wrong about nothing except how the type gets
+  named — see the CS0718 note above. `AsCallable` still refuses a static method,
+  which is now a pointer to `CallStatic` rather than a limit.
 - **Compile-checked templates — now designed, see
   [`DESIGN-templates.md`](DESIGN-templates.md).** A meta-generator that runs on
   generator projects: the author writes real C# — compiled, type-checked,

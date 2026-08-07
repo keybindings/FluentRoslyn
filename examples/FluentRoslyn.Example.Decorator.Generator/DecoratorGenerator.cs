@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -100,7 +101,7 @@ public class DecoratorGenerator : IIncrementalGenerator
             arguments.Add(argument);
         }
 
-        builder.AddStatement(Log(method.Name));
+        Log(builder, method.Name);
 
         if (method.ReturnsVoid)
             builder.CallRaw(inner, method.Name, arguments.ToArray());
@@ -112,12 +113,19 @@ public class DecoratorGenerator : IIncrementalGenerator
     private static void EmitProperty(ClassBuilder decorator, IRawReference inner, IPropertySymbol property)
         => decorator.DefineProperty(property.Name, Qualified(property.Type))
             .GetOnly()
-            .WithGetter(g => g
-                .AddStatement(Log(property.Name))
-                .Return(inner.MemberRaw(property.Name)));
+            .WithGetter(g =>
+            {
+                Log(g, property.Name);
+                g.Return(inner.MemberRaw(property.Name));
+            });
 
-    private static string Log(string memberName)
-        => $"global::System.Console.WriteLine(\"[log] {memberName}\");";
+    // typeof rather than CallStatic<Console>: Console is a static class, and C# forbids
+    // one as a type argument (CS0718). Either way the receiver goes through
+    // TypeNameBuilder rather than being spelled out, so it is fully qualified here and
+    // would shorten to `Console.WriteLine` under SimplifyTypeNames with the import added.
+    private static void Log<TSelf>(StatementBuilder<TSelf> body, string memberName)
+        where TSelf : StatementBuilder<TSelf>
+        => body.CallStatic(typeof(Console), nameof(Console.WriteLine), Value.Literal($"[log] {memberName}"));
 
     private static string Qualified(ISymbol symbol)
         => symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
