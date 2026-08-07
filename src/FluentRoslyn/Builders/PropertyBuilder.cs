@@ -221,6 +221,47 @@ public sealed class RawPropertyBuilder : PropertyBuilderBase<RawPropertyBuilder>
     bool IReferenceInfo.IsStaticMember => IsStatic;
 
     string IRawTypeInfo.TypeText => TypeName.ToString();
+
+    /// <summary>
+    /// Gives the getter a built statement body:
+    /// <c>WithGetter(g =&gt; g.Return(inner.MemberRaw("Count")))</c>. The counterpart of
+    /// the typed <c>WithGetter</c>, with an unchecked <c>Return</c> — without it a
+    /// raw-typed property's body would fall back to text, which is the seam this whole
+    /// tier exists to close.
+    /// </summary>
+    /// <param name="body">Configures the getter's statements.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public RawPropertyBuilder WithGetter(Action<RawGetterBody> body)
+        => this.With(() =>
+        {
+            if (body is null) throw new ArgumentNullException(nameof(body));
+
+            var scope = new RawGetterBody(Name);
+            body(scope);
+
+            IsAutoProperty = false;
+            GetterStatements = scope.BuiltStatements;
+        });
+
+    /// <summary>
+    /// Gives the setter a built statement body:
+    /// <c>WithSetter(s =&gt; s.AssignRaw(backingField, s.Value))</c>. The incoming value
+    /// carries this property's declared type text, so that assignment is still checked.
+    /// </summary>
+    /// <param name="body">Configures the setter's statements.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public RawPropertyBuilder WithSetter(Action<RawSetterBody> body)
+        => this.With(() =>
+        {
+            if (body is null) throw new ArgumentNullException(nameof(body));
+
+            var scope = new RawSetterBody(Name, TypeName.ToString());
+            body(scope);
+
+            IsAutoProperty = false;
+            HasSet = true;
+            SetterStatements = scope.BuiltStatements;
+        });
 }
 
 /// <summary>

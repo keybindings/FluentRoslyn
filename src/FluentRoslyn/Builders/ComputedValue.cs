@@ -80,6 +80,43 @@ internal sealed class RawConstructionValue : IValue, IComputedValue
 }
 
 /// <summary>
+/// <c>target.Method(arguments)</c> where the method belongs to a type the generator only
+/// discovered, so nothing about it is checked — not its existence, not its arity, not
+/// its argument types.
+/// </summary>
+/// <remarks>
+/// Takes the arguments as <c>params</c> rather than in fixed arities. The handle-based
+/// families stop at three because each arity needs its own type parameters; with nothing
+/// to check there is nothing to bound, and a generator forwarding a discovered method
+/// needs whatever arity that method has.
+/// </remarks>
+internal sealed class RawInvocationValue : IValue, IComputedValue
+{
+    private readonly IReference _target;
+    private readonly string _methodName;
+    private readonly IValue[] _arguments;
+
+    internal RawInvocationValue(IReference target, string methodName, IValue[] arguments)
+    {
+        _target = target ?? throw new ArgumentNullException(nameof(target));
+        Identifiers.Validate(methodName);
+        _methodName = methodName;
+
+        if (arguments is null) throw new ArgumentNullException(nameof(arguments));
+        if (arguments.Any(a => a is null)) throw new ArgumentNullException(nameof(arguments));
+        _arguments = arguments;
+    }
+
+    public ExpressionSyntax Build(Func<IValue, ExpressionSyntax> qualify)
+        => InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                qualify(_target),
+                IdentifierName(_methodName)),
+            ArgumentList(SeparatedList(_arguments.Select(a => Argument(qualify(a))))));
+}
+
+/// <summary>
 /// <c>target.Method(arguments)</c> used as a value. Identical in syntax to the statement
 /// form, which is why both route through <see cref="SyntaxReferences"/>'s one builder.
 /// </summary>

@@ -25,6 +25,26 @@ public static class Invocations
 {
     private const string Context = "Invoke";
 
+    /// <summary>
+    /// <c>target.Method(arguments)</c> as a value, for a method on a type the generator
+    /// only discovered — <c>return _inner.Greet(name);</c> in a decorator.
+    /// </summary>
+    /// <remarks>
+    /// Nothing is checked: the generator holds the method as an <c>ISymbol</c>, which
+    /// the library never sees, so there is no signature to check against. The result is
+    /// an untyped <see cref="IValue"/>, so it reaches only positions that accept a bare
+    /// value and cannot pass for a checked one. Arguments are <c>params</c> rather than
+    /// fixed arities, because a forwarding generator needs whatever arity the discovered
+    /// method has — the handle-based families stop at three only because each arity
+    /// needs its own type parameters.
+    /// </remarks>
+    /// <param name="target">The receiver.</param>
+    /// <param name="methodName">The method's name. Validated as a C# identifier.</param>
+    /// <param name="arguments">The arguments, in order.</param>
+    /// <returns>The call, as an untyped value.</returns>
+    public static IValue InvokeRaw(IReference target, string methodName, params IValue[] arguments)
+        => new RawInvocationValue(target, methodName, arguments);
+
     /// <summary>Produces <c>target.Method()</c> as a value.</summary>
     /// <typeparam name="TTarget">The receiver's type.</typeparam>
     /// <typeparam name="TResult">The method's return type, taken from the handle.</typeparam>

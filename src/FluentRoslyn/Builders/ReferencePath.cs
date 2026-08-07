@@ -63,6 +63,39 @@ internal sealed class MemberPath<T> : IReference<T>, IReferencePath
 }
 
 /// <summary>
+/// A member access step whose type is unknown: <c>target.Name</c> where the member
+/// belongs to a type the generator only discovered. Reads and writes a location, so it
+/// is a reference rather than a value — <c>_inner.Count</c> can be returned, passed, or
+/// assigned to.
+/// </summary>
+/// <remarks>
+/// Deliberately carries no <see cref="IRawTypeInfo"/>: nothing here knows the member's
+/// declared type, and inventing one would be worse than admitting it. <c>AssignRaw</c>
+/// compares declared types only when both sides report one, so an assignment involving
+/// this degrades to unchecked rather than to wrong.
+/// </remarks>
+internal sealed class RawMemberPath : IRawReference, IReferencePath
+{
+    private readonly string _memberName;
+
+    internal RawMemberPath(IReference target, string memberName)
+    {
+        Target = target ?? throw new ArgumentNullException(nameof(target));
+        Identifiers.Validate(memberName);
+        _memberName = memberName;
+    }
+
+    public IReference Target { get; }
+
+    public string Name => $"{Target.Name}.{_memberName}";
+
+    public bool CanNameOf => Target is not IReferencePath path || path.CanNameOf;
+
+    public ExpressionSyntax Compose(ExpressionSyntax target, Func<IReference, ExpressionSyntax> qualify)
+        => MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target, IdentifierName(_memberName));
+}
+
+/// <summary>
 /// An element access step: <c>target[index]</c>. The index is either a constant or
 /// another reference; which one it is was settled by the compiler at the call site, so
 /// nothing here re-checks it.

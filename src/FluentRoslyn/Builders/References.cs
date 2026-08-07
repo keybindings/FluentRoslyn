@@ -63,6 +63,27 @@ public static class References
         => new MemberPath<TMember>(target, name);
 
     /// <summary>
+    /// A member of what <paramref name="target"/> refers to, with no type asserted:
+    /// <c>target.MemberRaw("Count")</c>. For a member of a type the generator only
+    /// discovered, where there is no <c>T</c> to assert and asserting one would be a
+    /// guess.
+    /// </summary>
+    /// <remarks>
+    /// Named apart from <see cref="MemberNamed{TMember}"/> rather than being an overload
+    /// without the type argument, for the reason that keeps recurring: a caller who
+    /// meant the typed form and forgot the type argument would silently get this one,
+    /// which is the wrong-candidate-succeeds failure the codebase has been avoiding
+    /// since <c>CallOn</c>. The result is a location, so it can be assigned to as well
+    /// as read — but nothing knows its type, so <c>AssignRaw</c> involving it is
+    /// unchecked rather than checked by type text.
+    /// </remarks>
+    /// <param name="target">The reference the member is reached through.</param>
+    /// <param name="name">The member's name. Validated as a C# identifier.</param>
+    /// <returns>A reference to <c>target.name</c>.</returns>
+    public static IRawReference MemberRaw(this IReference target, string name)
+        => new RawMemberPath(target, name);
+
+    /// <summary>
     /// An element of an array at a constant index: <c>target[0]</c>. The element type
     /// comes from the array's, so it cannot be asserted wrongly.
     /// </summary>

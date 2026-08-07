@@ -55,6 +55,10 @@ public abstract class StatementBuilder : NamedBuilder
     private protected void AddRawAssignment(IReference target, IReference value)
         => Statements.Add(SyntaxReferences.RawAssignment(target, value, Parameters, IsStaticContext, StatementContext));
 
+    private protected void AddRawInvocation(IReference target, string methodName, IValue[] arguments)
+        => Statements.Add(SyntaxReferences.RawInvocation(
+            target, methodName, arguments, Parameters, IsStaticContext, StatementContext));
+
     private protected void AddInvocation(IReference target, object method, IValue[] arguments)
         => Statements.Add(SyntaxReferences.Invocation(
             target, method, arguments, Parameters, IsStaticContext, StatementContext));
@@ -316,6 +320,27 @@ public abstract class StatementBuilder<TSelf> : StatementBuilder
     public TSelf ThrowIfNullRaw(IRawReference value)
     {
         AddNullGuard(value ?? throw new ArgumentNullException(nameof(value)));
+        return Self;
+    }
+
+    /// <summary>
+    /// Appends a call statement for a method on a type the generator only discovered:
+    /// <c>_inner.Reset();</c>. Nothing is checked — there is no signature to check
+    /// against — and the arguments are <c>params</c>, so any arity works.
+    /// </summary>
+    /// <remarks>
+    /// Named apart from <see cref="Call{TTarget}"/> on the same grounds as
+    /// <see cref="AssignRaw"/>: a mismatched typed <c>Call</c> drops its generic
+    /// candidate when inference fails, and an overload here would survive to report the
+    /// disagreement against <c>string</c>.
+    /// </remarks>
+    /// <param name="target">The receiver.</param>
+    /// <param name="methodName">The method's name. Validated as a C# identifier.</param>
+    /// <param name="arguments">The arguments, in order.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public TSelf CallRaw(IReference target, string methodName, params IValue[] arguments)
+    {
+        AddRawInvocation(target, methodName, arguments);
         return Self;
     }
 

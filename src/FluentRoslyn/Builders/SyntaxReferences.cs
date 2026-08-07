@@ -51,6 +51,22 @@ internal static class SyntaxReferences
                 Expression(value, parameters, inStaticContext, context)));
 
     /// <summary>
+    /// Builds <c>target.Method(arguments);</c> for a method on a type the generator only
+    /// discovered. The expression is the same one <c>InvokeRaw</c> produces as a value;
+    /// this wraps it as a statement, so the two forms cannot drift.
+    /// </summary>
+    internal static StatementSyntax RawInvocation(
+        IReference target,
+        string methodName,
+        IValue[] arguments,
+        IReadOnlyCollection<IParameter> parameters,
+        bool inStaticContext,
+        string context)
+        => ExpressionStatement(
+            new RawInvocationValue(target, methodName, arguments)
+                .Build(value => Expression(value, parameters, inStaticContext, context)));
+
+    /// <summary>
     /// Builds <c>target.Method(arguments);</c> from a receiver, a method handle, and
     /// argument references. The types were matched by the compiler at the
     /// <c>Call</c> overload; what remains here is emission.

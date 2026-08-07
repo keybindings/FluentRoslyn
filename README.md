@@ -356,6 +356,22 @@ diagnostics: a mismatched typed `Assign` drops the generic candidate when infere
 fails, and the raw overload survives to report "cannot convert … to `IRawReference`",
 an interface you never mentioned.
 
+Reaching *into* a discovered type works the same way. `MemberRaw` reads or writes one of
+its members, `CallRaw` forwards a call as a statement, and `Invocations.InvokeRaw` does
+it as a value:
+
+```csharp
+decorator.DefineMethod("Greet")
+    .WithParameter("name", "string", out var name)
+    .Returns("string")
+    .Return(Invocations.InvokeRaw(inner, "Greet", name));   // return _inner.Greet(name);
+```
+
+These take their arguments as `params` rather than in fixed arities, unlike the
+handle-based `Call`/`Invoke`. Those stop at three because each arity needs its own type
+parameters; with nothing to check there is nothing to bound — and a generator forwarding
+a discovered method needs whatever arity that method has.
+
 Between them these cover a symbol-driven generator without emitting a single raw
 statement. Be clear on what that does and doesn't mean: malformed syntax becomes
 impossible and names come from the builders that declared them, but the checks are by
