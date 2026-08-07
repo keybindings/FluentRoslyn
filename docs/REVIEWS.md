@@ -30,7 +30,25 @@ the codebase, so recommending a review and running one has not closed this.
   `TypeBuilder` validation block, the value-objects generator's operator members, and
   the lockstep/rename documentation added alongside.
 - **Not covered:** everything in the gap row above.
-- **Findings:** 24. Fixed so far: R2-01 (2026-08-08). The rest are open.
+- **Findings:** 24 — **all fixed, 2026-08-08**, across three commits:
+  - `6dcbe63` — R2-01 (null-safe value objects; details on the finding below).
+  - `7f9a7ee` — R2-02..R2-14 and R2-18..R2-24: the operator validation rebuilt around a
+    canonical signature model in a shared `OperatorSet`. Worth singling out: **R2-11's
+    counterexample was already in the test suite** — a test returned an instance field
+    from a static method and asserted the CS0120-broken emission; **R2-07** resolved via
+    a per-operator `PartnerDeclaredElsewhere()` waiver, since the pairing rules are
+    per-type and a partial type may legally split them; **R2-12** now throws at *Define*
+    time (`ArgumentException` naming the value) — a deliberate divergence from
+    `EnumBuilder`'s build-time deferral, because an undefined enum value gains no
+    context by waiting; **R2-13** additionally removed zero from `ConversionKind`, so a
+    computed default can no longer silently mean implicit; **R2-19** gave records
+    operators but refuses `==`/`!=`, which a record synthesizes; **R2-20** was pinned
+    rather than changed — the glued `operator>` is valid C# and a NormalizeWhitespace
+    quirk in the same family as `int[, ]`.
+  - `5e0d925` — R2-15..R2-17: a deliberately-void template now build-guards the lifter's
+    void branch, and the rename-hazard record states the true guard (the example, not
+    "nothing compiles"). **R2-16's shipped preview.8 text is immutable**; the csproj is
+    corrected forward, so the fix lands on the next release's notes.
 
 Ranked most severe first. The last ten were below the reporting tool's cap and are
 recorded here at the same level of detail as the rest, because a finding dropped for
