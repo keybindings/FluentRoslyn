@@ -32,4 +32,14 @@ internal static partial class Templates
     // name, so the body stays self-contained wherever it lands.
     [Template]
     public static string Tag(string value) => new StringBuilder("[").Append(value).Append(']').ToString();
+
+    // Deliberately void, and deliberately uncalled. The lifter has two emission
+    // branches -- value-returning templates use MethodBuilder<T> and DefineMethod<T>,
+    // void ones the non-generic MethodBuilder and DefineMethod(string) -- and every
+    // template above returns a value, so without this the void branch's emitted names
+    // were compiled by nothing and a rename there would surface only in a consumer's
+    // build (review finding R2-15). The generated EmitLog is compiled whether or not
+    // anything calls it, which is the whole guard.
+    [Template]
+    public static void Log(string message) => System.Console.WriteLine(message);
 }

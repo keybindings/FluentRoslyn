@@ -54,7 +54,7 @@
     <DevelopmentDependency>true</DevelopmentDependency>
     <PackageReleaseNotes>0.1.0-preview.8
 
-No changes to this package, for the third release running. It is still identical to 0.1.0-preview.5, its only substantive release; it shares a version line with FluentRoslyn, which does have changes here. If you already have preview.5 or later there is nothing to gain by upgrading this package on its own.
+No source changes to this package. It shares a version line with FluentRoslyn because its generated code targets FluentRoslyn's exact API surface — a coupling NuGet cannot express, since this package deliberately declares no dependencies. The matching version number is the statement that this pairing was built and verified together, so install the FluentRoslyn with the same version, and treat an upgrade of one as an upgrade of both.
 
 0.1.0-preview.7
 

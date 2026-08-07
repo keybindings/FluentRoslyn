@@ -65,7 +65,7 @@ them, not speculatively).
 - **Lockstep versioning is permanent, and the reasoning is not "they change
   together".** `FluentRoslyn.Templates` shares a version line with `FluentRoslyn`,
   and by preview.8 that had produced three consecutive no-op Templates releases —
-  one substantive release in five. That looked like a cost to minimise, and the
+  one substantive release in four. That looked like a cost to minimise, and the
   original note here said to revisit if the rates kept diverging. **That was the
   wrong test.** Divergent release rates are the right signal when two packages are
   independent; these are not. `TemplateLifter` emits FluentRoslyn API calls as
@@ -83,14 +83,19 @@ them, not speculatively).
   the Azure SDK one, where packages version independently precisely because none
   of them emits code against another's API.
 
-- **Renaming a public builder method can break `FluentRoslyn.Templates` with no
-  compile error anywhere in this repository.** Follows from the string literals
-  above: `DefineMethod`, `DefineMethod<T>`, `WithParameter<T>` and
-  `AsExpressionBody` are named as text inside `TemplateLifter`, so a rename leaves
-  every project here compiling while the code Templates *emits* stops compiling in
-  a consumer's build. The three-level chain example is the only thing that catches
-  it, which makes that CI step load-bearing rather than illustrative. Before
-  renaming any of those four, grep `src/FluentRoslyn.Templates` first.
+- **Renaming a public builder method that `TemplateLifter` emits is caught only by
+  the templates example.** `DefineMethod`, `DefineMethod<T>`, `WithParameter<T>` and
+  `AsExpressionBody` are named as text inside `TemplateLifter`, so the Templates
+  *project* keeps compiling through any rename — but the example generator compiles
+  the lifter's output as part of the solution build, so the rename surfaces there as
+  CS1061 (measured: 58 errors across the solution for `AsExpressionBody`). An
+  earlier version of this note claimed no rename broke anything in this repository;
+  that was wrong for five of the six emitted names, and the sixth pair — the void
+  branch's non-generic `MethodBuilder` and `DefineMethod(string)` — was genuinely
+  unguarded until the example gained a deliberately-void template (R2-15). Two
+  consequences stand: the chain example's CI step is load-bearing rather than
+  illustrative, and its templates must keep covering both lifter branches. Before
+  renaming any emitted name, grep `src/FluentRoslyn.Templates` first.
 
 - **Two packages ship from one tag.** The workflow asserts
   that every packed file is `<id>.<tag>.nupkg`, so bumping one and forgetting the
