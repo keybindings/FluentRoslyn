@@ -33,7 +33,7 @@
          FluentRoslyn is also what someone searching for this library actually types,
          so the assembly, namespaces, repo, and package all use it. -->
     <PackageId>FluentRoslyn</PackageId>
-    <Version>0.1.0-preview.6</Version>
+    <Version>0.1.0-preview.7</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
@@ -47,7 +47,15 @@
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>0.1.0-preview.6
+    <PackageReleaseNotes>0.1.0-preview.7
+
+A small release: one addition.
+
+ReturnRaw(value) on a value-returning method builder. DefineMethod&lt;bool&gt; gives a Return checked against its type argument, but the raw family — InvokeRaw, MemberRaw, Value.NewOfType — produces untyped values, so a method whose signature is known when the generator is compiled (bool Equals(…), int GetHashCode()) could not forward to something the library cannot see without falling back to Returns("bool") and giving up the type argument. ReturnRaw keeps the typed signature and accepts an unchecked value. Named apart from Return rather than overloading it, so a genuine type mismatch on Return still reports as one.
+
+Source-compatible with preview.6, and binary-compatible too — nothing was restructured this time.
+
+0.1.0-preview.6
 
 Completes the story for generators driven by the consumer's own code. A generator working purely from ISymbols can now emit a whole type — declarations, assignments, guards, calls, member reads, returns and construction — without a single raw statement. The decorator example in the repository does exactly that.
 
