@@ -157,6 +157,14 @@ Both fire when the generator runs, if at all. What is genuinely bought is that
 malformed syntax is impossible and that names come from the builders that declared
 them rather than from string formatting that can drift — real, and less than `<T>`.
 
+## Review status
+
+What has been code-reviewed and when is tracked in [`REVIEWS.md`](REVIEWS.md), with the
+commit range for each so coverage can be recomputed rather than remembered. **Roughly
+80% of the current library has never been through a full review** — everything from #14
+through #38 — because the only two reviews so far covered the library as it stood in
+July and then the operator feature alone. Open findings live there too.
+
 ## Deliberate decisions (not gaps)
 
 These look like omissions but are choices:
