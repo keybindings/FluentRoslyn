@@ -62,8 +62,37 @@ them, not speculatively).
   metadata is immutable once pushed, and the nuget.org policy is keyed to the
   workflow's *file name*, so renaming `release.yml` breaks publishing until the
   policy is updated.
-- **Two packages now ship from one tag.** `FluentRoslyn.Templates` joined the
-  release workflow, and the two version **in lockstep** — the workflow asserts
+- **Lockstep versioning is permanent, and the reasoning is not "they change
+  together".** `FluentRoslyn.Templates` shares a version line with `FluentRoslyn`,
+  and by preview.8 that had produced three consecutive no-op Templates releases —
+  one substantive release in five. That looked like a cost to minimise, and the
+  original note here said to revisit if the rates kept diverging. **That was the
+  wrong test.** Divergent release rates are the right signal when two packages are
+  independent; these are not. `TemplateLifter` emits FluentRoslyn API calls as
+  **string literals** — `DefineMethod<T>("…")`, `.WithParameter<T>("…")`,
+  `.AsExpressionBody(…)` — so Templates depends on FluentRoslyn's exact API surface
+  in a way the compiler cannot see and NuGet cannot express: the package
+  deliberately declares *no* dependencies, which the release workflow asserts every
+  time. Templates' source being unchanged therefore tells a consumer nothing about
+  whether it still works, because a rename in FluentRoslyn would break the code
+  Templates emits without touching a line of it. **The matching version number is
+  the only carrier of that compatibility fact.** A no-op version is not waste; it
+  is the assertion that this pairing was verified. The right test is "does one
+  package's correctness depend on the other's exact version?" — permanently yes,
+  by construction. This is the `Microsoft.Extensions.*` / EF Core situation, not
+  the Azure SDK one, where packages version independently precisely because none
+  of them emits code against another's API.
+
+- **Renaming a public builder method can break `FluentRoslyn.Templates` with no
+  compile error anywhere in this repository.** Follows from the string literals
+  above: `DefineMethod`, `DefineMethod<T>`, `WithParameter<T>` and
+  `AsExpressionBody` are named as text inside `TemplateLifter`, so a rename leaves
+  every project here compiling while the code Templates *emits* stops compiling in
+  a consumer's build. The three-level chain example is the only thing that catches
+  it, which makes that CI step load-bearing rather than illustrative. Before
+  renaming any of those four, grep `src/FluentRoslyn.Templates` first.
+
+- **Two packages ship from one tag.** The workflow asserts
   that every packed file is `<id>.<tag>.nupkg`, so bumping one and forgetting the
   other fails the release before anything is pushed. One nuget.org policy covers
   both: a Trusted Publishing policy names a repository owner, repository and

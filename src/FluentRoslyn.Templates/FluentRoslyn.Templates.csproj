@@ -27,11 +27,18 @@
 
   <PropertyGroup Label="Package">
     <PackageId>FluentRoslyn.Templates</PackageId>
-    <!-- Versioned in lockstep with FluentRoslyn, because one repository, one tag, and
-         one release workflow make the tag the unit of release — and the workflow
-         asserts that every packed version equals the tag, so the two cannot drift.
-         This package also tracks FluentRoslyn's API closely enough that a pair which
-         disagreed about its version would be a puzzle rather than a convenience.
+    <!-- Versioned in lockstep with FluentRoslyn, permanently, and not merely because
+         one repository and one tag make that convenient.
+
+         TemplateLifter emits FluentRoslyn API calls as string literals, and this
+         package deliberately declares no dependencies (see SuppressDependenciesWhenPacking
+         above), so the coupling to a particular FluentRoslyn API surface is invisible
+         to the compiler and inexpressible in NuGet. That makes the matching version
+         number the only thing telling a consumer which FluentRoslyn this was verified
+         against — which is why a release where this package's source did not change
+         still ships a new version rather than standing still. The no-op version is the
+         assertion that the pairing was tested.
+
          Bump both, or the release fails before anything is pushed. -->
     <Version>0.1.0-preview.8</Version>
     <Authors>Cameron Lambert</Authors>

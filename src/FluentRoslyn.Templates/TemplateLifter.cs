@@ -206,6 +206,14 @@ public sealed class TemplateLifter : IIncrementalGenerator
         return sb.ToString();
     }
 
+    // Every FluentRoslyn name below -- MethodBuilder, TypeBuilder, DefineMethod,
+    // WithParameter, AsExpressionBody -- is a string literal, so nothing in this
+    // repository fails to compile if one of them is renamed. What breaks instead is the
+    // code this emits, in a consumer's build, with no warning here. The three-level chain
+    // in examples/FluentRoslyn.Example.Templates.* is the only thing that catches it,
+    // which is why CI runs it end-to-end rather than treating it as a demo. This is also
+    // why the two packages version in lockstep: the pairing is verified per release and
+    // recorded nowhere else. Renaming any of these? Grep this file first.
     private static void AppendEmitter(StringBuilder sb, TemplateModel template)
     {
         var builderType = template.ReturnType is null
