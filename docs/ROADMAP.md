@@ -72,9 +72,19 @@ them, not speculatively).
   that the policy's blast radius is the whole account. Templates is pushed
   *first*, because its id has never been published and that makes it the step most
   likely to fail; going second, a failure would land after `FluentRoslyn` was
-  already immutable and would cost a version number to recover from. Worth knowing:
-  `FluentRoslyn` is **not** a reserved id prefix, so sibling ids are unclaimed but
-  also unprotected.
+  already immutable and would cost a version number to recover from. The
+  Templates-first ordering turned out not to be needed — trusted publishing created
+  a brand-new id with no prior owner without complaint — but it cost nothing while
+  the outcome was unknown.
+- **`FluentRoslyn` is a reserved id prefix** (granted 2026-08-06, same day as the
+  request). `FluentRoslyn.*` is closed to any other account, and both packages carry
+  the verified indicator. Two things made the application straightforward and are
+  worth repeating for any future prefix: check the published best-practices first
+  (one consistent `<authors>`, the `license` expression element rather than
+  `licenseUrl`, an embedded `<icon>`), and address the obvious objection head-on —
+  here that the prefix contains "Roslyn", Microsoft's compiler-platform name, which
+  proved not to be an obstacle. No placeholder packages were ever published, which
+  is why there is nothing to unpick.
 
 ## Planned — pulled by a real generator
 
