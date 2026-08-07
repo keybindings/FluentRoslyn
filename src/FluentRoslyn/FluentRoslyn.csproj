@@ -33,7 +33,7 @@
          FluentRoslyn is also what someone searching for this library actually types,
          so the assembly, namespaces, repo, and package all use it. -->
     <PackageId>FluentRoslyn</PackageId>
-    <Version>0.1.0-preview.5</Version>
+    <Version>0.1.0-preview.6</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
@@ -47,7 +47,23 @@
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>0.1.0-preview.5
+    <PackageReleaseNotes>0.1.0-preview.6
+
+Completes the story for generators driven by the consumer's own code. A generator working purely from ISymbols can now emit a whole type — declarations, assignments, guards, calls, member reads, returns and construction — without a single raw statement. The decorator example in the repository does exactly that.
+
+Reaching a discovered member. MemberRaw(name) reads or writes a member of a type the generator only found at generation time, CallRaw(target, name, args) forwards a call as a statement, and Invocations.InvokeRaw does the same as a value. These take their arguments as params rather than in fixed arities: the handle-based Call/Invoke families stop at three because each arity needs its own type parameters, and with nothing to check there is nothing to bound — which is what a forwarding generator needs.
+
+Static calls. CallStatic and InvokeStatic, in one form per place a type name can come from: a type argument, a typeof, a builder reference, and raw text. Use the typeof form for a static class — Console, Math, File, Enumerable — because C# forbids a static type as a type argument, so CallStatic&lt;Console&gt; does not compile. Every form but the raw one routes the type through the same machinery as any other type reference, so it is fully qualified by default and shortens under SimplifyTypeNames with the import added.
+
+Value.Literal(x) lets a constant be a call argument, which nothing could be before — AssignLiteral and ReturnLiteral had closed that gap for assignment and return only. It is typed, so it composes with the checked handles as well as the raw ones.
+
+Properties typed by name. DefineProperty(name, typeName) joins the field and parameter forms added in preview.4; without it a discovered interface could not be implemented at all, since its property types come from the interface. Its accessor bodies are built too, via WithGetter/WithSetter scopes — and the setter's `value` carries the property's declared type text, so assigning it into a backing field still checks that the two agree. ThrowIfNullRaw guards a raw-typed parameter, which the type-argument form could not.
+
+The ceiling, unchanged and worth repeating: everything in the raw tier is checked by declared type text when the generator runs, or not at all. That is strictly less than a type argument. What it does guarantee is that malformed syntax is impossible and that names come from the builders that declared them rather than from string formatting that can drift.
+
+Source-compatible with preview.5; binary-breaking, as previews are permitted to be. Property builders gained a shared base, mirroring the change field builders took in preview.4, so recompile rather than drop in.
+
+0.1.0-preview.5
 
 No changes to this library. It is identical to 0.1.0-preview.4 and there is no reason to upgrade for its own sake.
 

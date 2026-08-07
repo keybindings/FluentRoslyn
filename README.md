@@ -87,7 +87,7 @@ code it produces.
   operating systems)
 
 > **Status:** published as [`FluentRoslyn`](https://www.nuget.org/packages/FluentRoslyn)
-> on nuget.org, currently `0.1.0-preview.5`, with the optional companion package
+> on nuget.org, currently `0.1.0-preview.6`, with the optional companion package
 > [`FluentRoslyn.Templates`](https://www.nuget.org/packages/FluentRoslyn.Templates)
 > versioned alongside it. Breaking changes are still on the table
 > while the version says preview. See [What's next](#whats-next).
