@@ -53,7 +53,7 @@ them, not speculatively).
   speculative list. #14 is the first item added that way: writing a constructor
   by hand made it obvious that `AddStatement("Name = name;")` is the one place
   the library still lets you emit silently wrong code.
-- **Publishing is done.** `FluentRoslyn` `0.1.0-preview.7` is live on nuget.org —
+- **Publishing is done.** `FluentRoslyn` `0.1.0-preview.8` is live on nuget.org —
   the original name `Generatr` collided with an unrelated database scaffolder,
   and ids are case-insensitive. Releases go out hands-off through Trusted
   Publishing (OIDC), so there is no API key to hold: bump `<Version>` and

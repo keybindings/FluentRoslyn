@@ -33,7 +33,7 @@
          FluentRoslyn is also what someone searching for this library actually types,
          so the assembly, namespaces, repo, and package all use it. -->
     <PackageId>FluentRoslyn</PackageId>
-    <Version>0.1.0-preview.7</Version>
+    <Version>0.1.0-preview.8</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
@@ -47,7 +47,26 @@
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>0.1.0-preview.7
+    <PackageReleaseNotes>0.1.0-preview.8
+
+Operators and conversions, which the library could not declare at all before: DefineMethod validates its name as a C# identifier, so "operator ==" was rejected before it started. That left generated value objects and strongly-typed ids visibly incomplete — users write a == b, not a.Equals(b).
+
+DefineOperator and DefineConversion come in a typed form (the result type as a type argument, which is what comparison operators want since they all return bool) and a raw-named form, for an operator returning the type being generated, which no type argument can name. Every overloadable operator is covered, plus implicit and explicit conversions.
+
+Modifiers: Unsafe(), and Checked() for the C# 11 checked form — public static A operator checked +(A l, A r). Accessibility and staticness are fixed by the language (CS0558) and so are not offered.
+
+Four language rules are enforced when the type is built, rather than passed to your consumer's compiler as a build error you would never see:
+
+  == must be declared with != (CS0216), and likewise the ordering pairs and true/false.
+  A checked form is legal only on + - * / ++ and -- (CS9023). Not remainder, bitwise, shift or comparison — and not unary +, though binary + is fine, so arity decides.
+  A checked conversion must be explicit (CS9024).
+  A checked form requires its unchecked counterpart (CS9025).
+
+Only the type sees every operator, so all four checks live there. This is the same stance the enum builder takes on an out-of-range member value: refuse to emit rather than emit something that will not compile.
+
+Source-compatible and binary-compatible with preview.7 — everything here is additive.
+
+0.1.0-preview.7
 
 A small release: one addition.
 
