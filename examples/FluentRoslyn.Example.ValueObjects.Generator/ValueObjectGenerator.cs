@@ -88,11 +88,26 @@ public class ValueObjectGenerator : IIncrementalGenerator
             .WithParameter("value", wrapped, out var parameter)
             .AssignRaw(value, parameter);
 
+        // default(T) exists for every struct no matter what its constructors guard, so
+        // when the underlying type is a reference type the wrapped value can be null and
+        // every member below must tolerate it (review finding R2-01: Value.Equals(...)
+        // threw through `==` on a default CustomerCode). Equality and hashing route
+        // through EqualityComparer<T> -- the same lowering the compiler gives records.
+        // It is hoisted into a field because its receiver, EqualityComparer<T>.Default,
+        // is a static *property*: CallStatic reaches static methods and InvokeRaw needs
+        // a reference to root on, so the receiver is inexpressible inline -- but a field
+        // holding it IS a reference, and the calls through it stay built.
+        var comparerType = $"global::System.Collections.Generic.EqualityComparer<{wrapped}>";
+        var comparer = valueObject.DefineField("Comparer", comparerType)
+            .Static().Readonly()
+            .WithInitializerExpression($"{comparerType}.Default")
+            .WithSummary("Null-safe equality for the wrapped value.");
+
         // Equals(T) -- the typed overload IEquatable<T> requires.
         valueObject.DefineMethod<bool>("Equals")
             .WithSummary("Compares against another value of the same kind.")
             .WithParameter("other", self, out var other)
-            .ReturnRaw(Invocations.InvokeRaw(value, nameof(object.Equals), other.MemberRaw("Value")));
+            .ReturnRaw(Invocations.InvokeRaw(comparer, nameof(object.Equals), value, other.MemberRaw("Value")));
 
         // Equals(object) -- the one member the fluent API cannot express, because
         // `obj is T other && Equals(other)` is a pattern match and a boolean operator.
@@ -104,13 +119,16 @@ public class ValueObjectGenerator : IIncrementalGenerator
 
         valueObject.DefineMethod<int>("GetHashCode")
             .Override()
-            .WithSummary("Hashes the wrapped value.")
-            .ReturnRaw(Invocations.InvokeRaw(value, nameof(object.GetHashCode)));
+            .WithSummary("Hashes the wrapped value; 0 when it is null.")
+            .ReturnRaw(Invocations.InvokeRaw(comparer, nameof(object.GetHashCode), value));
 
+        // The same null hole one member over: Value.ToString() throws on a default
+        // instance. Interpolation formats null as empty, uniformly for value and
+        // reference types.
         valueObject.DefineMethod<string>("ToString")
             .Override()
-            .WithSummary("Formats the wrapped value.")
-            .ReturnRaw(Invocations.InvokeRaw(value, nameof(object.ToString)));
+            .WithSummary("Formats the wrapped value; empty when it is null.")
+            .AsExpressionBody("$\"{Value}\"");
 
         // Without these a value object is one nobody would adopt: users write `a == b`,
         // not `a.Equals(b)`. The two must be declared together or C# rejects the type,
