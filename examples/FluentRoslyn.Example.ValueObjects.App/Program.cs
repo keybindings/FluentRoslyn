@@ -12,6 +12,11 @@ Console.WriteLine($"Equal: {first.Equals(same)}");
 Console.WriteLine($"Differ: {first.Equals(other)}");
 Console.WriteLine($"Hashes match: {first.GetHashCode() == same.GetHashCode()}");
 
+// == and != are generated too, and the explicit conversion unwraps.
+Console.WriteLine($"Operator equal: {first == same}");
+Console.WriteLine($"Operator differ: {first != other}");
+Console.WriteLine($"Unwrapped: {(int)first}");
+
 var code = new CustomerCode("ADA");
 Console.WriteLine($"CustomerCode: {code}");
 Console.WriteLine($"Boxed equals: {code.Equals((object)new CustomerCode("ADA"))}");

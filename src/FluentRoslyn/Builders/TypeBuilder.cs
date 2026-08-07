@@ -24,6 +24,7 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     private readonly List<PropertyBuilder> _properties = [];
     // Methods of differing return types are different classes, so the list is typed by
     // what a declaring type actually needs from them.
+    private readonly List<IMemberSyntaxBuilder> _operators = [];
     private readonly List<IMethodMember> _methods = [];
     private readonly List<TypeDeclarationBuilder> _nestedTypes = [];
     private readonly List<TypeSyntax> _interfaces = [];
@@ -192,6 +193,54 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
         return @event;
     }
 
+    /// <summary>
+    /// Declares an operator returning <typeparamref name="TReturn"/>, e.g.
+    /// <c>DefineOperator&lt;bool&gt;(OperatorKind.Equality)</c>. Operators are always
+    /// <c>public static</c>, so there is nothing to configure.
+    /// </summary>
+    /// <typeparam name="TReturn">The operator's result type. Comparison operators return <c>bool</c>.</typeparam>
+    /// <param name="kind">Which operator to declare.</param>
+    /// <returns>The operator builder.</returns>
+    public OperatorBuilder<TReturn> DefineOperator<TReturn>(OperatorKind kind)
+        => AddOperator(new OperatorBuilder<TReturn>(kind));
+
+    /// <summary>
+    /// Declares an operator whose result type is named by text — for one returning the
+    /// type being generated, which no type argument can name.
+    /// </summary>
+    /// <param name="kind">Which operator to declare.</param>
+    /// <param name="resultTypeName">The result type, as C# text.</param>
+    /// <returns>The operator builder.</returns>
+    public OperatorBuilder DefineOperator(OperatorKind kind, string resultTypeName)
+        => AddOperator(new OperatorBuilder(kind, SyntaxParse.TypeName(resultTypeName)));
+
+    /// <summary>
+    /// Declares a conversion to <typeparamref name="TTarget"/>:
+    /// <c>public static implicit operator int(OrderId value)</c>.
+    /// </summary>
+    /// <typeparam name="TTarget">The type converted to.</typeparam>
+    /// <param name="kind">Whether the conversion is implicit or explicit.</param>
+    /// <returns>The operator builder.</returns>
+    public OperatorBuilder<TTarget> DefineConversion<TTarget>(ConversionKind kind)
+        => AddOperator(new OperatorBuilder<TTarget>(kind));
+
+    /// <summary>
+    /// Declares a conversion to a type named by text — for a conversion <em>to</em> the
+    /// type being generated, whose name no type argument can supply.
+    /// </summary>
+    /// <param name="kind">Whether the conversion is implicit or explicit.</param>
+    /// <param name="targetTypeName">The type converted to, as C# text.</param>
+    /// <returns>The operator builder.</returns>
+    public OperatorBuilder DefineConversion(ConversionKind kind, string targetTypeName)
+        => AddOperator(new OperatorBuilder(kind, SyntaxParse.TypeName(targetTypeName)));
+
+    private TOperator AddOperator<TOperator>(TOperator @operator)
+        where TOperator : IMemberSyntaxBuilder
+    {
+        _operators.Add(@operator);
+        return @operator;
+    }
+
     /// <summary>Declares a public <c>void</c> method with an empty body.</summary>
     public MethodBuilder DefineMethod(string name)
         => DefineMethod(name, AccessModifier.Public);
@@ -285,14 +334,45 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
             throw new InvalidOperationException(
                 $"Type '{Name}' declares abstract method '{abstractMethod.Name}' but is not abstract.");
 
+        ValidateOperatorPairs();
+
         var members = new List<MemberDeclarationSyntax>();
         AddMemberGroup(members, _fields);
         AddMemberGroup(members, _constructors);
         AddMemberGroup(members, _events);
         AddMemberGroup(members, _properties);
+        AddOperators(members);
         AddMemberGroup(members, _methods);
         AddNestedTypes(members);
         return List(members);
+    }
+
+    // Operators keep their declaration order rather than sorting like other member
+    // groups. The group rule is "least protected first, then alphabetical", and an
+    // operator has no access modifier to sort by -- they are all public static. Sorting
+    // the remainder alphabetically would put `operator !=` before `operator ==`, which
+    // splits a pair the language requires together for no gain. Declaration order is
+    // still fully deterministic, because the generator chooses it.
+    private void AddOperators(List<MemberDeclarationSyntax> members)
+        => members.AddRange(_operators.Select(o => o.BuildMember()));
+
+    // C# refuses several operators declared alone -- `==` without `!=` is CS0216, and the
+    // ordering pairs and true/false behave the same way. Only the type sees every
+    // operator, so the check belongs here, and it refuses to emit rather than handing the
+    // consumer a build error nobody in this repository would see.
+    private void ValidateOperatorPairs()
+    {
+        var declared = new HashSet<OperatorKind>(
+            _operators.OfType<IOperatorMember>().Where(o => o.Kind is not null).Select(o => o.Kind!.Value));
+
+        foreach (var kind in declared)
+        {
+            var partner = Operators.PartnerOf(kind);
+            if (partner is not null && !declared.Contains(partner.Value))
+                throw new InvalidOperationException(
+                    $"Type '{Name}' declares operator '{Operators.SymbolFor(kind)}' without " +
+                    $"'{Operators.SymbolFor(partner.Value)}'. C# requires the pair.");
+        }
     }
 
     // Nested types sort by the same rule as members, but they are not IMemberSyntaxBuilder

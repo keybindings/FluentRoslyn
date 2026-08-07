@@ -612,6 +612,35 @@ to a call's result and `nameof` cannot see one. And a call's receiver is a refer
 too, so `Factory.Create().Configure()` isn't expressible — that shape wants a named
 local, which costs one statement and keeps generated code flat.
 
+### Operators
+
+Operators have their own family, because they are always `public static` and can never
+be partial, async, virtual or overridden — so there is no modifier surface to offer:
+
+```csharp
+var id = file.Struct("OrderId").Readonly().Partial();
+
+id.DefineOperator<bool>(OperatorKind.Equality)
+    .WithParameter("left", "MyApp.OrderId")
+    .WithParameter("right", "MyApp.OrderId")
+    .AsExpressionBody("left.Equals(right)");
+
+id.DefineOperator<bool>(OperatorKind.Inequality)
+    .WithParameter("left", "MyApp.OrderId")
+    .WithParameter("right", "MyApp.OrderId")
+    .AsExpressionBody("!(left == right)");
+
+id.DefineConversion(ConversionKind.Explicit, "int")
+    .WithParameter("value", "MyApp.OrderId", out var value)
+    .ReturnRaw(value.MemberRaw("Value"));
+```
+
+**The pair is enforced.** C# rejects `==` declared without `!=` (CS0216), and the same
+goes for `<`/`>`, `<=`/`>=` and `true`/`false`. Only the type sees both, so the type
+builder refuses to emit a lone one rather than handing your consumer a build error you
+would never see. `DefineOperator(kind, typeName)` is the form for an operator returning
+the type being generated, which no type argument can name.
+
 ### Files, and using directives
 
 `NamespaceBuilder.Get(ns).Class(name)` gives you a type in a file of its own. To

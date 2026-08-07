@@ -102,7 +102,7 @@ jobs:
         run: |
           output=$(dotnet run --project examples/FluentRoslyn.Example.ValueObjects.App -c Release --no-build)
           echo "$output"
-          expected=$'OrderId: 42\nEqual: True\nDiffer: False\nHashes match: True\nCustomerCode: ADA\nBoxed equals: True'
+          expected=$'OrderId: 42\nEqual: True\nDiffer: False\nHashes match: True\nOperator equal: True\nOperator differ: True\nUnwrapped: 42\nCustomerCode: ADA\nBoxed equals: True'
           if [ "$output" != "$expected" ]; then
             echo "::error::Value objects example output did not match."
             exit 1
