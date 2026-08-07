@@ -49,11 +49,41 @@ the next, nor one that is `void` for some members and value-returning for others
 So the decorator builds its members through the ordinary builder API, and that is the
 right outcome rather than a shortfall. The lesson for holes is narrower than it looks:
 **templates fit generators that emit a fixed shape with varying values, not generators
-that emit a varying shape.** A generator of the first kind — the same method emitted
-against many types, differing only in a type name or a constant — would genuinely pull
-steps 3–4, and none of the three examples is one. Until such a generator exists, holes
-stay unbuilt on the same standing-rule grounds as before, now with evidence behind the
-claim rather than caution.
+that emit a varying shape.**
+
+**Then a fixed-shape generator was written, and it sharpened the answer again.** The
+value-objects example (2026-08-06) is the case the paragraph above asked for: every
+marked type gets an identical member set — constructor, `Value`, `Equals(T)`,
+`Equals(object)`, `GetHashCode`, `ToString` — with fixed arity throughout, varying only
+in the value object's own name and its underlying type. Two type holes, nothing else.
+Structurally it is exactly what steps 3–4 describe. The result is more interesting than
+a straight yes:
+
+- **Four of the six members gain nothing from a template.** `GetHashCode` and
+  `ToString` have no variation in their bodies at all; the constructor and `Equals(T)`
+  are single built statements. Each is already two or three checked builder calls, and
+  a template would replace them with a template plus a hole declaration plus a lifted
+  call — more machinery for the same guarantee.
+- **One member would gain a great deal**, and it is the one that is still raw text:
+  `Equals(object obj) => obj is T other && Equals(other)`. That body is a pattern match
+  and a boolean operator, both deliberately outside the fluent API. As a template it
+  would be real, compiled, refactorable C# with a single type hole — which is precisely
+  the compile-checking the string form throws away.
+- **The checking is thinner than it looks.** A template for these must be written
+  against a placeholder that declares `Value`, and the placeholder needs *some* concrete
+  underlying type. `Value.Equals(other.Value)` is then verified against `int`, say — and
+  every substitution beyond `int` is unverified. That is the "unchecked at the seams"
+  ceiling this document already states, arriving earlier than expected.
+
+**The revised claim, which is sharper than "fixed shape".** Holes earn themselves where
+a body contains constructs the fluent API deliberately does not model — pattern
+matching, boolean operators, LINQ — and does not earn themselves for bodies the builder
+API already expresses, however repetitive. Fixed shape is necessary but not sufficient;
+the deciding question is whether the body needs the expression grammar.
+
+That is a genuinely useful narrowing: it means steps 3–4 should be built when a
+generator needs *several* such bodies, not merely a repetitive one. One raw expression
+in one example is not that. Holes stay unbuilt, now for a much more specific reason.
 
 This is the largest item on the roadmap and the one the reference story has been
 leading toward. It is also the one most able to go wrong by being designed

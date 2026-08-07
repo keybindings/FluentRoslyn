@@ -155,6 +155,38 @@ public class RawMemberAccessTests
         decorator.ToString().Should().Contain("this.value = value;");
     }
 
+    // A method whose signature is known at generator-compile time but whose body
+    // forwards to something the library cannot see -- the ordinary shape in a
+    // symbol-driven generator. Without ReturnRaw the only options were dropping to an
+    // untyped Returns("bool"), losing the <T> signature, or AddStatement, losing the
+    // built syntax as well.
+    [TestMethod]
+    public void ReturnRaw_ReturnsAnUntypedValueFromATypedMethod()
+    {
+        var valueObject = NamespaceBuilder.Get("MyApp").Struct("OrderId");
+        var value = valueObject.DefineProperty("Value", "int").GetOnly();
+
+        valueObject.DefineMethod<int>("GetHashCode")
+            .Override()
+            .ReturnRaw(Invocations.InvokeRaw(value, "GetHashCode"));
+
+        var code = valueObject.ToString();
+
+        code.Should()
+            .Contain("public override int GetHashCode()").And
+            .Contain("return Value.GetHashCode();");
+    }
+
+    [TestMethod]
+    public void ReturnRaw_WithNull_Throws()
+    {
+        var method = NamespaceBuilder.Get("MyApp").Class("C").DefineMethod<int>("M");
+
+        var nullValue = () => method.ReturnRaw(null!);
+
+        nullValue.Should().Throw<ArgumentNullException>();
+    }
+
     [TestMethod]
     public void RawAccess_ValidatesMemberNames()
     {

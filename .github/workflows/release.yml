@@ -91,6 +91,18 @@ jobs:
             exit 1
           fi
 
+      # The fixed-shape counterpart to the decorator: every marked type receives the
+      # identical member set, varying only in two type names.
+      - name: Run value objects example end-to-end
+        run: |
+          output=$(dotnet run --project examples/FluentRoslyn.Example.ValueObjects.App -c Release --no-build)
+          echo "$output"
+          expected=$'OrderId: 42\nEqual: True\nDiffer: False\nHashes match: True\nCustomerCode: ADA\nBoxed equals: True'
+          if [ "$output" != "$expected" ]; then
+            echo "::error::Value objects example output did not match."
+            exit 1
+          fi
+
       - name: Pack
         run: |
           dotnet pack src/FluentRoslyn/FluentRoslyn.csproj -c Release --no-build -o artifacts

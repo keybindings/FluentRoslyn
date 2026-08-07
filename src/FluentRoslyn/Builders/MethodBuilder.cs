@@ -567,6 +567,36 @@ public class MethodBuilder<TReturn> : MethodBuilderBase<MethodBuilder<TReturn>>
     }
 
     /// <summary>
+    /// Appends <c>return value;</c> for a value that carries no type — the result of
+    /// <c>InvokeRaw</c>, <c>Value.NewOfType</c>, or a <c>MemberRaw</c> access on a type
+    /// the generator only discovered.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The return <em>type</em> is still <typeparamref name="TReturn"/> and still
+    /// emitted from it; what is unchecked is only the value. That combination is
+    /// ordinary in a symbol-driven generator: a method whose signature is known at
+    /// generator-compile time — <c>bool Equals(…)</c>, <c>int GetHashCode()</c> — whose
+    /// body forwards to something the library cannot see.
+    /// </para>
+    /// <para>
+    /// Named apart from <see cref="Return(IValue{TReturn})"/> rather than overloading
+    /// it, for the reason that recurs throughout this API: an overload taking the
+    /// untyped <c>IValue</c> would survive as the sole candidate whenever the typed one
+    /// failed, and would report a genuine type mismatch as a complaint about
+    /// <c>IValue</c>. The alternative to this method is <c>AddStatement("return …;")</c>,
+    /// which is unchecked <em>and</em> unparsed — strictly worse.
+    /// </para>
+    /// </remarks>
+    /// <param name="value">The value to return.</param>
+    /// <returns>This builder, so the chain continues.</returns>
+    public MethodBuilder<TReturn> ReturnRaw(IValue value)
+    {
+        AddReturn(value ?? throw new ArgumentNullException(nameof(value)));
+        return this;
+    }
+
+    /// <summary>
     /// Appends <c>return literal;</c> for a constant of the method's return type, e.g.
     /// <c>DefineMethod&lt;bool&gt;("IsValid").ReturnLiteral(true)</c>. Named apart from
     /// <see cref="Return(IValue{TReturn})"/> because a value that is itself a
