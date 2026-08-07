@@ -111,7 +111,7 @@ than a shape the generator invented, it now lives in
 
 | ~~38~~ | ~~**`ReturnRaw` on a typed method**~~ | Feature | Med | Low | **Done** (2026-08-06). Pulled by the value-objects example. `DefineMethod<bool>` gives a `Return` checked against `TReturn`, but `InvokeRaw` yields an untyped value — so a method whose *signature* is known at generator-compile time (`bool Equals(…)`, `int GetHashCode()`) could not forward to something the library cannot see without dropping to `Returns("bool")` and losing the `<T>` signature. Named apart from `Return` for the usual reason. The alternative was `AddStatement`, which is unchecked *and* unparsed. |
 
-| ~~39~~ | ~~**Operator and conversion declarations**~~ | Feature | Med | Med | **Done** (2026-08-06). Earned by the value-objects example, which shipped visibly incomplete: a strongly-typed id whose users must write `a.Equals(b)` rather than `a == b` is not one anyone would adopt. `DefineOperator`/`DefineConversion` in typed and raw-named forms, covering every overloadable operator plus implicit/explicit conversions. Operators carry **no modifier surface** — C# requires `public static`, so offering to set them could only produce source that does not compile. The builders derive from `StatementBuilder<TSelf>` and deliberately *not* from `MethodBuilderBase<TSelf>`, which carries `Partial`, `Async`, `Virtual`, `Override` and the `AsCallable` families, none of which an operator can be. **The pairing rule is enforced:** `==` without `!=` is CS0216 in the consumer's build, so the type builder refuses to emit it — the same stance the enum builder takes on an out-of-range member value. Ordering pairs and `true`/`false` are covered by the same table. |
+| ~~39~~ | ~~**Operator and conversion declarations**~~ | Feature | Med | Med | **Done** (2026-08-06). Earned by the value-objects example, which shipped visibly incomplete: a strongly-typed id whose users must write `a.Equals(b)` rather than `a == b` is not one anyone would adopt. `DefineOperator`/`DefineConversion` in typed and raw-named forms, covering every overloadable operator plus implicit/explicit conversions. The builders derive from `StatementBuilder<TSelf>` and deliberately *not* from `MethodBuilderBase<TSelf>`, which carries `Partial`, `Async`, `Virtual`, `Override` and the `AsCallable` families, none of which an operator can be. Accessibility and staticness are fixed by CS0558, but `Unsafe()` and the C# 11 `Checked()` form are both offered — an earlier version of this row claimed operators had *no* modifier surface, which was wrong and is corrected below. **Four language rules are enforced** rather than left to the consumer's compiler: `==` needs `!=` (CS0216, likewise the ordering pairs and `true`/`false`); a checked form is legal only on `+ - * / ++ --` (CS9023); a checked conversion must be explicit (CS9024); and a checked form needs its unchecked counterpart (CS9025). Only the type sees every operator, so all four live there, beside the existing abstract-member check. |
 
 **The pattern across all four:** the typed surface is complete for types the generator
 *builds* and for types it can name as `<T>`, and thins out for types it *discovers*.
@@ -141,6 +141,18 @@ These look like omissions but are choices:
   Distinct names leave one candidate, so the error is `CS0411` naming
   `CallOn<TDeclaring>` — the same diagnostic a mismatched `Assign` gives. The
   extra name buys an error that points at the actual problem.
+
+- **"No modifier surface" was wrong about operators, and probing found it.** The first
+  version of #39 argued operators need no modifiers at all, reasoning from C# requiring
+  `public static`. That much is true (CS0558) — but it is not the whole modifier set.
+  Measured: `unsafe` is legal on an operator, and since C# 11 so is a `checked` form,
+  which brings three further rules with it (CS9023/CS9024/CS9025). An interface can also
+  declare `static abstract` operators for generic math, which this library cannot reach
+  today because `DefineOperator` lives on `TypeBuilder` rather than `InterfaceBuilder` —
+  recorded as a known limit rather than a decision. The pattern to notice: the argument
+  was *"the language forbids X, therefore there is nothing here"*, and it was wrong
+  because the language forbade one thing and allowed two others. **A claim that a
+  surface is empty deserves the same probe as a claim that it behaves a certain way.**
 
 - **`CallStatic` needs a `typeof` overload, because C# forbids a static type as a
   type argument.** `CallStatic<Console>(…)` does not compile — CS0718 — and neither

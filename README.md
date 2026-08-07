@@ -614,8 +614,8 @@ local, which costs one statement and keeps generated code flat.
 
 ### Operators
 
-Operators have their own family, because they are always `public static` and can never
-be partial, async, virtual or overridden — so there is no modifier surface to offer:
+Operators have their own family, because they can never be partial, async, virtual or
+overridden, and C# fixes their accessibility at `public static` (CS0558):
 
 ```csharp
 var id = file.Struct("OrderId").Readonly().Partial();
@@ -635,11 +635,31 @@ id.DefineConversion(ConversionKind.Explicit, "int")
     .ReturnRaw(value.MemberRaw("Value"));
 ```
 
-**The pair is enforced.** C# rejects `==` declared without `!=` (CS0216), and the same
-goes for `<`/`>`, `<=`/`>=` and `true`/`false`. Only the type sees both, so the type
-builder refuses to emit a lone one rather than handing your consumer a build error you
-would never see. `DefineOperator(kind, typeName)` is the form for an operator returning
-the type being generated, which no type argument can name.
+Two modifiers *are* available. `Unsafe()`, and `Checked()` for the C# 11 checked form:
+
+```csharp
+id.DefineOperator(OperatorKind.Plus, "MyApp.OrderId")          // the unchecked form
+    .WithParameter("left", "MyApp.OrderId")
+    .WithParameter("right", "MyApp.OrderId")
+    .AsExpressionBody("new MyApp.OrderId(left.Value + right.Value)");
+
+id.DefineOperator(OperatorKind.Plus, "MyApp.OrderId")
+    .Checked()                                                  // operator checked +
+    .WithParameter("left", "MyApp.OrderId")
+    .WithParameter("right", "MyApp.OrderId")
+    .AsExpressionBody("new MyApp.OrderId(checked(left.Value + right.Value))");
+```
+
+**Four language rules are enforced rather than left to your consumer's compiler.**
+`==` must be declared with `!=` (CS0216), and likewise `<`/`>`, `<=`/`>=`, `true`/`false`.
+A `checked` form is only legal on `+ - * /`, `++` and `--` — not on unary `+`, remainder,
+bitwise, shift or comparison operators (CS9023). A checked *conversion* must be
+`explicit` (CS9024). And a checked form needs its unchecked counterpart alongside it
+(CS9025). Only the type sees every operator, so all four checks live there, and each
+refuses to emit rather than handing you a build error in someone else's project.
+
+`DefineOperator(kind, typeName)` is the form for an operator returning the type being
+generated, which no type argument can name.
 
 ### Files, and using directives
 

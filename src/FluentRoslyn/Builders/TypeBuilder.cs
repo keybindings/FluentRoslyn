@@ -362,8 +362,10 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     // consumer a build error nobody in this repository would see.
     private void ValidateOperatorPairs()
     {
+        var operators = _operators.OfType<IOperatorMember>().ToList();
+
         var declared = new HashSet<OperatorKind>(
-            _operators.OfType<IOperatorMember>().Where(o => o.Kind is not null).Select(o => o.Kind!.Value));
+            operators.Where(o => o.Kind is not null).Select(o => o.Kind!.Value));
 
         foreach (var kind in declared)
         {
@@ -372,6 +374,21 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
                 throw new InvalidOperationException(
                     $"Type '{Name}' declares operator '{Operators.SymbolFor(kind)}' without " +
                     $"'{Operators.SymbolFor(partner.Value)}'. C# requires the pair.");
+        }
+
+        // A checked form is only legal on some operators, and only alongside its
+        // unchecked counterpart (CS9023/CS9024/CS9025). The per-operator part is asked of
+        // the operator itself, since only it knows its own arity.
+        var unchecked_ = new HashSet<string>(operators.Where(o => !o.IsChecked).Select(o => o.SignatureKey));
+
+        foreach (var @operator in operators)
+        {
+            @operator.ValidateChecked(Name);
+
+            if (@operator.IsChecked && !unchecked_.Contains(@operator.SignatureKey))
+                throw new InvalidOperationException(
+                    $"Type '{Name}' declares checked '{@operator.Display}' without a matching " +
+                    "unchecked form. C# requires both.");
         }
     }
 

@@ -232,6 +232,138 @@ public class OperatorTests
             .Contain("[Obsolete]");
     }
 
+    // Accessibility and staticness are genuinely fixed (CS0558), but unsafe and -- since
+    // C# 11 -- checked are not, so both are offered.
+    [TestMethod]
+    public void Unsafe_IsEmitted()
+    {
+        var valueObject = ValueObject();
+
+        valueObject.DefineOperator(OperatorKind.Multiply, "MyApp.OrderId")
+            .Unsafe()
+            .WithParameter("left", "MyApp.OrderId")
+            .WithParameter("right", "MyApp.OrderId")
+            .AsExpressionBody("left");
+
+        valueObject.ToString().Should()
+            .Contain("public static unsafe MyApp.OrderId operator *(MyApp.OrderId left, MyApp.OrderId right)");
+    }
+
+    [TestMethod]
+    public void AChecked_OperatorEmitsAlongsideItsUncheckedForm()
+    {
+        var valueObject = ValueObject();
+
+        valueObject.DefineOperator(OperatorKind.Plus, "MyApp.OrderId")
+            .WithParameter("left", "MyApp.OrderId")
+            .WithParameter("right", "MyApp.OrderId")
+            .AsExpressionBody("left");
+
+        valueObject.DefineOperator(OperatorKind.Plus, "MyApp.OrderId")
+            .Checked()
+            .WithParameter("left", "MyApp.OrderId")
+            .WithParameter("right", "MyApp.OrderId")
+            .AsExpressionBody("right");
+
+        valueObject.ToString().Should()
+            .Contain("operator +(MyApp.OrderId left, MyApp.OrderId right) => left;").And
+            .Contain("operator checked +(MyApp.OrderId left, MyApp.OrderId right) => right;");
+    }
+
+    // CS9025 in the consumer's build; refused here instead.
+    [TestMethod]
+    public void ACheckedOperatorWithoutItsUncheckedForm_Throws()
+    {
+        var valueObject = ValueObject();
+
+        valueObject.DefineOperator(OperatorKind.Minus, "MyApp.OrderId")
+            .Checked()
+            .WithParameter("left", "MyApp.OrderId")
+            .WithParameter("right", "MyApp.OrderId")
+            .AsExpressionBody("left");
+
+        var build = () => valueObject.ToString();
+
+        build.Should().Throw<InvalidOperationException>()
+            .WithMessage("*checked 'operator -' without a matching unchecked form*");
+    }
+
+    // CS9023. Only + - * / ++ -- have checked forms.
+    [TestMethod]
+    public void ACheckedFormOnAnIneligibleOperator_Throws()
+    {
+        var valueObject = ValueObject();
+
+        valueObject.DefineOperator(OperatorKind.Modulo, "MyApp.OrderId")
+            .WithParameter("left", "MyApp.OrderId")
+            .WithParameter("right", "MyApp.OrderId")
+            .AsExpressionBody("left");
+
+        valueObject.DefineOperator(OperatorKind.Modulo, "MyApp.OrderId")
+            .Checked()
+            .WithParameter("left", "MyApp.OrderId")
+            .WithParameter("right", "MyApp.OrderId")
+            .AsExpressionBody("left");
+
+        var build = () => valueObject.ToString();
+
+        build.Should().Throw<InvalidOperationException>().WithMessage("*'%' cannot be declared checked*");
+    }
+
+    // Binary + has a checked form; unary + does not, so arity decides.
+    [TestMethod]
+    public void ACheckedUnaryPlus_Throws()
+    {
+        var valueObject = ValueObject();
+
+        valueObject.DefineOperator(OperatorKind.Plus, "MyApp.OrderId")
+            .WithParameter("value", "MyApp.OrderId")
+            .AsExpressionBody("value");
+
+        valueObject.DefineOperator(OperatorKind.Plus, "MyApp.OrderId")
+            .Checked()
+            .WithParameter("value", "MyApp.OrderId")
+            .AsExpressionBody("value");
+
+        var build = () => valueObject.ToString();
+
+        build.Should().Throw<InvalidOperationException>().WithMessage("*'+' cannot be declared checked*");
+    }
+
+    // CS9024: only an explicit conversion may be checked.
+    [TestMethod]
+    public void ACheckedImplicitConversion_Throws()
+    {
+        var valueObject = ValueObject();
+
+        valueObject.DefineConversion<int>(ConversionKind.Implicit)
+            .Checked()
+            .WithParameter("id", "MyApp.OrderId")
+            .AsExpressionBody("0");
+
+        var build = () => valueObject.ToString();
+
+        build.Should().Throw<InvalidOperationException>()
+            .WithMessage("*implicit conversion cannot be declared checked*");
+    }
+
+    [TestMethod]
+    public void ACheckedExplicitConversion_EmitsAlongsideItsUncheckedForm()
+    {
+        var valueObject = ValueObject();
+
+        valueObject.DefineConversion<int>(ConversionKind.Explicit)
+            .WithParameter("id", "MyApp.OrderId")
+            .AsExpressionBody("0");
+
+        valueObject.DefineConversion<int>(ConversionKind.Explicit)
+            .Checked()
+            .WithParameter("id", "MyApp.OrderId")
+            .AsExpressionBody("1");
+
+        valueObject.ToString().Should().Contain("explicit operator checked int (MyApp.OrderId id)");
+    }
+
     // A conversion has no partner, so it is never caught by the pairing rule.
     [TestMethod]
     public void AConversionAlone_IsFine()
