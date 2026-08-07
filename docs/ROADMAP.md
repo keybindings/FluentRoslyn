@@ -339,6 +339,22 @@ exists or can.
   it never belonged in #17–#18. It was wrong about nothing except how the type gets
   named — see the CS0718 note above. `AsCallable` still refuses a static method,
   which is now a pointer to `CallStatic` rather than a limit.
+- **Template holes (steps 3–5) are unbuilt, and two real generators have now declined
+  them for two different reasons.** The decorator needed a varying *shape* — arity and
+  return-vs-void differ per member — which a template cannot express because its
+  signature is fixed when it is written. The value-objects generator was then written
+  specifically as the fixed-shape case that should have pulled holes, and probing it
+  against the built meta-generator found four structural blockers instead:
+  instance members are rejected (`FRT001`), the varying underlying type needs a generic
+  template (`FRT004`) or a generic placeholder (rejected by #16), operators are not
+  `[Template]`-able at all, and the signature is lifted verbatim so there is no hole for
+  a member's name or arity. **None of these is something a hole fixes** — holes
+  substitute inside a body, and every blocker is about the signature. See
+  [`DESIGN-templates.md`](DESIGN-templates.md), which also retracts an earlier
+  optimistic claim about `Equals(object)` that the probe disproved. Templates fit static,
+  non-generic, expression-bodied methods with a fixed signature — the `Calc` example, and
+  so far only it.
+
 - **Compile-checked templates — now designed, see
   [`DESIGN-templates.md`](DESIGN-templates.md).** A meta-generator that runs on
   generator projects: the author writes real C# — compiled, type-checked,

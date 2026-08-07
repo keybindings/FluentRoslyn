@@ -85,6 +85,47 @@ That is a genuinely useful narrowing: it means steps 3–4 should be built when 
 generator needs *several* such bodies, not merely a repetitive one. One raw expression
 in one example is not that. Holes stay unbuilt, now for a much more specific reason.
 
+**Probed against the built meta-generator (2026-08-06), which corrects the bullet
+above.** The analysis to this point was reasoning about whether holes would be *worth
+it*. Actually compiling candidate templates against `FluentRoslyn.Templates` answers a
+prior question — whether these members can be templates at all — and the answer is no,
+for four structural reasons, none of which a hole would fix:
+
+| Blocker | Measured |
+|---|---|
+| Every member but the operators is an **instance** member | `FRT001` — a template must be static |
+| The **underlying type varies** (`int`, `string`) | `FRT004` — a template cannot be generic; and `[EmitsAs]` rejects generic placeholders (#16), so neither route supplies it |
+| `==`, `!=` and the conversion are **operators** | `[Template]` is `AttributeTargets.Method` and the lifter emits `DefineMethod`; operators are structurally outside it |
+| The **signature is lifted verbatim** | A static two-parameter `EqualsStatic(self, other)` lifts to exactly that, so there is no hole for a member's *name*, arity, or instance-ness |
+
+**This retracts the optimistic bullet above.** `Equals(object)` was named as the one
+member that would gain a great deal from being a template. It cannot be one: it is an
+instance override, so `FRT001` rejects it outright. Rewriting it as a static template
+taking the instance explicitly produces a static two-parameter method with the wrong
+name — not the `Equals(object)` override the type needs. The member that most wanted a
+template is the member furthest out of reach.
+
+The general point is the last row. Value holes and name/type holes substitute *inside a
+body*; every blocker here is about the **signature and member kind**, which the lifter
+copies rather than parameterises. The decorator needed a varying *shape*; value objects
+need a varying *member kind*. Both sit outside what a hole does, for one underlying
+reason: **a template is a real method, so everything except its body is fixed when it is
+written.**
+
+One positive result, worth keeping because it is easy to doubt later: a placeholder
+**does** work as a template parameter type. `WithParameter<OrderIdPh>("self")` lifts
+correctly and `TypeNameBuilder` maps it to the emitted name at generation time, so
+`[EmitsAs]` and templates compose exactly as #16 intended. The mechanism is sound; the
+surrounding shape is what does not fit.
+
+**Where this leaves templates.** They fit static, non-generic, expression-bodied methods
+whose signature is fixed and whose body varies only in values — which is the `Calc`
+example and, so far, only it. That is a real capability and the compile-checking
+argument for it is unchanged. But it is a narrower band than this document originally
+implied, and **two independent real generators have now declined it for two different
+reasons**. The bar for revisiting steps 3–5 is a generator that wants a *body* hole in a
+signature it is otherwise content to fix — not merely one that repeats itself.
+
 This is the largest item on the roadmap and the one the reference story has been
 leading toward. It is also the one most able to go wrong by being designed
 optimistically, so this document leads with what was measured and states the ceiling
