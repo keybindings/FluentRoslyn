@@ -40,7 +40,7 @@
          assertion that the pairing was tested.
 
          Bump both, or the release fails before anything is pushed. -->
-    <Version>0.1.0-preview.8</Version>
+    <Version>0.1.0-preview.9</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>Compile-checked templates for FluentRoslyn. A meta-generator that runs on your source-generator project: mark a method [Template] and its body is real, compiled, refactorable C# that the meta-generator lifts into the FluentRoslyn calls which reproduce it. Breaking a template is an error in your own build, not a CS8785 warning in your consumer's.</Description>
@@ -52,7 +52,11 @@
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <DevelopmentDependency>true</DevelopmentDependency>
-    <PackageReleaseNotes>0.1.0-preview.8
+    <PackageReleaseNotes>0.1.0-preview.9
+
+No functional changes to this package; an internal comment record was corrected (REVIEWS.md, R2-15, in the repository). It versions in lockstep with FluentRoslyn, which has substantial validation hardening in this release - install the FluentRoslyn with the same version.
+
+0.1.0-preview.8
 
 No source changes to this package. It shares a version line with FluentRoslyn because its generated code targets FluentRoslyn's exact API surface — a coupling NuGet cannot express, since this package deliberately declares no dependencies. The matching version number is the statement that this pairing was built and verified together, so install the FluentRoslyn with the same version, and treat an upgrade of one as an upgrade of both.
 

@@ -33,7 +33,7 @@
          FluentRoslyn is also what someone searching for this library actually types,
          so the assembly, namespaces, repo, and package all use it. -->
     <PackageId>FluentRoslyn</PackageId>
-    <Version>0.1.0-preview.8</Version>
+    <Version>0.1.0-preview.9</Version>
     <Authors>Cameron Lambert</Authors>
     <Copyright>Copyright (c) 2026 Cameron Lambert</Copyright>
     <Description>A fluent C# API for generating C# source code — a readable facade over Roslyn's SyntaxFactory. Targets netstandard2.0 so it works inside incremental source generators, where Roslyn's own SyntaxGenerator (in Microsoft.CodeAnalysis.Workspaces) cannot be referenced.</Description>
@@ -47,7 +47,27 @@
     <PackageProjectUrl>https://github.com/keybindings/FluentRoslyn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/keybindings/FluentRoslyn</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>0.1.0-preview.8
+    <PackageReleaseNotes>0.1.0-preview.9
+
+A hardening release: everything a code review of the operator feature found, fixed. What was reviewed, when, and what came of it is recorded in docs/REVIEWS.md in the repository.
+
+Operator validation is now signature-aware. C# matches operator pairs, checked/unchecked twins, and duplicates by signature, not by symbol, and the library now does the same. Each of the following previously emitted source that failed in the consumer's build and is now refused when the generator runs:
+
+  Wrong operator arity (CS1534/CS1019/CS1020).
+  A pairing partner with a different signature: ==(A, A) beside !=(A, int) is refused, matching CS0216.
+  A checked form without an unchecked twin of the same signature (CS9025); conversion identity spans implicit/explicit, so a checked explicit beside an unchecked implicit is refused as the mixed-direction error it is (CS0557).
+  Duplicate operator or conversion signatures, including implicit and explicit to the same target (CS0111/CS0557).
+  Operators on a static class (CS0715).
+  operator true/false with a non-bool result (CS0215).
+  An instance member referenced from any static context - a static method or an operator - instead of emitting a bare name that fails with CS0120. If a generator did this it was already emitting broken code; the throw is new, the breakage is not.
+
+Type spellings are canonicalized before signatures compare - int equals System.Int32, spaced and unspaced generics agree - so mixing symbol-derived and hand-written type names does not produce false rejections.
+
+New: records can declare operators and conversions, gaining a brace body (never == or !=, which a record synthesizes - the refusal points at Equals instead). OperatorKind.UnsignedRightShift adds &gt;&gt;&gt;, completing the overloadable set that preview.8's notes wrongly claimed was already complete. PartnerDeclaredElsewhere() waives the pairing and twin requirements per operator, for partial types that legally split a pair across their parts. A member builder's own ToString() now runs the same validation the declaring type runs.
+
+Breaking, deliberately, while the version says preview: ConversionKind no longer defines zero (Implicit is now 1), so default(ConversionKind) throws instead of silently declaring an implicit conversion; an undefined OperatorKind or ConversionKind throws at Define time naming the value, rather than a KeyNotFoundException later. Source-compatible unless you wrote those literally; recompile rather than drop in.
+
+0.1.0-preview.8
 
 Operators and conversions, which the library could not declare at all before: DefineMethod validates its name as a C# identifier, so "operator ==" was rejected before it started. That left generated value objects and strongly-typed ids visibly incomplete — users write a == b, not a.Equals(b).
 
