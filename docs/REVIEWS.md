@@ -14,7 +14,7 @@ Findings carry an id (`R<review>-<n>`) so a commit message can name what it fixe
 | Range | Lines added to `src/` | Reviewed |
 |---|---:|---|
 | Start → `2977d02` (2026-07-22) | — | ✅ Review 1 |
-| `2977d02` → `34cb904` (preview.7) | **6,470 across 83 files** | ❌ **never reviewed** |
+| `2977d02` → `34cb904` (preview.7) | 6,470 across 83 files | ✅ Review 3 |
 | `34cb904` → `0163b82` (preview.8 + docs) | 596 across 6 files | ✅ Review 2 |
 
 **The middle row is the gap.** It is roughly 80% of the current library and contains
@@ -22,6 +22,128 @@ every item from #14 (typed references) through #38 — the whole type-safety sta
 `SourceFile`, the raw/untyped tier, static calls, `FluentRoslyn.Templates`, and five
 example generators. Review 2 was scoped by the tool to the most recent feature, not to
 the codebase, so recommending a review and running one has not closed this.
+
+## Review 3 — 2026-08-08 — the previously unreviewed 80%
+
+- **Range:** `2977d02..34cb904`, reviewed at HEAD — 83 files, ~6,470 added lines,
+  roadmap items #14–#38. The operator feature was excluded as already covered.
+- **Method:** every finding was reproduced by generating source and compiling it
+  (in-memory `CSharpCompilation`, Roslyn 4.9.2), several by loading the assembly and
+  executing it. The suite was green throughout, so **none of these is caught today**.
+- **Findings:** 61, **none fixed yet.**
+
+Six independent passes found R3-01 without collusion, which is the clearest signal
+in the set: it is one missing override with a wide blast radius.
+
+### Emits source that compiles and binds the wrong thing
+
+The worst class — no diagnostic anywhere, generator and consumer both green.
+
+| id | file:line | finding |
+|---|---|---|
+| R3-01 | `AccessorBody.cs:16,54,89,125` | **None of the four accessor scopes overrides `IsStaticContext`** (`StatementBuilder.cs:36` defaults false), and `PropertyBuilder` constructs them from the property *name* only, never its `IsStatic`. Every static-context guard is dead inside property bodies. `Static()` + `WithGetter(g => g.Return(instanceField))` → **CS0120**; `g.Return(This())` → **CS0026**; a `value`-shadowed member emits `this.` in a static setter → CS0026. The identical shape in a static *method* is correctly refused. Found by six passes. |
+| R3-02 | `TypeNameSimplifier.cs:82` | `DeclaredTypeNames` collects only `BaseTypeDeclarationSyntax`, so a **type parameter** or a **delegate** of the same name does not block simplification. Proved by execution: `Class("Host").WithTypeParameter("StringBuilder")` + a `System.Text.StringBuilder` property gives a property whose reflected type is `System.Int32`. `file.Delegate("EventHandler")` + a `System.EventHandler` field binds to the generated delegate. Compiles clean, wrong type. |
+| R3-03 | `SyntaxReferences.cs:334` | `IsShadowed` compares raw spellings, so **`@Name` never shadows `Name`** — the same C# identifier. The `this.` qualification never fires, the emitted `Name` binds to the parameter, and the member is never read. Zero diagnostics. `Identifiers.Validate` explicitly permits the `@` prefix, and defensive `@`-prefixing is a standard generator idiom. |
+| R3-04 | `StatementBuilder.cs:46` | Shadow qualification is resolved **at statement-add time** against the parameter list as it then stands, so `WithParameter` *after* a statement silently re-shadows a member already emitted bare. `ThrowIfNull(prop); CallStatic(…, prop); WithParameter<string>("Name")` guards and prints the parameter. Reordering the calls fixes it, which is what makes it invisible. |
+| R3-05 | `TypeNameBuilder.cs:121` | Array rank specifiers are emitted **outermost-last**, so mixed-rank jagged arrays are a different type: `DefineProperty<int[][,]>` emits `int[, ][]` (`int[*,*][]`). Consumer assignment → CS0029. |
+| R3-06 | `TypeNameBuilder.cs:154`, `TypeDeclarationBuilder.cs:98` | Global-namespace types emit as **bare names with no `global::`**, so an enclosing namespace captures them — a same-named `Probe.Widget` wins over the intended global one. There is no way to express the reference correctly. A current test locks this in. |
+| R3-07 | `SyntaxLiterals.cs:28` | Negative zero emits `-0`. Executed: `double.IsNegative` is `False` and `1.0/Z` is `+∞` where `-0.0` went in. |
+| R3-08 | `PropertyBuilder.cs:390` | `GetOnly()` is **silently discarded** by any accessor body — the bodied branch reads only which body fields are set. `WithSetterExpression(…).GetOnly()` emits a *set-only* property: the caller asked for the opposite and it compiles. |
+| R3-09 | `TemplateLifter.cs:103,239` | Templates **silently drop `out`/`ref`/`in`/`params` and default values**. `TryParse(string s, out int value)` lifts to a plain `int value` parameter — compiles, and discards the parsed result forever. No FRT diagnostic, contradicting the package's stated "every unsupported template is reported rather than skipped". |
+| R3-10 | `TemplateLifter.cs:102` | Named tuples and `dynamic` are **erased** by the `<T>` round-trip: `(int A, string B)` becomes `System.ValueTuple<int,string>` → CS1061 on `p.A`; `dynamic` becomes `object` (compiles, different semantics); `string?` annotations are dropped. |
+| R3-11 | `TemplateLifter.cs:100,172` | A **nested or generic template class** produces a fabricated *top-level* type rather than a partial half, so the author's call site fails with CS0117. Worse, a top-level `Ns.Templates` and a nested `Ns.Outer.Templates` **merge into one emitted class**. FRT002 does not fire. |
+
+### Emits source the consumer's build rejects
+
+| id | file:line | finding |
+|---|---|---|
+| R3-12 | `Identifiers.cs:18` | `SyntaxFacts.IsValidIdentifier` is lexical only, so **every reserved keyword passes** every name path — type, member, method, parameter, type parameter, enum member, namespace. `DefineProperty<int>("class")` emits a file that does not parse. Reachable wherever a name comes from consumer data or an `ISymbol` (which strips `@`). One added `GetKeywordKind` test fixes it; the `@` escape hatch already works. |
+| R3-13 | `TypeBuilder.cs:334` | A **static class** emits instance fields, properties, methods and constructors → CS0708 ×n, CS0710, and CS0714/CS0736 with an interface. `IsStaticType` exists and is passed to the operator set only. |
+| R3-14 | `TypeBuilder.cs:334` | A **readonly struct** emits the default member shapes → CS8340 (field), CS8341 (auto-property). Two documented calls taking their defaults. The value-objects example avoids it only by the author's memory. |
+| R3-15 | `TypeBuilder.cs:334` | **No duplicate or colliding name detection** for members, nested types, or types in a file → CS0101, CS0102, CS0111, and CS0542 (a member named after its enclosing type — easy to hit by accident). `EnumBuilder` does exactly this check for its own members. |
+| R3-16 | `MethodBuilder.cs:411` | `Virtual()` and `Partial()` are never checked against the declaring type → CS0549 (sealed), CS0106 (struct), CS0751 (non-partial type). The `abstract` equivalent *is* checked. |
+| R3-17 | `ClassBuilder.cs:94`, `RecordBuilder.cs:58` | `WithParent(builder)` calls `BuildTypeSyntax()` directly, **bypassing the generic-builder guard** → `class IntBox : Container` → CS0305. `WithInterface(InterfaceBuilder)` routes through `TypeNameBuilder.For` and refuses properly. |
+| R3-18 | `TypeNameBuilder.cs:113` | The generic guard checks only the **leaf** builder, not its declaring chain, so a type nested in a generic type emits `Outer.Inner` with the outer's arguments dropped → CS0305 through `WithInterface`, `WithParameter`, `Returns`, `WithParent`, `CallStatic`. |
+| R3-19 | `MethodBuilder.cs:345`, `ConstructorBuilder.cs:152`, `TypeBuilder.cs:70` | Receiver/constructor/`This<T>` pairing compares against `TypeDeclarationBuilder.BuildTypeSyntax()`, which **silently drops type parameters**, so `AsCallableOn`/`AsConstructable` accept a generic declaring type → CS0305. The `CallStatic` path refuses it correctly. |
+| R3-20 | `MethodBuilder.cs:310` | `ValidateHandle` never looks at **method type parameters**, so a handle to a generic method emits a call with no type-argument list → CS0411. Adding `WithTypeParameter` *after* the handle is also allowed — the freeze covers `Parameters` only. |
+| R3-21 | `MethodBuilder.cs:310`, `ConstructorBuilder.cs:143` | Handles ignore **accessibility**: `AsCallableOn` on a private method, or `WithAccessModifier(Private)` after the handle exists → CS0122. |
+| R3-22 | `ConstructorBuilder.cs:186` | `BuildConstructorCore` lacks the **`_handleIssued && IsStatic` re-check** that `MethodBuilder.cs:367` has and documents as "order-proof". `AsConstructable(…)` then `Static()` emits `static C()` while the handle still emits `new C()` → CS7036/CS1729. |
+| R3-23 | `SyntaxLiterals.cs:27` | `float`/`double` **NaN and ±Infinity** emit as bare `NaN`/`Infinity`/`NaNF` → CS0103, through every literal path (`WithInitializer`, `AssignLiteral`, `ReturnLiteral`, `Value.Literal`). |
+| R3-24 | `StatementBuilder.cs:324` | `ThrowIfNullRaw` emits `x is null` for a **value-typed** raw reference → CS0037. The reference already carries the declared type text; the typed sibling has `where TValue : class` to make this unrepresentable. |
+| R3-25 | `StatementBuilder.cs:225` | `AssignRaw` never consults the target's **settability** → CS0191 (readonly field), CS0200 (get-only), CS8852 (init-only). The typed `Assign` shares the hole. |
+| R3-26 | `FieldBuilder.cs:85` | A **struct field initializer** emits without the explicitly declared constructor C# requires → CS8983. |
+| R3-27 | `PropertyBuilder.cs:363` | `Required()` on a **bodied** property slips the `!HasSet` guard (`HasSet` defaults true and the bodied path ignores it) → CS9034. The auto-property path is guarded correctly. |
+| R3-28 | `FieldBuilder.cs:168`, `PropertyBuilder.cs:357` | `required` **visibility** is unmodelled → CS9032. `DefineField<T>(name).Required()` is private by default, so the most obvious call never compiles. `Required()` + `Readonly()` on a field → CS9034. |
+| R3-29 | `PropertyBuilder.cs:372` | An **empty accessor scope** emits `get { }` on a value-returning property → CS0161. The analogous empty method body throws. |
+| R3-30 | `DocComment.cs:70` | Doc text containing a lone `\r`, U+2028 or U+0085 **escapes the `///` comment** and the remainder parses as code → CS1002/CS1585. The class already sanitizes markup; the line-terminator set is incomplete. |
+| R3-31 | `TypeNameSimplifier.cs:55` | A shortened name that matches a **visible namespace segment** → CS0118, including namespaces the simplifier itself just imported, an enclosing namespace, and the file's own. Locally decidable. |
+| R3-32 | `TypeNameSimplifier.cs:67` | The rewrite passes `original.Right`, discarding **already-simplified descendants**, so a generic's inner type argument stays qualified while its import is still recorded → an unused `using` that then makes an unrelated name ambiguous (CS0104). |
+| R3-33 | `TypeImports.cs:37` | `WithUsing(…)` directives are **invisible to the ambiguity analysis** → CS0104. The `SimplifyTypeNames` doc promises more than the check delivers. |
+| R3-34 | `TypeNameBuilder.cs:282` | `[EmitsAs]` splits a **nested type name** at the last dot, so `MyApp.Outer.Inner` records `MyApp.Outer` as a namespace → `using MyApp.Outer;` → CS0138 + CS0246. Emits correctly *without* simplification, so it breaks only when someone turns it on. |
+| R3-35 | `Value.cs:51`, `Invocations.cs:88`, `StatementBuilder.cs:410` | Raw **type-name** slots accept any parsable `TypeSyntax`, including forms illegal in the position used: `new int[]()` CS1586, `new Uri?()` CS8628, `new int*()` CS1919, `new (int,int)()` CS8181, `new dynamic()` CS8386; `string[].Join(…)` for the static-call slots. `ToDisplayString()` produces these routinely. |
+| R3-36 | `StatementBuilder.cs:165` | **`ref` slips through** the raw parameter-type overload (`ParseTypeName("ref int")` is a valid `RefTypeSyntax`), and no call family emits the `ref` keyword → CS1620. `out`, `in`, `params` are all correctly rejected; `ref` is the single hole. |
+| R3-37 | `SyntaxReferences.cs:300` | A **parameter reference used outside its own body** short-circuits to a bare identifier without checking the current scope's parameter list → CS0103. One `Any` over `Parameters` turns it into a generator-time throw. |
+| R3-38 | `TemplateLifter.cs:235` | Two templates **overloading one name** emit two identical `Emit…(TypeBuilder)` methods → CS0111 in a generated file the author cannot edit, with no FRT diagnostic. |
+| R3-39 | `TemplateLifter.cs:230` | **Verbatim `@`-names** lift to unparseable source: `@class(int @int)` emits `class(int int)`. The body keeps its `@` (lifted as text); only the declaration breaks. |
+| R3-40 | `TemplateLifter.cs:138` | `Qualified` skips any `SimpleName` that is a `MemberAccessExpression.Name`, so **namespace-qualified spellings are not `global::`-qualified** — the example's own `System.Console.WriteLine` binds wrongly in a consumer namespace containing `System` → CS0117. Both the doc and `DESIGN-templates.md` claim every type reference is fully qualified. |
+
+### False rejection — refuses legal code
+
+| id | file:line | finding |
+|---|---|---|
+| R3-41 | `MethodBuilder.cs:322`, `ConstructorBuilder.cs:167` | `ValidateHandle` compares **exact emitted text**, so legal alternate spellings are refused: `WithParameter("n","System.Int32")` + `AsCallable<int>`, `"List<int>"` + `AsCallable<List<int>>`, `"int?"` + `AsCallable<int?>`. No false accepts found. |
+| R3-42 | `StatementBuilder.cs:230` | `AssignRaw`'s type-text comparison false-rejects `int` vs `global::System.Int32`, `int?` vs `System.Nullable<int>`, `global::Probe.Inner` vs `Probe.Inner` — the natural mix of hand-written and `ToDisplayString()` names. A false reject throws at generation time → CS8785 and *no output at all*. |
+| R3-43 | `TypeNameSimplifier.cs:55` | A reference to a type declared in the **same `SourceFile`** is blocked by the `declared` check and stays fully qualified, though it is the one case always safe to shorten. Over-conservative rather than wrong. |
+
+### Missing surface
+
+| id | file:line | finding |
+|---|---|---|
+| R3-44 | `PropertyBuilder.cs:370`, `EventBuilder.cs:56` | `Inheritance` is wired into `SyntaxFormatting.Modifiers` for every member but exposed **only on methods**, so `abstract`/`override` properties are inexpressible — which blocks implementing an abstract base and blocks the roadmap's own `ClassFrom<T>` direction. Compounding: `TypeBuilder.cs:338` reads `_methods` rather than a contract, so adding `Abstract()` to `PropertyBuilder` would emit abstract properties into non-abstract classes silently — the `_operators` shape from Review 2, one level down. |
+| R3-45 | `InterfaceBuilder.cs:73,134`, `RecordBuilder.cs:45`, `DelegateBuilder.cs:44` | The **raw-type escape hatch is missing** from the interface, record and delegate arms, though `Parameter.OfRawName` and `TypeNameBuilder.ForRawName` are already internal and general. A generator can *implement* a discovered interface but cannot *declare* one. |
+| R3-46 | `RecordBuilder.cs:17` | `RecordBuilder` extends `TypeDeclarationBuilder`, not `TypeBuilder`, so a record can declare positional parameters and operators **and nothing else** — no field, property, method, constructor, event or nested type. The Review-2 operator fix landed as a private second member pipeline rather than closing the gap, so two now exist for the same job. |
+| R3-47 | `NamedBuilder.cs:36` | Only `SourceFile` and `TypeDeclarationBuilder` override `Formatting`, so a **member's `ToString()` disagrees with its own file** (four spaces/LF where the file says tabs/CRLF). Member `ToString()` is a documented public path the suite exercises. |
+
+### Efficiency
+
+Measured with `GC.GetAllocatedBytesForCurrentThread` + Stopwatch, Release. Root cause
+behind several: `NamedBuilder.ToString()` always runs `NormalizeWhitespace` — 152 B /
+3.3 µs versus 2,089 B / 41.5 µs on the same node for a byte-identical string.
+
+| id | file:line | finding |
+|---|---|---|
+| R3-48 | `TypeNameBuilder.cs:160` | The namespace is stringified through `NormalizeWhitespace` on **every qualified type reference**, and the result is read only when `SimplifyTypeNames()` was requested — so **by default it is computed and never used**. 10–28% of a realistic type's whole build cost, depending on namespace depth. |
+| R3-49 | `TypeDeclarationBuilder.cs:83` | Per-type `ToSourceText()` rebuilds the **entire file**, so the natural `foreach (var t in file.Types)` loop is O(n²) *and* emits N identical copies of the whole file. 20 types: 13.6 MB / 95 ms versus 756 KB / 5.9 ms. |
+| R3-50 | `SyntaxReferences.cs:232` | The `ArgumentNullException` type reference is rebuilt per null guard — ~1.8 KB of invariant work each, ~14 KB for an 8-parameter constructor. |
+| R3-51 | `MethodBuilder.cs:322`, `ConstructorBuilder.cs:151`, `TypeBuilder.cs:71` | Type identity is decided by stringifying syntax **asymmetrically** (one side through `NamedBuilder.ToString()`'s double normalization, the other a plain `ToString()`) — 8.9 KB per comparison, and the two sides can normalize differently. Same hazard class as R2-08. |
+| R3-52 | `PropertyBuilder.cs:223,258`, `Parameter.cs:51` | Raw type text is stringified → re-parsed → stringified again: one `WithSetter` + `AssignRaw` costs +12 KB and +498 µs over the same raw auto-property. This is the main symbol-driven path. |
+| R3-53 | `SourceFile.cs:39` | The constructor pays a `NormalizeWhitespace` purely to name itself — **89% of `InNamespace`'s allocation**, before a single type exists. |
+| R3-54 | `TypeBuilder.cs:398` | No `Count == 0` early-out on the six member groups: 264 B per empty group, 1,424 B for all six, on every build. The zero-operator early-out from Review 2, generalised. |
+| R3-55 | `TypeNameBuilder.cs:187` | `new string(type.Name.TakeWhile(…).ToArray())` for an arity suffix that is usually absent — 176 B → 0 B with `IndexOf`/`Substring`, on every `New<T>`. |
+
+### Duplication and dead surface
+
+| id | file:line | finding |
+|---|---|---|
+| R3-56 | `MethodBuilder.cs:390`, `ConstructorBuilder.cs:214`, `PropertyBuilder.cs:383,480` | The expression-body application is written **five times** with **four different guard messages** — one of which names no member at all. `SyntaxBodies` is the shelf built for exactly this and holds one method. |
+| R3-57 | `SyntaxReferences.cs:89` | `Invocation` hand-builds what `InvocationValue<T>` builds, while its two siblings correctly delegate — **and two doc comments assert the opposite**, one claiming the forms "cannot drift". |
+| R3-58 | `ReferencePath.cs:43,77` | `MemberPath<T>` and `RawMemberPath` are **character-identical** apart from the interface list, including the non-obvious `CanNameOf` recursion that decides whether `ThrowIfNull` refuses to emit. |
+| R3-59 | `MethodBuilder.cs:310`, `ConstructorBuilder.cs:143` | The handle-signature check and the parameter-freeze latch exist twice, though `StatementBuilder` already owns `Parameters` and declares `OnParametersMutating` as the extension point — the consolidation that created it left these behind. |
+| R3-60 | `TypeBuilder.cs:69`, `MethodBuilder.cs:337`, `ConstructorBuilder.cs:150` | The `[EmitsAs]` pairing rule — the library's whole correctness argument for receiver checking — is written out **three times** with three message texts. |
+| R3-61 | `MethodBuilder.cs:38` | `ReturnsVoid` duplicates a fact `ReturnType` already carries, across four write sites, and `Returns("void")` **desyncs them**: `Return()` then throws "has a return type" about a void method. Latent (no call site today). Also: `SourceFile.Types` and `InGlobalNamespace()` have zero call sites anywhere, leaving the whole global-namespace branch unexercised; `TypeNameBuilder.ForEmittedName`'s comment claims two callers and has one. |
+
+### Verified sound — probed and not broken
+
+Recorded so the next review does not re-spend the budget: the raw-text escape hatches
+(`SyntaxParse` consumes full text; attribute injection is rejected); the parameter
+freeze itself; `Static()`/`Abstract()`/`Async()` after a handle on the *method* side;
+`nameof` over member paths and `CanNameOf`'s element-access refusal; static-context
+guards for methods, constructors and operators; the setter's implicit `value`
+seeding; every Review-1 fix surviving the CRTP split on **both** the typed and raw
+arms; every non-float literal shape including `int.MinValue`, `decimal.MaxValue`,
+`'\0'`, surrogates and embedded quotes; doc-comment markup escaping; enum
+underlying-type and duplicate-member checks; `NamedBuilder`'s validator not being
+retained in a field. The `Generatr` → `FluentRoslyn` rename dropped no guard.
 
 ## Review 2 — 2026-08-08 — operator and conversion declarations
 
@@ -118,6 +240,26 @@ formatting is still a finding.
   value / duplicate members, write-only bodied properties, and malformed raw fragments.
   Three claims were investigated and **refuted** — verbatim `@` handling was correct, no
   `.WithX()` result was discarded, and `AccessModifier` reference-equality was sound.
+
+## Notes for whoever fixes Review 3
+
+61 findings is a body of work, not a sitting. Some grouping that holds:
+
+- **One override closes R3-01**, the widest finding in the set, and the durable fix is
+  to construct accessor scopes from the owning *member* rather than a bare name, so
+  the next body-bearing scope (an event accessor, an indexer) cannot repeat it.
+- **R3-13 through R3-16, R3-26 and R3-29 are one missing concept**: `BuildMembers` has
+  no member-versus-type validation. `IsStaticType` already exists and is consulted for
+  exactly one member kind. Doing them together is one guard with six cases.
+- **R3-17 through R3-21 are one concept too**: type identity and the generic guard are
+  each implemented twice, once correctly (`TypeNameBuilder.For`) and once not.
+- **R3-02, R3-31 through R3-34 and R3-43 are the simplifier**, and several are
+  locally decidable despite the syntax-only ceiling.
+- **R3-56 through R3-61 are the duplication** the correctness findings keep landing
+  in — the same rule implemented twice, one copy guarded. Fixing a correctness
+  finding without merging its duplicate leaves the next one to be found again.
+- **R3-48 and R3-49 are the two that matter for a generator's inner loop**, and R3-49
+  is also a correctness trap (N identical copies of one file).
 
 ## Notes for whoever runs the next one
 
