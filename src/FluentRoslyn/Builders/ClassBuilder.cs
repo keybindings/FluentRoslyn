@@ -34,6 +34,8 @@ public class ClassBuilder : TypeBuilder<ClassBuilder>
 
     private protected override bool IsStaticType => IsStatic;
 
+    private protected override bool IsPartialType => IsPartial;
+
     #region FluentMethods
 
     /// <summary>Marks the class <c>static</c>.</summary>

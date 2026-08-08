@@ -169,7 +169,7 @@ public class PropertyBuilder<T> : PropertyBuilderBase<PropertyBuilder<T>>, IRefe
         {
             if (body is null) throw new ArgumentNullException(nameof(body));
 
-            var scope = new GetterBody<T>(Name);
+            var scope = new GetterBody<T>(Name, IsStatic);
             body(scope);
 
             IsAutoProperty = false;
@@ -186,7 +186,7 @@ public class PropertyBuilder<T> : PropertyBuilderBase<PropertyBuilder<T>>, IRefe
         {
             if (body is null) throw new ArgumentNullException(nameof(body));
 
-            var scope = new SetterBody<T>(Name);
+            var scope = new SetterBody<T>(Name, IsStatic);
             body(scope);
 
             IsAutoProperty = false;
@@ -236,7 +236,7 @@ public sealed class RawPropertyBuilder : PropertyBuilderBase<RawPropertyBuilder>
         {
             if (body is null) throw new ArgumentNullException(nameof(body));
 
-            var scope = new RawGetterBody(Name);
+            var scope = new RawGetterBody(Name, IsStatic);
             body(scope);
 
             IsAutoProperty = false;
@@ -255,7 +255,7 @@ public sealed class RawPropertyBuilder : PropertyBuilderBase<RawPropertyBuilder>
         {
             if (body is null) throw new ArgumentNullException(nameof(body));
 
-            var scope = new RawSetterBody(Name, TypeName.ToString());
+            var scope = new RawSetterBody(Name, IsStatic, TypeName.ToString());
             body(scope);
 
             IsAutoProperty = false;

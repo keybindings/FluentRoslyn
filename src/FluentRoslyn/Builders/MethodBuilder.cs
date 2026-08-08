@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using FluentRoslyn.Abstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -15,6 +16,18 @@ namespace FluentRoslyn.Builders;
 internal interface IMethodMember : INamedBuilder, IAccessModifier, IMemberSyntaxBuilder
 {
     bool IsAbstract { get; }
+
+    /// <summary>Whether the member is <c>virtual</c> — illegal on a struct or in a sealed type.</summary>
+    bool IsVirtual { get; }
+
+    /// <summary>Whether the member is <c>partial</c> — illegal outside a partial type.</summary>
+    bool IsPartialMember { get; }
+
+    /// <summary>Whether the member is <c>static</c>, which a static type requires of every member.</summary>
+    bool IsStaticMember { get; }
+
+    /// <summary>The emitted parameter type list, so overloads can be told from duplicates.</summary>
+    string ParameterSignature { get; }
 
     TypeDeclarationBuilder? DeclaringType { get; set; }
 }
@@ -77,6 +90,15 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
 
     /// <summary>Whether the method is <c>abstract</c>, which means it declares no body.</summary>
     public bool IsAbstract => Inheritance == Inheritance.Abstract;
+
+    bool IMethodMember.IsVirtual => Inheritance == Inheritance.Virtual;
+
+    bool IMethodMember.IsPartialMember => IsPartial;
+
+    bool IMethodMember.IsStaticMember => IsStatic;
+
+    string IMethodMember.ParameterSignature
+        => string.Join(", ", Parameters.Select(p => p.TypeName.BuildTypeSyntax().ToString()));
 
     /// <summary>The method's accessibility.</summary>
     public AccessModifier AccessModifier { get; set; }

@@ -323,25 +323,38 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     private protected virtual bool AllowsAbstractMembers => false;
 
     /// <summary>
-    /// Whether this type is a static class, which cannot declare operators (CS0715):
-    /// its type can never appear as a parameter or result. Structs are never static.
+    /// Whether this type is a static class, which cannot declare operators (CS0715) or
+    /// any instance member. Structs are never static.
     /// </summary>
     private protected virtual bool IsStaticType => false;
+
+    /// <summary>Which kind of type this is, for the member rules that differ by kind.</summary>
+    private protected virtual TypeKind Kind => TypeKind.Class;
+
+    /// <summary>
+    /// Whether this is a <c>readonly struct</c>, whose instance fields must be readonly
+    /// and whose auto-properties must not be settable.
+    /// </summary>
+    private protected virtual bool IsReadonlyType => false;
+
+    /// <summary>Whether this type is <c>partial</c>, which a partial member requires.</summary>
+    private protected virtual bool IsPartialType => false;
 
     // Member group order: fields, constructors, events, properties, methods, nested
     // types;
     // within each group, least protected first, then alphabetical.
     private protected SyntaxList<MemberDeclarationSyntax> BuildMembers()
     {
-        // An abstract member in a non-abstract type does not compile, and only the type
-        // knows both halves — so the check belongs here rather than in the member builder.
-        if (!AllowsAbstractMembers && _methods.FirstOrDefault(m => m.IsAbstract) is { } abstractMethod)
-            throw new InvalidOperationException(
-                $"Type '{Name}' declares abstract method '{abstractMethod.Name}' but is not abstract.");
+        // Everything a member is forbidden by the type it sits in, and by the other
+        // members beside it. Only the type knows both halves, so it all lives here --
+        // and it lives in one place because Review 3 found six of these missing at once,
+        // which said the gap was the concept rather than the individual cases.
+        new MemberRules(Name, Kind, IsStaticType, IsReadonlyType, IsPartialType, AllowsAbstractMembers)
+            .Validate(_fields, _constructors, _events, _properties, _methods, _nestedTypes, _interfaces.Count > 0);
 
         // The cross-member operator rules -- pairing, twinning, duplicates, and the
-        // static-class refusal -- live on the set, shared with every builder that can
-        // carry operators. Refusing here beats a build error in the consumer's project.
+        // static-class refusal -- live on their own set, shared with every builder that
+        // can carry operators.
         _operators.Validate(Name, IsStaticType);
 
         var members = new List<MemberDeclarationSyntax>();

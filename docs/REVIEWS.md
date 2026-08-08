@@ -30,7 +30,8 @@ the codebase, so recommending a review and running one has not closed this.
 - **Method:** every finding was reproduced by generating source and compiling it
   (in-memory `CSharpCompilation`, Roslyn 4.9.2), several by loading the assembly and
   executing it. The suite was green throughout, so **none of these is caught today**.
-- **Findings:** 61, **none fixed yet.**
+- **Findings:** 61. **Fixed 2026-08-08:** R3-01, R3-13, R3-14, R3-15, R3-16,
+  R3-26. The other 55 are open.
 
 Six independent passes found R3-01 without collusion, which is the clearest signal
 in the set: it is one missing override with a wide blast radius.

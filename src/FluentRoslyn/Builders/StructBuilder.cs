@@ -18,6 +18,12 @@ public class StructBuilder : TypeBuilder<StructBuilder>
     /// <summary>Whether the struct is <c>partial</c>.</summary>
     public bool IsPartial { get; set; }
 
+    private protected override TypeKind Kind => TypeKind.Struct;
+
+    private protected override bool IsReadonlyType => IsReadonly;
+
+    private protected override bool IsPartialType => IsPartial;
+
     #region FluentMethods
 
     /// <summary>Marks the struct <c>readonly</c>.</summary>
