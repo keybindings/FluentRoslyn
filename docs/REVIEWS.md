@@ -17,11 +17,12 @@ Findings carry an id (`R<review>-<n>`) so a commit message can name what it fixe
 | `2977d02` → `34cb904` (preview.7) | 6,470 across 83 files | ✅ Review 3 |
 | `34cb904` → `0163b82` (preview.8 + docs) | 596 across 6 files | ✅ Review 2 |
 
-**The middle row is the gap.** It is roughly 80% of the current library and contains
-every item from #14 (typed references) through #38 — the whole type-safety stack,
-`SourceFile`, the raw/untyped tier, static calls, `FluentRoslyn.Templates`, and five
-example generators. Review 2 was scoped by the tool to the most recent feature, not to
-the codebase, so recommending a review and running one has not closed this.
+**All three ranges are now reviewed.** The middle row — roughly 80% of the library, and
+every item from #14 through #38 — was the long-standing gap, and Review 3 closed it.
+What is open is no longer coverage but the **55 unfixed findings** it produced; see the
+fix notes below. Keep the ordering lesson this table caught once already: Review 2 was
+scoped by the tool to the newest feature rather than to the codebase, so *running* a
+review is not the same as covering what you meant to. Check the range it chose.
 
 ## Review 3 — 2026-08-08 — the previously unreviewed 80%
 
