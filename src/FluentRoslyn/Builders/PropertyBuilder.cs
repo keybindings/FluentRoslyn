@@ -376,13 +376,9 @@ public abstract class PropertyBuilder(
         if (ExpressionBody is not null)
         {
             GuardNoInitializer("an expression-bodied property");
-            if (hasGetterBody || hasSetterBody)
-                throw new InvalidOperationException(
-                    $"Property '{Name}' cannot combine a whole-property expression body with accessor bodies.");
 
-            return property
-                .WithExpressionBody(ArrowExpressionClause(ExpressionBody))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+            return SyntaxBodies.ExpressionBodied(
+                property, ExpressionBody, hasGetterBody || hasSetterBody, $"Property '{Name}'");
         }
 
         // 2. Accessor bodies, expression or statement: { get => a; set { ...; } }.
@@ -394,12 +390,14 @@ public abstract class PropertyBuilder(
             var bodied = new List<AccessorDeclarationSyntax>();
 
             if (hasGetterBody)
-                bodied.Add(BuildAccessor(SyntaxKind.GetAccessorDeclaration, GetterExpression, GetterStatements));
+                bodied.Add(BuildAccessor(
+                    SyntaxKind.GetAccessorDeclaration, GetterExpression, GetterStatements, $"Getter of '{Name}'"));
 
             if (hasSetterBody)
             {
                 ValidateSetterAccessModifier();
-                bodied.Add(BuildAccessor(SetterKind(), SetterExpression, SetterStatements, SetterAccessModifier));
+                bodied.Add(BuildAccessor(
+                    SetterKind(), SetterExpression, SetterStatements, $"Setter of '{Name}'", SetterAccessModifier));
             }
             else if (SetterAccessModifier is not null)
             {
@@ -472,15 +470,12 @@ public abstract class PropertyBuilder(
         SyntaxKind kind,
         ExpressionSyntax? expression,
         List<StatementSyntax>? statements,
+        string context,
         AccessModifier? access = null)
     {
-        if (expression is not null && statements is not null)
-            throw new InvalidOperationException("An accessor cannot have both an expression body and a statement body.");
-
         var accessor = expression is not null
-            ? AccessorDeclaration(kind)
-                .WithExpressionBody(ArrowExpressionClause(expression))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+            ? SyntaxBodies.ExpressionBodied(
+                AccessorDeclaration(kind), expression, statements is not null, context)
             : AccessorDeclaration(kind).WithBody(Block(statements!));
 
         return ApplyAccess(accessor, access);

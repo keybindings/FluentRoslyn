@@ -83,8 +83,10 @@ internal static class SyntaxReferences
 
     /// <summary>
     /// Builds <c>target.Method(arguments);</c> from a receiver, a method handle, and
-    /// argument references. The types were matched by the compiler at the
-    /// <c>Call</c> overload; what remains here is emission.
+    /// argument references. The types were matched by the compiler at the <c>Call</c>
+    /// overload; what remains here is emission — the same expression <c>Invoke</c>
+    /// produces as a value, so the two forms cannot drift. They used to, quietly: this
+    /// built its own while its two siblings delegated.
     /// </summary>
     internal static StatementSyntax Invocation(
         IReference target,
@@ -93,21 +95,9 @@ internal static class SyntaxReferences
         IReadOnlyCollection<IParameter> parameters,
         bool inStaticContext,
         string context)
-    {
-        if (target is null) throw new ArgumentNullException(nameof(target));
-        if (arguments.Any(a => a is null)) throw new ArgumentNullException(nameof(arguments));
-
-        var handle = MethodHandle.From(method, context);
-
-        return ExpressionStatement(
-            InvocationExpression(
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    Expression(target, parameters, inStaticContext, context),
-                    IdentifierName(handle.MethodName)),
-                ArgumentList(SeparatedList(arguments.Select(a =>
-                    Argument(Expression(a, parameters, inStaticContext, context)))))));
-    }
+        => ExpressionStatement(
+            new InvocationValue(target, method, arguments, context)
+                .Build(value => Expression(value, parameters, inStaticContext, context)));
 
     /// <summary>Builds <c>target op= value;</c> from a reference and a value of its type.</summary>
     internal static StatementSyntax CompoundAssignment<T>(

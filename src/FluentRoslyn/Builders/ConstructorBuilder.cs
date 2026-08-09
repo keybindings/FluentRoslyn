@@ -194,15 +194,7 @@ public class ConstructorBuilder : StatementBuilder<ConstructorBuilder>, IAccessM
         }
 
         if (_expressionBody is not null)
-        {
-            if (Statements.Count > 0)
-                throw new InvalidOperationException(
-                    $"Constructor for '{Name}' cannot have both an expression body and statements.");
-
-            return ctor
-                .WithExpressionBody(ArrowExpressionClause(_expressionBody))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-        }
+            return SyntaxBodies.ExpressionBodied(ctor, _expressionBody, Statements.Count, StatementContext);
 
         return ctor.WithBody(Block(Statements));
     }

@@ -48,17 +48,30 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
     private AccessModifier _accessModifier = AccessModifier.Public;
 
     private protected TypeSyntax ReturnType;
-    private protected bool ReturnsVoid;
+
+    /// <summary>
+    /// Whether the method returns <c>void</c>, read off the return type rather than
+    /// tracked beside it.
+    /// </summary>
+    /// <remarks>
+    /// It used to be a field set at four write sites, which <c>Returns("void")</c> would
+    /// have desynced — the type void, the flag false, and a bare <c>Return()</c> refused
+    /// with "has a return type" about a method that returns none. Measured while fixing
+    /// it: that route is closed a level earlier, because <c>ParseTypeName("void")</c>
+    /// carries diagnostics and <see cref="SyntaxParse"/> refuses it. So the bug was
+    /// unreachable rather than merely uncalled — and the second copy of the fact is gone
+    /// either way, which is what stops it becoming reachable.
+    /// </remarks>
+    private protected bool ReturnsVoid
+        => ReturnType is PredefinedTypeSyntax predefined && predefined.Keyword.IsKind(SyntaxKind.VoidKeyword);
 
     private protected MethodBuilderBase(
         string name,
         AccessModifier accessModifier,
-        TypeSyntax returnType,
-        bool returnsVoid) : base(name, Identifiers.Validate)
+        TypeSyntax returnType) : base(name, Identifiers.Validate)
     {
         AccessModifier = accessModifier;
         ReturnType = returnType;
-        ReturnsVoid = returnsVoid;
     }
 
     /// <summary>Whether the method is <c>static</c>.</summary>
@@ -401,15 +414,7 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
             return method.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
         if (_expressionBody is not null)
-        {
-            if (Statements.Count > 0)
-                throw new InvalidOperationException(
-                    $"Method '{Name}' cannot have both an expression body and statements.");
-
-            return method
-                .WithExpressionBody(ArrowExpressionClause(_expressionBody))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-        }
+            return SyntaxBodies.ExpressionBodied(method, _expressionBody, Statements.Count, StatementContext);
 
         // A statement block covers both void and value-returning methods; the caller is
         // responsible for returning on all paths when non-void.
@@ -482,14 +487,14 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
 /// </summary>
 public class MethodBuilder : MethodBuilderBase<MethodBuilder>
 {
-    private MethodBuilder(string name, AccessModifier accessModifier, TypeSyntax returnType, bool returnsVoid)
-        : base(name, accessModifier, returnType, returnsVoid)
+    private MethodBuilder(string name, AccessModifier accessModifier, TypeSyntax returnType)
+        : base(name, accessModifier, returnType)
     {
     }
 
     /// <summary>A void method: <c>void Name(...) { }</c>.</summary>
     internal static MethodBuilder Action(string name, AccessModifier accessModifier)
-        => new(name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)), returnsVoid: true);
+        => new(name, accessModifier, PredefinedType(Token(SyntaxKind.VoidKeyword)));
 
     /// <summary>
     /// Sets the return type from a raw type name, e.g. <c>Returns("T")</c> or
@@ -500,7 +505,6 @@ public class MethodBuilder : MethodBuilderBase<MethodBuilder>
     public MethodBuilder Returns(string typeName)
     {
         ReturnType = SyntaxParse.TypeName(typeName);
-        ReturnsVoid = false;
         return this;
     }
 
@@ -511,7 +515,6 @@ public class MethodBuilder : MethodBuilderBase<MethodBuilder>
     public MethodBuilder Returns(TypeDeclarationBuilder type)
     {
         ReturnType = TypeNameBuilder.For(type).BuildTypeSyntax();
-        ReturnsVoid = false;
         return this;
     }
 
@@ -567,7 +570,7 @@ public class MethodBuilder : MethodBuilderBase<MethodBuilder>
 public class MethodBuilder<TReturn> : MethodBuilderBase<MethodBuilder<TReturn>>
 {
     private MethodBuilder(string name, AccessModifier accessModifier)
-        : base(name, accessModifier, TypeNameBuilder.New<TReturn>().BuildTypeSyntax(), returnsVoid: false)
+        : base(name, accessModifier, TypeNameBuilder.New<TReturn>().BuildTypeSyntax())
     {
     }
 

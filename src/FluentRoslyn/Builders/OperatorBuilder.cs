@@ -288,15 +288,7 @@ public abstract class OperatorBuilderBase<TSelf> : StatementBuilder<TSelf>, IOpe
     private BaseMethodDeclarationSyntax ApplyBody(BaseMethodDeclarationSyntax declaration)
     {
         if (_expressionBody is not null)
-        {
-            if (Statements.Count > 0)
-                throw new InvalidOperationException(
-                    $"{StatementContext} has both an expression body and statements.");
-
-            return declaration
-                .WithExpressionBody(ArrowExpressionClause(_expressionBody))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-        }
+            return SyntaxBodies.ExpressionBodied(declaration, _expressionBody, Statements.Count, StatementContext);
 
         if (Statements.Count == 0)
             throw new InvalidOperationException(

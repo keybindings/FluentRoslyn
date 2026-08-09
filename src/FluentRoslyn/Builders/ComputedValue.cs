@@ -177,11 +177,17 @@ internal sealed class RawInvocationValue : IValue, IComputedValue
 }
 
 /// <summary>
-/// <c>target.Method(arguments)</c> used as a value. Identical in syntax to the statement
-/// form, which is why both route through <see cref="SyntaxReferences"/>'s one builder.
+/// <c>target.Method(arguments)</c> through a typed handle. Identical in syntax to the
+/// statement form, which is why <see cref="SyntaxReferences.Invocation"/> wraps this
+/// rather than building its own — the untyped base exists for exactly that, since a
+/// statement has no result type to name.
 /// </summary>
-/// <typeparam name="T">The call's result type.</typeparam>
-internal sealed class InvocationValue<T> : IValue<T>, IComputedValue
+/// <remarks>
+/// The two used to be built separately, while the doc comments on both sides said they
+/// could not drift. The sibling raw and static forms did delegate, so this was the odd
+/// one out in a family of three.
+/// </remarks>
+internal class InvocationValue : IComputedValue
 {
     private readonly IReference _target;
     private readonly MethodHandle _method;
@@ -192,6 +198,7 @@ internal sealed class InvocationValue<T> : IValue<T>, IComputedValue
         _target = target ?? throw new ArgumentNullException(nameof(target));
         _method = MethodHandle.From(method, context);
 
+        if (arguments is null) throw new ArgumentNullException(nameof(arguments));
         if (arguments.Any(a => a is null)) throw new ArgumentNullException(nameof(arguments));
         _arguments = arguments;
     }
@@ -203,6 +210,19 @@ internal sealed class InvocationValue<T> : IValue<T>, IComputedValue
                     qualify(_target),
                     IdentifierName(_method.MethodName)))
             .WithArgumentList(ArgumentList(SeparatedList(_arguments.Select(a => Argument(qualify(a))))));
+}
+
+/// <summary>
+/// The same call, carrying the result type so it can be assigned or returned where a
+/// <typeparamref name="T"/> is expected.
+/// </summary>
+/// <typeparam name="T">The call's result type.</typeparam>
+internal sealed class InvocationValue<T> : InvocationValue, IValue<T>
+{
+    internal InvocationValue(IReference target, object method, IValue[] arguments, string context)
+        : base(target, method, arguments, context)
+    {
+    }
 }
 
 /// <summary>

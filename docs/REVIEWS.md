@@ -19,7 +19,7 @@ Findings carry an id (`R<review>-<n>`) so a commit message can name what it fixe
 
 **All three ranges are now reviewed.** The middle row — roughly 80% of the library, and
 every item from #14 through #38 — was the long-standing gap, and Review 3 closed it.
-What is open is no longer coverage but the **42 unfixed findings** it produced; see the
+What is open is no longer coverage but the **37 unfixed findings** it produced; see the
 fix notes below. Keep the ordering lesson this table caught once already: Review 2 was
 scoped by the tool to the newest feature rather than to the codebase, so *running* a
 review is not the same as covering what you meant to. Check the range it chose.
@@ -34,8 +34,9 @@ review is not the same as covering what you meant to. Check the range it chose.
 - **Findings:** 61. **Fixed 2026-08-08:** R3-01, R3-13, R3-14, R3-15, R3-16,
   R3-26. **Fixed 2026-08-09:** R3-12, and the simplifier cluster — R3-02, R3-31,
   R3-32, R3-33, R3-34, R3-43; the type-identity cluster — R3-17, R3-18, R3-19,
-  R3-20, R3-21 — and R3-60, which is the same three lines as R3-19. The other 42
-  are open.
+  R3-20, R3-21 — with R3-59 and R3-60, which are the same lines as R3-19 and R3-20;
+  and the rest of the duplication cluster, R3-56, R3-57, R3-58, R3-61. **24 fixed,
+  37 open.**
 
 Six independent passes found R3-01 without collusion, which is the clearest signal
 in the set: it is one missing override with a wide blast radius.
@@ -280,6 +281,17 @@ formatting is still a finding.
 - **R3-56 through R3-61 are the duplication** the correctness findings keep landing
   in — the same rule implemented twice, one copy guarded. Fixing a correctness
   finding without merging its duplicate leaves the next one to be found again.
+  **Fixed 2026-08-09**, R3-59 and R3-60 alongside the correctness findings they
+  duplicate, the rest after. Two corrections to the record fell out of doing it:
+  **R3-61's `Returns("void")` desync is unreachable, not latent** — `ParseTypeName`
+  reports diagnostics for a bare `void`, so `SyntaxParse` refuses it a level earlier,
+  and the finding is right that the duplicated fact should go but wrong about why it
+  never fired. And **`TypeNameBuilder.ForEmittedName`'s two-callers comment** was
+  already rewritten by the simplifier fix. `SourceFile.Types` and
+  `InGlobalNamespace()` now have call sites, in tests that emit and compile a
+  global-namespace file. Only two of the slice's tests fail against the previous
+  source — the rest are a refactor's characterization tests, which is what a
+  duplication slice should look like.
 - **R3-48 and R3-49 are the two that matter for a generator's inner loop**, and R3-49
   is also a correctness trap (N identical copies of one file).
 

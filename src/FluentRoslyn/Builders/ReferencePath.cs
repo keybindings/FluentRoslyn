@@ -39,12 +39,17 @@ internal interface IReferencePath
 /// A member access step: <c>target.Name</c>. The result is a reference like any other, so
 /// it can be assigned to, assigned from, called on, passed as an argument, or returned.
 /// </summary>
-/// <typeparam name="T">The member's type.</typeparam>
-internal sealed class MemberPath<T> : IReference<T>, IReferencePath
+/// <remarks>
+/// The typed and untyped forms differ only in what interface they carry, so everything
+/// else is here. It was written out twice, character for character — including the
+/// <see cref="CanNameOf"/> recursion, which is what decides whether <c>ThrowIfNull</c>
+/// refuses to emit, and so is the least obvious thing in the file to keep in step by hand.
+/// </remarks>
+internal abstract class MemberPath : IReferencePath
 {
     private readonly string _memberName;
 
-    internal MemberPath(IReference target, string memberName)
+    private protected MemberPath(IReference target, string memberName)
     {
         Target = target ?? throw new ArgumentNullException(nameof(target));
         Identifiers.Validate(memberName);
@@ -62,6 +67,15 @@ internal sealed class MemberPath<T> : IReference<T>, IReferencePath
         => MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target, IdentifierName(_memberName));
 }
 
+/// <summary>A member access whose type is asserted by the caller.</summary>
+/// <typeparam name="T">The member's type.</typeparam>
+internal sealed class MemberPath<T> : MemberPath, IReference<T>
+{
+    internal MemberPath(IReference target, string memberName) : base(target, memberName)
+    {
+    }
+}
+
 /// <summary>
 /// A member access step whose type is unknown: <c>target.Name</c> where the member
 /// belongs to a type the generator only discovered. Reads and writes a location, so it
@@ -74,25 +88,11 @@ internal sealed class MemberPath<T> : IReference<T>, IReferencePath
 /// compares declared types only when both sides report one, so an assignment involving
 /// this degrades to unchecked rather than to wrong.
 /// </remarks>
-internal sealed class RawMemberPath : IRawReference, IReferencePath
+internal sealed class RawMemberPath : MemberPath, IRawReference
 {
-    private readonly string _memberName;
-
-    internal RawMemberPath(IReference target, string memberName)
+    internal RawMemberPath(IReference target, string memberName) : base(target, memberName)
     {
-        Target = target ?? throw new ArgumentNullException(nameof(target));
-        Identifiers.Validate(memberName);
-        _memberName = memberName;
     }
-
-    public IReference Target { get; }
-
-    public string Name => $"{Target.Name}.{_memberName}";
-
-    public bool CanNameOf => Target is not IReferencePath path || path.CanNameOf;
-
-    public ExpressionSyntax Compose(ExpressionSyntax target, Func<IReference, ExpressionSyntax> qualify)
-        => MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, target, IdentifierName(_memberName));
 }
 
 /// <summary>
