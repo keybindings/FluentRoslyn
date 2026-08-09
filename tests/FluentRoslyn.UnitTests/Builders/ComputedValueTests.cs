@@ -75,11 +75,12 @@ public class ComputedValueTests
             .Contain("Held = new Thing();");
     }
 
-    // ...and it obeys the simplifier's self-declared rule for free: a file that declares
-    // a type of that name keeps the construction qualified, because the short name would
-    // bind to the declaration instead.
+    // ...and it obeys the simplifier's self-declared rule for free. R3-43: the rule used
+    // to be "a name this file declares stays qualified", which caught this case wrongly —
+    // the placeholder names the very type being declared, in this file's own namespace, so
+    // the short form binds to it by definition and needs no import to do so.
     [TestMethod]
-    public void New_OfATypeDeclaredInTheSameFile_StaysQualified()
+    public void New_OfATypeDeclaredInTheSameFile_Shortens()
     {
         var file = SourceFile.InNamespace("MyApp").SimplifyTypeNames();
 
@@ -90,7 +91,30 @@ public class ComputedValueTests
         var current = owner.DefineProperty<WidgetValuePh>("Current");
         owner.DefineConstructor(AccessModifier.Public).Assign(current, Value.New(newWidget));
 
-        file.ToString().Should().Contain("Current = new MyApp.Widget();");
+        file.ToString().Should()
+            .Contain("Current = new Widget();").And
+            .NotContain("using MyApp;");
+    }
+
+    // The half of that rule that was doing real work: the declared name shadows a type of
+    // the same name from somewhere else, and that one still cannot be shortened.
+    [TestMethod]
+    public void New_OfASameNamedTypeFromAnotherNamespace_StaysQualified()
+    {
+        var source = SourceFile.InNamespace("Other.Ns");
+        source.Class("Thing").DefineConstructor(AccessModifier.Public)
+            .AsConstructable<ThingValuePh>(out var newThing);
+
+        var file = SourceFile.InNamespace("MyApp").SimplifyTypeNames();
+        file.Class("Thing");
+
+        var owner = file.Class("Owner");
+        var held = owner.DefineProperty<ThingValuePh>("Held");
+        owner.DefineConstructor(AccessModifier.Public).Assign(held, Value.New(newThing));
+
+        file.ToString().Should()
+            .Contain("Held = new Other.Ns.Thing();").And
+            .NotContain("using Other.Ns;");
     }
 
     [TestMethod]

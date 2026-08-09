@@ -266,26 +266,57 @@ public class TypeNameBuilder : NamedBuilder
         return true;
     }
 
-    // Splits "Ns.Sub.Name" into a validated namespace and simple name. Shared by the
-    // placeholder path and builder references, so both reject the same malformed input.
+    /// <summary>
+    /// Splits an emitted type name into a validated namespace, declaring types, and simple
+    /// name. Dots separate namespace levels; <c>+</c> is the CLR nesting marker and
+    /// separates a declaring type from the type nested in it.
+    /// </summary>
+    /// <remarks>
+    /// The marker is load-bearing, not decoration. A dotted name is split at the last dot,
+    /// so <c>MyApp.Outer.Inner</c> records <c>MyApp.Outer</c> as a namespace — which emits
+    /// correctly, and then imports as <c>using MyApp.Outer;</c> the moment
+    /// <c>SimplifyTypeNames</c> is turned on, for a namespace that does not exist. Nothing
+    /// in the string says which segments are namespaces, so the author has to; the
+    /// alternative was to guess, and this library does not guess about type identity.
+    /// </remarks>
     internal static TypeNameBuilder ForEmittedName(string fullTypeName, string context)
     {
         if (string.IsNullOrWhiteSpace(fullTypeName))
             throw new ArgumentException($"{context} names an empty type.", nameof(fullTypeName));
 
-        if (fullTypeName.IndexOfAny(['<', '>', '`', '+', '[', ']']) >= 0)
+        if (fullTypeName.IndexOfAny(['<', '>', '`', '[', ']']) >= 0)
             throw new ArgumentException(
                 $"{context} names '{fullTypeName}', which is not a plain namespace-qualified " +
-                "identifier. Generics, arrays, and nesting markers are not supported here.",
+                "identifier. Generics and arrays are not supported here.",
                 nameof(fullTypeName));
 
-        var lastDot = fullTypeName.LastIndexOf('.');
-        var simpleName = lastDot < 0 ? fullTypeName : fullTypeName.Substring(lastDot + 1);
+        var nesting = fullTypeName.Split('+');
+        if (nesting.Any(part => part.Length == 0))
+            throw new ArgumentException(
+                $"{context} names '{fullTypeName}', which has an empty segment beside a '+' " +
+                "nesting marker. Write the declaring type and the nested type either side of it.",
+                nameof(fullTypeName));
+
+        var type = ForQualifiedName(nesting[0]);
+
+        for (var i = 1; i < nesting.Length; i++)
+        {
+            Identifiers.Validate(nesting[i]);
+            type = new TypeNameBuilder(nesting[i], NamespaceBuilder.None, declaringType: type);
+        }
+
+        return type;
+    }
+
+    private static TypeNameBuilder ForQualifiedName(string qualifiedName)
+    {
+        var lastDot = qualifiedName.LastIndexOf('.');
+        var simpleName = lastDot < 0 ? qualifiedName : qualifiedName.Substring(lastDot + 1);
         Identifiers.Validate(simpleName);
 
         var @namespace = lastDot < 0
             ? NamespaceBuilder.None
-            : NamespaceBuilder.Get(fullTypeName.Substring(0, lastDot));
+            : NamespaceBuilder.Get(qualifiedName.Substring(0, lastDot));
 
         return new TypeNameBuilder(simpleName, @namespace);
     }

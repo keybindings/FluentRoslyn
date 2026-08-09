@@ -109,9 +109,16 @@ public sealed class SourceFile : NamedBuilder
     /// <summary>
     /// Shortens generated type references and imports the namespaces they need, so
     /// <c>System.Collections.Generic.List&lt;int&gt;</c> becomes <c>List&lt;int&gt;</c>
-    /// under a <c>using System.Collections.Generic;</c>. A name offered by two different
-    /// namespaces, or one any type in this file declares, stays fully qualified.
+    /// under a <c>using System.Collections.Generic;</c>. A name stays fully qualified
+    /// whenever the shortened form would bind somewhere else: offered by two namespaces,
+    /// declared by a type, delegate or type parameter in this file, matching a namespace
+    /// visible here, or already offered by a namespace <see cref="WithUsing"/> imported.
     /// </summary>
+    /// <remarks>
+    /// The one case a syntax-only pass cannot judge is a <see cref="WithUsing"/> of a
+    /// namespace this file never names a type from: what it contains is unknowable from
+    /// here, so a collision with a type in it is not caught.
+    /// </remarks>
     public SourceFile SimplifyTypeNames() => this.With(() => _imports.EnableSimplification());
 
     /// <summary>

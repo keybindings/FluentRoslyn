@@ -19,7 +19,7 @@ Findings carry an id (`R<review>-<n>`) so a commit message can name what it fixe
 
 **All three ranges are now reviewed.** The middle row — roughly 80% of the library, and
 every item from #14 through #38 — was the long-standing gap, and Review 3 closed it.
-What is open is no longer coverage but the **54 unfixed findings** it produced; see the
+What is open is no longer coverage but the **48 unfixed findings** it produced; see the
 fix notes below. Keep the ordering lesson this table caught once already: Review 2 was
 scoped by the tool to the newest feature rather than to the codebase, so *running* a
 review is not the same as covering what you meant to. Check the range it chose.
@@ -32,7 +32,8 @@ review is not the same as covering what you meant to. Check the range it chose.
   (in-memory `CSharpCompilation`, Roslyn 4.9.2), several by loading the assembly and
   executing it. The suite was green throughout, so **none of these is caught today**.
 - **Findings:** 61. **Fixed 2026-08-08:** R3-01, R3-13, R3-14, R3-15, R3-16,
-  R3-26. **Fixed 2026-08-09:** R3-12. The other 54 are open.
+  R3-26. **Fixed 2026-08-09:** R3-12, and the simplifier cluster — R3-02, R3-31,
+  R3-32, R3-33, R3-34, R3-43. The other 48 are open.
 
 Six independent passes found R3-01 without collusion, which is the clearest signal
 in the set: it is one missing override with a wide blast radius.
@@ -256,7 +257,15 @@ formatting is still a finding.
 - **R3-17 through R3-21 are one concept too**: type identity and the generic guard are
   each implemented twice, once correctly (`TypeNameBuilder.For`) and once not.
 - **R3-02, R3-31 through R3-34 and R3-43 are the simplifier**, and several are
-  locally decidable despite the syntax-only ceiling.
+  locally decidable despite the syntax-only ceiling. **Fixed 2026-08-09**, and one
+  measurement is worth keeping: **a using-directive does not import nested
+  namespaces.** `using System;` does not make `Text` mean `System.Text` — verified by
+  compiling both, and it is why the visibility rule keys on the namespaces that
+  *lexically enclose* the file rather than on the ones it imports. R3-31's "namespaces
+  the simplifier itself just imported" is true only of their root segments, which are
+  visible from the global namespace like any other. The residual ceiling is stated in
+  the `SimplifyTypeNames` doc: a `WithUsing` of a namespace the file never names a type
+  from contributes nothing the pass can check.
 - **R3-56 through R3-61 are the duplication** the correctness findings keep landing
   in — the same rule implemented twice, one copy guarded. Fixing a correctness
   finding without merging its duplicate leaves the next one to be found again.

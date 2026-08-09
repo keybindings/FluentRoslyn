@@ -36,7 +36,10 @@ internal sealed class TypeImports
 
         if (_simplify)
         {
-            var (rewritten, collected) = TypeNameSimplifier.Simplify(unit, currentNamespace);
+            // The explicit directives go in, not just come out: they are in scope for the
+            // emitted file regardless of what the simplifier decides, so a shortened name
+            // has to be judged against them too.
+            var (rewritten, collected) = TypeNameSimplifier.Simplify(unit, currentNamespace, _explicit);
             unit = rewritten;
             foreach (var name in collected)
                 imports.Add(name);
