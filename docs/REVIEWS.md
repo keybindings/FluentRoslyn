@@ -19,7 +19,7 @@ Findings carry an id (`R<review>-<n>`) so a commit message can name what it fixe
 
 **All three ranges are now reviewed.** The middle row — roughly 80% of the library, and
 every item from #14 through #38 — was the long-standing gap, and Review 3 closed it.
-What is open is no longer coverage but the **55 unfixed findings** it produced; see the
+What is open is no longer coverage but the **54 unfixed findings** it produced; see the
 fix notes below. Keep the ordering lesson this table caught once already: Review 2 was
 scoped by the tool to the newest feature rather than to the codebase, so *running* a
 review is not the same as covering what you meant to. Check the range it chose.
@@ -32,7 +32,7 @@ review is not the same as covering what you meant to. Check the range it chose.
   (in-memory `CSharpCompilation`, Roslyn 4.9.2), several by loading the assembly and
   executing it. The suite was green throughout, so **none of these is caught today**.
 - **Findings:** 61. **Fixed 2026-08-08:** R3-01, R3-13, R3-14, R3-15, R3-16,
-  R3-26. The other 55 are open.
+  R3-26. **Fixed 2026-08-09:** R3-12. The other 54 are open.
 
 Six independent passes found R3-01 without collusion, which is the clearest signal
 in the set: it is one missing override with a wide blast radius.

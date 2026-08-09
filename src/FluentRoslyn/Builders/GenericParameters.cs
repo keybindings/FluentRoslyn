@@ -17,8 +17,13 @@ internal sealed class GenericParameters
     /// <summary>Whether any type parameters have been declared.</summary>
     internal bool Any => _typeParameters.Count > 0;
 
+    // Validated like every other name path: this one had no check at all, so
+    // WithTypeParameter("int") emitted `class Box<int>` and nothing said so.
     internal void AddTypeParameter(string name)
-        => _typeParameters.Add(name ?? throw new ArgumentNullException(nameof(name)));
+    {
+        Identifiers.Validate(name);
+        _typeParameters.Add(name);
+    }
 
     internal void AddConstraint(string typeParameter, string constraint)
     {
