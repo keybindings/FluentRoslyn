@@ -35,17 +35,43 @@ public abstract class StatementBuilder : NamedBuilder
     /// </summary>
     private protected virtual bool IsStaticContext => false;
 
+    private bool _handleIssued;
+
     /// <summary>
-    /// Called before the parameter list changes, for builders that freeze their
-    /// signature once something depends on it.
+    /// Whether a typed handle has been issued against this member's signature. A handle
+    /// asserts a shape, so from that point on the shape cannot change — see
+    /// <see cref="RefuseSignatureChange"/>.
     /// </summary>
-    private protected virtual void OnParametersMutating()
+    private protected bool HandleIssued => _handleIssued;
+
+    /// <summary>
+    /// Records that a handle now depends on this member's signature. Called by the
+    /// builders that can issue one, after the assertion has been validated.
+    /// </summary>
+    private protected void FreezeSignature() => _handleIssued = true;
+
+    /// <summary>
+    /// Refuses a change to a signature a handle already asserts, so a handle that exists
+    /// stays one that matches.
+    /// </summary>
+    /// <remarks>
+    /// The latch lives here rather than on each handle-issuing builder because this class
+    /// owns <see cref="Parameters"/>, and having it in two places is how it came to cover
+    /// parameters and not type parameters or accessibility — both of which a call through
+    /// a handle equally depends on.
+    /// </remarks>
+    /// <param name="what">What the caller is trying to change, e.g. <c>parameters</c>.</param>
+    private protected void RefuseSignatureChange(string what)
     {
+        if (_handleIssued)
+            throw new InvalidOperationException(
+                $"{StatementContext} has issued a handle, so its {what} cannot change after that. " +
+                "Declare the whole signature first and take the handle last.");
     }
 
     private protected void AddParameter(IParameter parameter)
     {
-        OnParametersMutating();
+        RefuseSignatureChange("parameters");
         Parameters.Add(parameter);
     }
 

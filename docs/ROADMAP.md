@@ -197,6 +197,20 @@ These look like omissions but are choices:
   because the language forbade one thing and allowed two others. **A claim that a
   surface is empty deserves the same probe as a claim that it behaves a certain way.**
 
+- **A handle needs assembly-wide reach, and refuses a generic member.** Both fall out
+  of one property the design chose on purpose: `Call(target, handle, …)` can be emitted
+  from any body in any file, and the library deliberately does not track which. So it
+  cannot verify that a `protected` member is reached from a derived type, or that a
+  `private` one is reached from inside its own type — CS0122 everywhere else — and it
+  cannot supply the type arguments a generic method needs, since a handle carries
+  argument types and emits no type-argument list (CS0411). `public`, `internal` and
+  `protected internal` are the accessibilities reachable from the whole assembly a
+  generator emits into, so they are the ones a handle can be issued for. The cost is
+  real and bounded: a private helper called through `This()` now goes through
+  `CallRaw`, which is unchecked — the trade the raw seam exists to make. Found by
+  R3-20 and R3-21, and worth stating as a rule rather than two guards, because the
+  next handle family will inherit it.
+
 - **`CallStatic` needs a `typeof` overload, because C# forbids a static type as a
   type argument.** `CallStatic<Console>(…)` does not compile — CS0718 — and neither
   would `Math`, `File`, or `Enumerable`. Those are exactly where static methods live,

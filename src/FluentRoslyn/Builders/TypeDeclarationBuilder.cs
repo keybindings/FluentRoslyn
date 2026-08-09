@@ -86,10 +86,13 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
     /// <summary>
     /// The fully qualified name of this type, for use as a type reference. A nested type
     /// is qualified by its declaring type (<c>Ns.Outer.Inner</c>), not by the namespace
-    /// alone.
+    /// alone. Throws if the type — or anything it is nested in — is generic, since a
+    /// reference would have to supply type arguments this side cannot know.
     /// </summary>
     internal TypeSyntax BuildTypeSyntax()
     {
+        RefuseAsReference();
+
         // Only the innermost namespace qualification is annotated; simplifying it turns
         // Ns.Outer.Inner into Outer.Inner, which is what `using Ns;` makes legal.
         if (DeclaringType is { } declaring)
@@ -100,6 +103,38 @@ public abstract class TypeDeclarationBuilder : NamedBuilder
 
         return QualifiedName(Namespace.BuildNameSyntax(), IdentifierName(Name))
             .WithAdditionalAnnotations(TypeNameSimplifier.Annotation(Namespace.ToString()));
+    }
+
+    /// <summary>
+    /// Refuses to produce a name for a generic type, or for one nested inside a generic
+    /// type. Emitting <c>Repository</c> where <c>Repository&lt;T&gt;</c> is declared is
+    /// CS0305 in the consumer's build, and <c>Outer&lt;T&gt;.Inner</c> drops the outer's
+    /// arguments exactly as silently — so the whole declaring chain is checked, not the
+    /// leaf.
+    /// </summary>
+    /// <remarks>
+    /// The guard lives here, on the method that produces the name, rather than on the
+    /// callers that ask for one. It used to live on <c>TypeNameBuilder.For</c>, so every
+    /// route that reached <c>BuildTypeSyntax</c> directly — <c>WithParent</c> on a class
+    /// and on a record, the receiver and constructor pairings, <c>This&lt;T&gt;</c> —
+    /// bypassed it and emitted the broken reference. Here they cannot.
+    /// </remarks>
+    private void RefuseAsReference()
+    {
+        for (var type = this; type is not null; type = type.DeclaringType)
+        {
+            if (!type.HasTypeParameters)
+                continue;
+
+            var subject = ReferenceEquals(type, this)
+                ? $"Type '{Name}' declares type parameters"
+                : $"Type '{Name}' is nested in '{type.Name}', which declares type parameters";
+
+            throw new InvalidOperationException(
+                $"{subject}, so a builder reference cannot name it — the reference would have to " +
+                "supply the type arguments. Spell the constructed type with the raw-string overload " +
+                "instead.");
+        }
     }
 
     // A nested type is not a file, so emitting it standalone gives just the declaration

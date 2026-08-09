@@ -68,14 +68,7 @@ public abstract class TypeBuilder : TypeDeclarationBuilder
     /// <returns>A typed reference to <c>this</c>.</returns>
     public IReference<T> This<T>()
     {
-        var asserted = TypeNameBuilder.New<T>().ToString();
-        var declared = BuildTypeSyntax().ToString();
-
-        if (!string.Equals(asserted, declared, StringComparison.Ordinal))
-            throw new InvalidOperationException(
-                $"Type '{declared}' cannot hand back a 'this' typed as '{asserted}'. The type " +
-                "argument must name this type — its [EmitsAs] placeholder when it is being generated.");
-
+        HandleRules.AssertDeclaringType($"The typed 'this' of '{Name}'", this, typeof(T));
         return new ThisReference<T>();
     }
 

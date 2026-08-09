@@ -18,7 +18,8 @@ public class RecordBuilder : TypeDeclarationBuilder
 {
     private readonly List<IParameter> _params = [];
     private readonly List<TypeSyntax> _interfaces = [];
-    private TypeSyntax? _baseType;
+    private TypeSyntax? _baseTypeName;
+    private RecordBuilder? _baseRecord;
     private string[] _baseArguments = [];
     private readonly GenericParameters _generics = new();
 
@@ -52,10 +53,15 @@ public class RecordBuilder : TypeDeclarationBuilder
     /// constructor: <c>record Derived(int X) : Base(X)</c>. The base is emitted before any
     /// interfaces, as C# requires.
     /// </summary>
+    /// <remarks>
+    /// The base is resolved at emission, not here, so the guard against referencing a
+    /// generic type builder holds regardless of call order — the same bargain
+    /// <c>TypeNameBuilder.For</c> strikes, and the reason it is order-proof there.
+    /// </remarks>
     public RecordBuilder WithParent(RecordBuilder parent, params string[] arguments)
     {
         if (parent is null) throw new ArgumentNullException(nameof(parent));
-        return WithParent(parent.BuildTypeSyntax(), arguments);
+        return SetParent(null, parent, arguments);
     }
 
     /// <summary>
@@ -63,13 +69,15 @@ public class RecordBuilder : TypeDeclarationBuilder
     /// arguments to its primary constructor.
     /// </summary>
     public RecordBuilder WithParent(string typeName, params string[] arguments)
-        => WithParent(SyntaxParse.TypeName(typeName), arguments);
+        => SetParent(SyntaxParse.TypeName(typeName), null, arguments);
 
-    private RecordBuilder WithParent(TypeSyntax baseType, string[] arguments) => this.With(() =>
-    {
-        _baseType = baseType;
-        _baseArguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
-    });
+    private RecordBuilder SetParent(TypeSyntax? typeName, RecordBuilder? record, string[] arguments)
+        => this.With(() =>
+        {
+            _baseTypeName = typeName;
+            _baseRecord = record;
+            _baseArguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
+        });
 
     /// <summary>Adds an implemented interface from a raw name, e.g. <c>WithInterface("IEquatable&lt;Person&gt;")</c>.</summary>
     public RecordBuilder WithInterface(string interfaceName)
@@ -175,7 +183,9 @@ public class RecordBuilder : TypeDeclarationBuilder
     // rather than the SimpleBaseType that SyntaxBaseList produces.
     private BaseListSyntax? BuildBaseList()
     {
-        if (_baseType is null)
+        var baseType = _baseTypeName ?? _baseRecord?.BuildTypeSyntax();
+
+        if (baseType is null)
             return SyntaxBaseList.From(_interfaces);
 
         if (_isStruct)
@@ -184,7 +194,7 @@ public class RecordBuilder : TypeDeclarationBuilder
         var arguments = ArgumentList(SeparatedList(
             _baseArguments.Select(a => Argument(SyntaxParse.Expression(a)))));
 
-        var baseTypes = new List<BaseTypeSyntax> { PrimaryConstructorBaseType(_baseType, arguments) };
+        var baseTypes = new List<BaseTypeSyntax> { PrimaryConstructorBaseType(baseType, arguments) };
         baseTypes.AddRange(_interfaces.Select(i => (BaseTypeSyntax)SimpleBaseType(i)));
 
         return BaseList(SeparatedList(baseTypes));

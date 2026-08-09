@@ -21,7 +21,7 @@ public class ConstructorBuilder : StatementBuilder<ConstructorBuilder>, IAccessM
     private readonly TypeBuilder _declaringType;
     private ExpressionSyntax? _expressionBody;
     private ConstructorInitializerSyntax? _initializer;
-    private bool _handleIssued;
+    private AccessModifier _accessModifier = AccessModifier.Public;
 
     internal ConstructorBuilder(TypeBuilder declaringType, AccessModifier accessModifier) : base(declaringType.Name, _ => { })
     {
@@ -32,20 +32,24 @@ public class ConstructorBuilder : StatementBuilder<ConstructorBuilder>, IAccessM
     /// <summary>Whether this is a static constructor.</summary>
     public bool IsStatic { get; set; }
 
-    /// <summary>The constructor's accessibility. Ignored for a static constructor.</summary>
-    public AccessModifier AccessModifier { get; set; }
+    /// <summary>
+    /// The constructor's accessibility. Ignored for a static constructor, and frozen once
+    /// a constructable handle exists: <c>new T(…)</c> through the handle can be emitted
+    /// anywhere, and narrowing the constructor afterwards is CS0122 there.
+    /// </summary>
+    public AccessModifier AccessModifier
+    {
+        get => _accessModifier;
+        set
+        {
+            RefuseSignatureChange("accessibility");
+            _accessModifier = value;
+        }
+    }
 
     private protected override string StatementContext => $"Constructor for '{Name}'";
 
     private protected override bool IsStaticContext => IsStatic;
-
-    private protected override void OnParametersMutating()
-    {
-        if (_handleIssued)
-            throw new InvalidOperationException(
-                $"Constructor for '{Name}' has issued a constructable handle; parameters cannot change " +
-                "after that. Declare all parameters first and take the handle last.");
-    }
 
     #region FluentMethods
 
@@ -86,6 +90,12 @@ public class ConstructorBuilder : StatementBuilder<ConstructorBuilder>, IAccessM
     /// <typeparamref name="TDeclaring"/> must name the declaring type — its
     /// <c>[EmitsAs]</c> placeholder when that type is being generated.
     /// </summary>
+    /// <remarks>
+    /// The constructor must be reachable from anywhere in the assembly (<c>public</c>,
+    /// <c>internal</c> or <c>protected internal</c>): a <c>new T(…)</c> through the handle
+    /// can be emitted from any body in any file, and this side cannot see where. Parameters
+    /// and accessibility both freeze once the handle exists, so what it asserts stays true.
+    /// </remarks>
     /// <typeparam name="TDeclaring">The type being constructed.</typeparam>
     /// <param name="constructor">Receives the handle.</param>
     /// <returns>This builder, so the chain continues.</returns>
@@ -136,10 +146,10 @@ public class ConstructorBuilder : StatementBuilder<ConstructorBuilder>, IAccessM
     #endregion
 
     // The same bargain AsCallable strikes: the handle asserts a shape, validating it here
-    // means a handle that exists is one that matches, and freezing the parameters
-    // afterwards keeps it that way. The declaring type is checked too, by the pairing rule
-    // AsCallableOn uses -- a placeholder's emitted name and the declaring type's qualified
-    // name are the same string, because that is what both become in the generated source.
+    // means a handle that exists is one that matches, and freezing the signature
+    // afterwards keeps it that way. Both rules live in HandleRules -- the pairing one
+    // because AsCallableOn and This<T> assert exactly the same thing, and the signature one
+    // because having it twice is how the two sides came to guard different holes.
     private TypeNameBuilder ValidateHandle<TDeclaring>(params Type[] argumentTypes)
     {
         if (IsStatic)
@@ -147,34 +157,12 @@ public class ConstructorBuilder : StatementBuilder<ConstructorBuilder>, IAccessM
                 $"Constructor for '{Name}' is static; a static constructor cannot be called. " +
                 "Remove Static(), or construct with AddStatement.");
 
-        var declaringName = TypeNameBuilder.New<TDeclaring>();
-        var asserted = declaringName.ToString();
-        var declared = _declaringType.BuildTypeSyntax().ToString();
+        HandleRules.AssertDeclaringType(StatementContext, _declaringType, typeof(TDeclaring));
+        HandleRules.AssertSignature(
+            StatementContext, AccessModifier, isGeneric: false, Parameters, argumentTypes);
 
-        if (!string.Equals(asserted, declared, StringComparison.Ordinal))
-            throw new InvalidOperationException(
-                $"Constructor for '{Name}' is declared on '{declared}', but the handle asserts " +
-                $"'{asserted}'. The type argument must name the declaring type — its [EmitsAs] " +
-                "placeholder when that type is being generated.");
-
-        if (Parameters.Count != argumentTypes.Length)
-            throw new InvalidOperationException(
-                $"Constructor for '{Name}' declares {Parameters.Count} parameter(s) but the handle " +
-                $"asserts {argumentTypes.Length}.");
-
-        for (var i = 0; i < argumentTypes.Length; i++)
-        {
-            var assertedParameter = TypeNameBuilder.New(argumentTypes[i]).ToString();
-            var declaredParameter = Parameters[i].TypeName.ToString();
-
-            if (!string.Equals(assertedParameter, declaredParameter, StringComparison.Ordinal))
-                throw new InvalidOperationException(
-                    $"Constructor for '{Name}' parameter {i + 1} ('{Parameters[i].Name}') is " +
-                    $"'{declaredParameter}', but the handle asserts '{assertedParameter}'.");
-        }
-
-        _handleIssued = true;
-        return declaringName;
+        FreezeSignature();
+        return TypeNameBuilder.New<TDeclaring>();
     }
 
     internal ConstructorDeclarationSyntax BuildConstructor()

@@ -106,17 +106,11 @@ public class TypeNameBuilder : NamedBuilder
         if (_rawTypeSyntax is not null)
             return _rawTypeSyntax;
 
+        // The generic guard used to be repeated here, checking the leaf builder only.
+        // It now lives on BuildTypeSyntax itself and walks the declaring chain, so this
+        // path and the ones that never came through here are guarded by the same code.
         if (_builderTarget is not null)
-        {
-            // Emitting `Repository` where `Repository<T>` is declared would be broken
-            // source, and this builder has no way to say what the arguments should be.
-            if (_builderTarget.HasTypeParameters)
-                throw new InvalidOperationException(
-                    $"Type '{_builderTarget.Name}' declares type parameters, so a builder reference " +
-                    "cannot name it. Spell the constructed type with the raw-string overload instead.");
-
             return _builderTarget.BuildTypeSyntax();
-        }
 
         if (_elementType is not null)
             return ArrayType(_elementType.BuildTypeSyntax())

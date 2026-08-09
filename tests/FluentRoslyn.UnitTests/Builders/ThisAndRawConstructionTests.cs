@@ -55,7 +55,8 @@ public class ThisAndRawConstructionTests
     }
 
     // The pairing rule AsCallableOn uses: a placeholder's emitted name and the declaring
-    // type's qualified name are the same string.
+    // type's qualified name are the same string. R3-60: it is now literally the same rule
+    // rather than a third copy of it, so the message is the one the handle families give.
     [TestMethod]
     public void This_TypedAsTheWrongType_Throws()
     {
@@ -64,7 +65,7 @@ public class ThisAndRawConstructionTests
         var wrong = () => gadget.This<NotGadgetPh>();
 
         wrong.Should().Throw<InvalidOperationException>()
-            .WithMessage("*cannot hand back a 'this' typed as 'MyApp.NotGadget'*");
+            .WithMessage("*declared on 'MyApp.Gadget', but the handle asserts 'MyApp.NotGadget'*");
     }
 
     // There is no `this` in a static member, so emitting one would produce source the

@@ -19,7 +19,7 @@ Findings carry an id (`R<review>-<n>`) so a commit message can name what it fixe
 
 **All three ranges are now reviewed.** The middle row — roughly 80% of the library, and
 every item from #14 through #38 — was the long-standing gap, and Review 3 closed it.
-What is open is no longer coverage but the **48 unfixed findings** it produced; see the
+What is open is no longer coverage but the **42 unfixed findings** it produced; see the
 fix notes below. Keep the ordering lesson this table caught once already: Review 2 was
 scoped by the tool to the newest feature rather than to the codebase, so *running* a
 review is not the same as covering what you meant to. Check the range it chose.
@@ -33,7 +33,9 @@ review is not the same as covering what you meant to. Check the range it chose.
   executing it. The suite was green throughout, so **none of these is caught today**.
 - **Findings:** 61. **Fixed 2026-08-08:** R3-01, R3-13, R3-14, R3-15, R3-16,
   R3-26. **Fixed 2026-08-09:** R3-12, and the simplifier cluster — R3-02, R3-31,
-  R3-32, R3-33, R3-34, R3-43. The other 48 are open.
+  R3-32, R3-33, R3-34, R3-43; the type-identity cluster — R3-17, R3-18, R3-19,
+  R3-20, R3-21 — and R3-60, which is the same three lines as R3-19. The other 42
+  are open.
 
 Six independent passes found R3-01 without collusion, which is the clearest signal
 in the set: it is one missing override with a wide blast radius.
@@ -255,7 +257,16 @@ formatting is still a finding.
   no member-versus-type validation. `IsStaticType` already exists and is consulted for
   exactly one member kind. Doing them together is one guard with six cases.
 - **R3-17 through R3-21 are one concept too**: type identity and the generic guard are
-  each implemented twice, once correctly (`TypeNameBuilder.For`) and once not.
+  each implemented twice, once correctly (`TypeNameBuilder.For`) and once not. **Fixed
+  2026-08-09**, and the fix was to delete the correct copy rather than duplicate it
+  again: the generic guard moved onto `TypeDeclarationBuilder.BuildTypeSyntax`, the
+  method that *produces* a name, so every caller is covered by construction instead of
+  by remembering to ask. R3-60's three copies of the pairing rule and R3-59's two
+  copies of the handle check went with it, into `HandleRules` — fixing R3-19 without
+  merging them would have left the next hole to be found separately, which is exactly
+  how the method side gained an order-proof re-check and the constructor side did not.
+  R3-51's *asymmetry* on these three lines is gone too (both sides now render the same
+  way); its allocation half, on the per-parameter comparison, is untouched.
 - **R3-02, R3-31 through R3-34 and R3-43 are the simplifier**, and several are
   locally decidable despite the syntax-only ceiling. **Fixed 2026-08-09**, and one
   measurement is worth keeping: **a using-directive does not import nested

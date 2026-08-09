@@ -45,7 +45,7 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
     private readonly GenericParameters _generics = new();
     private readonly DocComment _docs = new();
     private ExpressionSyntax? _expressionBody;
-    private bool _handleIssued;
+    private AccessModifier _accessModifier = AccessModifier.Public;
 
     private protected TypeSyntax ReturnType;
     private protected bool ReturnsVoid;
@@ -100,20 +100,24 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
     string IMethodMember.ParameterSignature
         => string.Join(", ", Parameters.Select(p => p.TypeName.BuildTypeSyntax().ToString()));
 
-    /// <summary>The method's accessibility.</summary>
-    public AccessModifier AccessModifier { get; set; }
+    /// <summary>
+    /// The method's accessibility. Frozen once a callable handle exists: a call through
+    /// the handle can be emitted anywhere, and narrowing the method afterwards is CS0122
+    /// in the consumer's build.
+    /// </summary>
+    public AccessModifier AccessModifier
+    {
+        get => _accessModifier;
+        set
+        {
+            RefuseSignatureChange("accessibility");
+            _accessModifier = value;
+        }
+    }
 
     private protected override string StatementContext => $"Method '{Name}'";
 
     private protected override bool IsStaticContext => IsStatic;
-
-    private protected override void OnParametersMutating()
-    {
-        if (_handleIssued)
-            throw new InvalidOperationException(
-                $"Method '{Name}' has issued a callable handle; parameters cannot change after that. " +
-                "Declare all parameters first and take the handle last.");
-    }
 
     #region FluentMethods
 
@@ -209,6 +213,7 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
     /// <summary>Adds a generic type parameter, e.g. <c>WithTypeParameter("T")</c> for <c>Name&lt;T&gt;</c>.</summary>
     public TSelf WithTypeParameter(string name)
     {
+        RefuseSignatureChange("type parameters");
         _generics.AddTypeParameter(name);
         return Self;
     }
@@ -220,6 +225,7 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
     /// </summary>
     public TSelf WithConstraint(string typeParameter, string constraint)
     {
+        RefuseSignatureChange("type parameters");
         _generics.AddConstraint(typeParameter, constraint);
         return Self;
     }
@@ -243,9 +249,19 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
 
     /// <summary>
     /// Hands back a typed handle to this parameterless method, for emitting
-    /// type-checked calls with <c>Call</c>. Take the handle after the parameters are
-    /// declared — the signature freezes once a handle exists.
+    /// type-checked calls with <c>Call</c>. Take the handle after the whole signature is
+    /// declared — parameters, type parameters and accessibility all freeze once a handle
+    /// exists.
     /// </summary>
+    /// <remarks>
+    /// The method must be reachable from anywhere in the assembly (<c>public</c>,
+    /// <c>internal</c> or <c>protected internal</c>) and must not be generic. Both are for
+    /// the same reason: a call through a handle can be emitted from any body in any file,
+    /// and this side cannot see where — so it cannot know that a <c>protected</c> member is
+    /// reached from a derived type, or supply the type arguments a generic method needs.
+    /// The raw call family (<c>CallRaw</c>, <c>InvokeRaw</c>) has neither restriction and
+    /// neither check.
+    /// </remarks>
     public TSelf AsCallable(out IMethod method)
     {
         ValidateHandle();
@@ -328,34 +344,22 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
     #endregion
 
     // A handle asserts the signature; validating here means a handle that exists is one
-    // that matches, and freezing the parameters afterwards keeps it that way.
+    // that matches, and freezing the signature afterwards keeps it that way. Everything
+    // but the static refusal is shared with the constructor side -- see HandleRules.
     private protected void ValidateHandle(params Type[] argumentTypes)
     {
         if (IsStatic)
             throw new InvalidOperationException(
                 $"Method '{Name}' is static; static calls are not modelled yet. Emit the call with AddStatement.");
 
-        if (Parameters.Count != argumentTypes.Length)
-            throw new InvalidOperationException(
-                $"Method '{Name}' declares {Parameters.Count} parameter(s) but the handle asserts {argumentTypes.Length}.");
+        HandleRules.AssertSignature(
+            StatementContext, AccessModifier, _generics.Any, Parameters, argumentTypes);
 
-        for (var i = 0; i < argumentTypes.Length; i++)
-        {
-            var asserted = TypeNameBuilder.New(argumentTypes[i]).ToString();
-            var declared = Parameters[i].TypeName.ToString();
-
-            if (!string.Equals(asserted, declared, StringComparison.Ordinal))
-                throw new InvalidOperationException(
-                    $"Method '{Name}' parameter {i + 1} ('{Parameters[i].Name}') is '{declared}', " +
-                    $"but the handle asserts '{asserted}'.");
-        }
-
-        _handleIssued = true;
+        FreezeSignature();
     }
 
-    // The pairing that makes receiver checking work: the placeholder's emitted name and
-    // the declaring type's qualified name have to be the same string, since that is what
-    // both will be in the generated source.
+    // The pairing that makes receiver checking work; the rule itself lives in HandleRules,
+    // because the constructor side and This<T> assert exactly the same thing.
     private protected void ValidateReceiver(Type declaringType)
     {
         if (DeclaringType is null)
@@ -363,14 +367,7 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
                 $"Method '{Name}' is not attached to a type, so it has no receiver to check. " +
                 "Define it with DefineMethod on a type builder.");
 
-        var asserted = TypeNameBuilder.New(declaringType).ToString();
-        var declared = DeclaringType.BuildTypeSyntax().ToString();
-
-        if (!string.Equals(asserted, declared, StringComparison.Ordinal))
-            throw new InvalidOperationException(
-                $"Method '{Name}' is declared on '{declared}', but the handle asserts '{asserted}'. " +
-                "The type argument must name the declaring type — its [EmitsAs] placeholder when " +
-                "that type is being generated.");
+        HandleRules.AssertDeclaringType(StatementContext, DeclaringType, declaringType);
     }
 
     internal MethodDeclarationSyntax BuildMethod()
@@ -386,7 +383,7 @@ public abstract class MethodBuilderBase<TSelf> : StatementBuilder<TSelf>, IMetho
 
         // AsCallable rejects a static method up front, but IsStatic can be set after the
         // handle exists; catching it here keeps the guard order-proof.
-        if (_handleIssued && IsStatic)
+        if (HandleIssued && IsStatic)
             throw new InvalidOperationException(
                 $"Method '{Name}' became static after issuing a callable handle; " +
                 "calls through the handle would emit instance syntax.");
