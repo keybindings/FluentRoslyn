@@ -19,7 +19,7 @@ Findings carry an id (`R<review>-<n>`) so a commit message can name what it fixe
 
 **All three ranges are now reviewed.** The middle row — roughly 80% of the library, and
 every item from #14 through #38 — was the long-standing gap, and Review 3 closed it.
-What is open is no longer coverage but the **37 unfixed findings** it produced; see the
+What is open is no longer coverage but the **35 unfixed findings** it produced; see the
 fix notes below. Keep the ordering lesson this table caught once already: Review 2 was
 scoped by the tool to the newest feature rather than to the codebase, so *running* a
 review is not the same as covering what you meant to. Check the range it chose.
@@ -35,8 +35,9 @@ review is not the same as covering what you meant to. Check the range it chose.
   R3-26. **Fixed 2026-08-09:** R3-12, and the simplifier cluster — R3-02, R3-31,
   R3-32, R3-33, R3-34, R3-43; the type-identity cluster — R3-17, R3-18, R3-19,
   R3-20, R3-21 — with R3-59 and R3-60, which are the same lines as R3-19 and R3-20;
-  and the rest of the duplication cluster, R3-56, R3-57, R3-58, R3-61. **24 fixed,
-  37 open.**
+  and the rest of the duplication cluster, R3-56, R3-57, R3-58, R3-61. **Fixed
+  2026-08-10:** R3-07 and R3-23, the float/double special-value cluster in
+  `SyntaxLiterals.Expression`. **26 fixed, 35 open.**
 
 Six independent passes found R3-01 without collusion, which is the clearest signal
 in the set: it is one missing override with a wide blast radius.

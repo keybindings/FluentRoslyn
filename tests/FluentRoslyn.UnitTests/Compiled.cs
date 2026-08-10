@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace FluentRoslyn.UnitTests;
 
@@ -54,6 +55,30 @@ internal static class Compiled
             IFieldSymbol field => field.Type.ToDisplayString(),
             var other => throw new InvalidOperationException($"'{memberName}' is a {other.Kind}."),
         };
+    }
+
+    /// <summary>
+    /// The compile-time constant value of the expression <paramref name="select"/> locates in
+    /// <paramref name="generated"/>, as the compiler folded it — not the source text. This is
+    /// the assertion a string cannot make: source that reads as the right value can still
+    /// evaluate to a different one (a dropped sign on a negative-zero literal, a member that
+    /// resolves to the wrong overload), and a substring check on the source text cannot see it.
+    /// </summary>
+    internal static object ConstantValueOf(
+        string generated, Func<SyntaxNode, ExpressionSyntax> select, params string[] supporting)
+    {
+        var compilation = Create(generated, supporting);
+        var tree = compilation.SyntaxTrees.First();
+        var model = compilation.GetSemanticModel(tree);
+
+        var node = tree.GetRoot().DescendantNodes()
+            .Select(select)
+            .First(e => e is not null);
+
+        var constant = model.GetConstantValue(node);
+        return constant.HasValue
+            ? constant.Value
+            : throw new InvalidOperationException($"'{node}' is not a compile-time constant.");
     }
 
     private static CSharpCompilation Create(string generated, string[] supporting)

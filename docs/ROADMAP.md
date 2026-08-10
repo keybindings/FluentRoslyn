@@ -169,7 +169,7 @@ What has been code-reviewed and when is tracked in [`REVIEWS.md`](REVIEWS.md), w
 commit range for each so coverage can be recomputed rather than remembered. **Every range
 is now covered.** The long-standing gap — roughly 80% of the library, everything from #14
 through #38 — was closed by Review 3 on 2026-08-08, which found 61 things in it. What is
-open is no longer coverage but those findings; 24 are fixed and the rest live there, with
+open is no longer coverage but those findings; 26 are fixed and the rest live there, with
 notes on which of them are one missing concept rather than N bugs.
 
 ## Deliberate decisions (not gaps)
