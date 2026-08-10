@@ -91,13 +91,27 @@ public class RegressionTests
         TypeNameBuilder.New<int[]>().ToString().Should().Be("int[]");
     }
 
+    // Rank specifiers were emitted outermost-last, by nesting an ArrayType inside the
+    // element's ArrayType instead of collecting every rank up front: int[][,] came out
+    // as "int[, ][]", i.e. int[,][] — a different type, so an assignment of the value
+    // the caller asked for fails with CS0029.
     [TestMethod]
     public void TypeName_JaggedAndMultiDimensionalArrays_PreserveShape()
     {
-        TypeNameBuilder.New<int[][]>().ToString().Should().Be("int[][]");
+        TypeNameBuilder.New<int[]>().ToString().Should().Be("int[]");
 
         // NormalizeWhitespace pads omitted array sizes; "int[, ]" is still valid C#.
         TypeNameBuilder.New<int[,]>().ToString().Should().Be("int[, ]");
+        TypeNameBuilder.New<int[,,]>().ToString().Should().Be("int[,, ]");
+        TypeNameBuilder.New<int[][]>().ToString().Should().Be("int[][]");
+
+        // Jagged-of-multidimensional and multidimensional-of-jagged are distinct types;
+        // neither may render as the other.
+        TypeNameBuilder.New<int[][,]>().ToString().Should().Be("int[][, ]");
+        TypeNameBuilder.New<int[,][]>().ToString().Should().Be("int[, ][]");
+
+        // Three ranks deep, so the fix cannot be a two-level special case.
+        TypeNameBuilder.New<int[][,][]>().ToString().Should().Be("int[][, ][]");
     }
 
     [TestMethod]

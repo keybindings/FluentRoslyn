@@ -112,10 +112,25 @@ public class TypeNameBuilder : NamedBuilder
         if (_builderTarget is not null)
             return _builderTarget.BuildTypeSyntax();
 
+        // C# reads array ranks left to right in application order, which is the reverse
+        // of how the element type unwraps: for int[][,], the outer (jagged) rank has to
+        // print before the inner (multi-dimensional) one. Nesting an ArrayType inside
+        // another's ElementType would print the inner rank first instead, so every rank
+        // in the chain is collected up front and emitted as one flat ArrayType.
         if (_elementType is not null)
-            return ArrayType(_elementType.BuildTypeSyntax())
-                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier(
-                    SeparatedList(Enumerable.Repeat<ExpressionSyntax>(OmittedArraySizeExpression(), _arrayRank)))));
+        {
+            var rankSpecifiers = new List<ArrayRankSpecifierSyntax>();
+            var current = this;
+
+            while (current._elementType is { } elementType)
+            {
+                rankSpecifiers.Add(ArrayRankSpecifier(
+                    SeparatedList(Enumerable.Repeat<ExpressionSyntax>(OmittedArraySizeExpression(), current._arrayRank))));
+                current = elementType;
+            }
+
+            return ArrayType(current.BuildTypeSyntax()).WithRankSpecifiers(List(rankSpecifiers));
+        }
 
         if (_predefinedKind is { } kind)
             return PredefinedType(Token(kind));
