@@ -112,6 +112,10 @@ public class RegressionTests
 
         // Three ranks deep, so the fix cannot be a two-level special case.
         TypeNameBuilder.New<int[][,][]>().ToString().Should().Be("int[][, ][]");
+
+        // And three ranks that are all different, so a correct order cannot be
+        // mistaken for a palindrome: 1, 3, 2 reversed would be 2, 3, 1.
+        TypeNameBuilder.New<int[][,,][,]>().ToString().Should().Be("int[][,, ][, ]");
     }
 
     [TestMethod]
